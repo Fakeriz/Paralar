@@ -1,4 +1,5 @@
 'use client'
+import { useState } from 'react'
 import { Crown, ChevronRight, CreditCard, Bot, Calculator, Tags, Users, HandCoins, Zap, Repeat, TrendingUp, HeartPulse, Briefcase, Globe2, Coins, SunMoon, Check, LogOut, ReceiptText } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTheme } from 'next-themes'
@@ -6,6 +7,8 @@ import { useApp } from './context'
 import { Card, SectionLabel, Sheet, PrimaryButton, SecondaryButton, Segmented } from './ui'
 import { getCurrency } from '@/lib/currencies'
 import { LANGUAGES } from '@/lib/i18n'
+import RecurringSheet from './RecurringSheet'
+import NetWorthSheet from './NetWorthSheet'
 
 function Row({ icon: Icon, label, onClick, right, testId }) {
   return (
@@ -23,6 +26,8 @@ export default function MoreTab() {
   const { theme, setTheme } = useTheme()
   const soon = () => toast(t('coming_soon'))
   const isPremium = profile?.plan_tier === 'premium'
+  const [recurringOpen, setRecurringOpen] = useState(false)
+  const [netWorthOpen, setNetWorthOpen] = useState(false)
 
   return (
     <div className="px-5 pb-28">
@@ -49,8 +54,8 @@ export default function MoreTab() {
       <SectionLabel className="mt-7 mb-2 px-1">{t('advanced')}</SectionLabel>
       <Card className="divide-y divide-border/40 overflow-hidden">
         <Row icon={Zap} label={t('smart_automation')} onClick={() => open('automation')} testId="more-automation" />
-        <Row icon={Repeat} label={t('recurring')} onClick={soon} />
-        <Row icon={TrendingUp} label={t('net_worth')} onClick={soon} />
+        <Row icon={Repeat} label={t('recurring')} onClick={() => setRecurringOpen(true)} testId="more-recurring" />
+        <Row icon={TrendingUp} label={t('net_worth')} onClick={() => setNetWorthOpen(true)} testId="more-networth" />
         <Row icon={HeartPulse} label={t('health_score')} onClick={soon} />
         <Row icon={Briefcase} label={t('business_invoicing')} onClick={soon} />
       </Card>
@@ -98,6 +103,9 @@ export default function MoreTab() {
           </div>
         </div>
       </Sheet>
+
+      <RecurringSheet open={recurringOpen} onClose={() => setRecurringOpen(false)} />
+      <NetWorthSheet open={netWorthOpen} onClose={() => setNetWorthOpen(false)} />
     </div>
   )
 }
