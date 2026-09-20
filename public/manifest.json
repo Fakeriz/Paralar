@@ -1,0 +1,13 @@
+{
+  "name": "Paralar — Personal & Business Finance",
+  "short_name": "Paralar",
+  "description": "Log money in seconds. Multi-currency personal & business finance tracker.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFFFFF",
+  "theme_color": "#0A0A0B",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
