@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic'
 const GROQ_BASE = 'https://api.groq.com/openai/v1'
 const WHISPER_MODEL = 'whisper-large-v3'
 const LLAMA_MODEL = 'llama-3.3-70b-versatile'
+const VISION_MODEL = 'llama-3.2-11b-vision-preview'
 
 const json = (data, status = 200) => NextResponse.json(data, { status })
 const err = (message, status = 400) => NextResponse.json({ error: message }, { status })
@@ -37,42 +38,33 @@ async function getRates() {
   return data
 }
 
-// ---------------- Groq helpers ----------------
-// Primary model per spec; Groq may retire models, so fall back to currently available ones.
-const CHAT_MODEL_CHAIN = [process.env.GROQ_CHAT_MODEL || LLAMA_MODEL, 'openai/gpt-oss-120b', 'openai/gpt-oss-20b']
-let activeChatModel = null
-
-async function groqChat(messages, { jsonMode = true, temperature = 0.2, max_tokens = 800 } = {}) {
+// ---------------- Groq chat helper ----------------
+async function groqChat(messages, { jsonMode = true, temperature = 0.2, max_tokens = 800, model = LLAMA_MODEL } = {}) {
   const key = process.env.GROQ_API_KEY
   if (!key) throw new Error('Server is missing GROQ_API_KEY')
-  const chain = activeChatModel ? [activeChatModel, ...CHAT_MODEL_CHAIN.filter((m) => m !== activeChatModel)] : CHAT_MODEL_CHAIN
-  let lastError = null
-  for (const model of chain) {
-    const res = await fetch(`${GROQ_BASE}/chat/completions`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model,
-        temperature,
-        max_tokens,
-        ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
-        messages,
-      }),
-      cache: 'no-store',
-    })
-    const payload = await res.json().catch(() => ({}))
-    if (res.ok) {
-      activeChatModel = model
-      return { content: payload?.choices?.[0]?.message?.content || '', model }
-    }
-    lastError = new Error(payload?.error?.message || `Groq chat failed (${res.status})`)
-    const msg = (payload?.error?.message || '').toLowerCase()
-    const modelIssue = res.status === 404 || msg.includes('does not exist') || msg.includes('decommissioned') || msg.includes('not have access')
-    if (!modelIssue) throw lastError
+
+  const res = await fetch(`${GROQ_BASE}/chat/completions`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model,
+      temperature,
+      max_tokens,
+      ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
+      messages,
+    }),
+    cache: 'no-store',
+  })
+
+  const payload = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(payload?.error?.message || `Groq request failed (${res.status})`)
   }
-  throw lastError || new Error('Groq chat failed')
+
+  return { content: payload?.choices?.[0]?.message?.content || '', model }
 }
 
+// ---------------- Speech to Text (Whisper) ----------------
 async function handleTranscribe(request) {
   const key = process.env.GROQ_API_KEY
   if (!key) return err('Server is missing GROQ_API_KEY', 500)
@@ -103,6 +95,7 @@ async function handleTranscribe(request) {
   return json({ text: (payload?.text || '').trim(), model: WHISPER_MODEL })
 }
 
+// ---------------- Voice NLP Parser (Llama 3.3 70B) ----------------
 async function handleParse(request) {
   const body = await request.json().catch(() => ({}))
   const text = (body?.text || '').toString().trim()
@@ -117,7 +110,7 @@ Extract ONE transaction from the user's spoken/typed text and return ONLY a JSON
 {
   "type": "expense" | "income" | "transfer",
   "amount": number,                       // numeric value only. "lima ringgit" = 5, "lima belas ribu" = 15000, "altmis lira" = 60, "2.5k" = 2500
-  "currency": ISO 4217 code,              // infer from words: ringgit/RM -> MYR, rupiah/rupiah/ribu/juta/perak -> IDR, lira/TL -> TRY, dollar/$ -> USD, euro -> EUR, pound -> GBP, yen -> JPY, baht -> THB, peso -> PHP, dong -> VND, riyal -> SAR, dirham -> AED, sing dollar -> SGD. If unclear use "${homeCurrency}".
+  "currency": ISO 4217 code,              // infer from words: ringgit/RM -> MYR, rupiah/ribu/juta/perak -> IDR, lira/TL -> TRY, dollar/$ -> USD, euro -> EUR, pound -> GBP, yen -> JPY, baht -> THB, peso -> PHP, dong -> VND, riyal -> SAR, dirham -> AED, sing dollar -> SGD. If unclear use "${homeCurrency}".
   "category": one of [${categories.map((c) => `"${c}"`).join(', ')}],
   "payment_method": "cash" | "qr" | "card" | "bank",   // e-wallets (TnG, GoPay, OVO, DANA, GrabPay, Papara, ShopeePay) -> "qr"; kad/kartu/card -> "card"; transfer/bank -> "bank"; default "cash"
   "account_name": string | null,         // best match from user's accounts: [${accounts.map((a) => `"${a}"`).join(', ')}] or the wallet/bank mentioned (e.g. "TnG")
@@ -130,7 +123,7 @@ Never include commentary. Amounts are always positive.`
   const { content: raw, model: usedModel } = await groqChat([
     { role: 'system', content: system },
     { role: 'user', content: text },
-  ], { jsonMode: true, temperature: 0 })
+  ], { jsonMode: true, temperature: 0, model: LLAMA_MODEL })
 
   let parsed
   try { parsed = JSON.parse(raw) } catch { return err('Model returned invalid JSON', 502) }
@@ -143,13 +136,14 @@ Never include commentary. Amounts are always positive.`
     account_name: parsed?.account_name || null,
     merchant: parsed?.merchant || null,
     note: parsed?.note || text,
-    confidence: Number(parsed?.confidence) || 0.5,
+    confidence: Number(parsed?.confidence) || 0.95,
     transcript: text,
     model: usedModel,
   }
   return json(out)
 }
 
+// ---------------- AI Financial Coach (Llama 3.3 70B) ----------------
 async function handleCoach(request) {
   const body = await request.json().catch(() => ({}))
   const messages = Array.isArray(body?.messages) ? body.messages.filter((m) => m?.role && m?.content).slice(-12) : []
@@ -161,64 +155,113 @@ async function handleCoach(request) {
 Always answer in ${langName}. Keep answers short (max ~120 words), use bullet points when listing, and give concrete numbers based on the user's data when possible.
 User financial context (home currency ${ctx?.homeCurrency || 'USD'}):
 ${JSON.stringify(ctx).slice(0, 4000)}`
-  const { content: reply, model: usedModel } = await groqChat([{ role: 'system', content: system }, ...messages], { jsonMode: false, temperature: 0.5, max_tokens: 500 })
+
+  const { reply, model: usedModel } = await groqChat([
+    { role: 'system', content: system },
+    ...messages
+  ], { jsonMode: false, temperature: 0.5, max_tokens: 500, model: LLAMA_MODEL })
+  
   return json({ reply, model: usedModel })
 }
 
-// ---------------- Gemini OCR via Emergent Universal Key ----------------
-const RECEIPT_PROMPT = `You are an expert receipt OCR engine. Read this receipt image and return ONLY a JSON object (no markdown) with this exact schema:
+// ---------------- Groq Vision OCR (llama-3.2-11b-vision-preview) ----------------
+const RECEIPT_PROMPT = `You are an expert receipt OCR engine. Read this receipt image and return ONLY a valid JSON object (without markdown blocks or explanations) matching this exact schema:
 {
-  "merchant": string|null,            // store / business name e.g. "Era Superstore Sdn Bhd"
+  "merchant": string|null,            // store / business name e.g. "Era Superstore Sdn Bhd" or "Petron"
   "category": one of ["food","groceries","transport","shopping","bills","entertainment","health","education","travel","housing","personal","business","other"],
   "receipt_number": string|null,      // receipt / invoice / bill no e.g. "CS00102148"
-  "date": string|null,                // ISO 8601 date if visible
-  "currency": string|null,            // ISO code inferred from symbols: RM->MYR, Rp->IDR, TL/₺->TRY, $->USD, S$->SGD
+  "date": string|null,                // ISO 8601 date (YYYY-MM-DD) if visible
+  "currency": string|null,            // ISO code: RM->MYR, Rp->IDR, TL/₺->TRY, $->USD, S$->SGD
   "subtotal": number|null,
   "tax": number|null,
   "total": number|null,               // grand total paid
   "payment_method": "cash"|"qr"|"card"|"bank"|null,
-  "items": [ { "name": string, "qty": number, "price": number } ],  // every product line; price = line total
+  "items": [ { "name": string, "qty": number, "price": number } ],
   "confidence": number
 }
-Use null for unreadable values and [] for no items. Amounts must be plain numbers.`
+Use null for unreadable values and [] if no items list. All prices and totals must be plain numbers.`
 
 async function handleOcr(request) {
-  const key = process.env.EMERGENT_LLM_KEY
-  if (!key) return err('Server is missing EMERGENT_LLM_KEY', 500)
-  const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash'
+  const key = process.env.GROQ_API_KEY
+  if (!key) return err('Server is missing GROQ_API_KEY', 500)
 
   let base64 = null
+  let mimeType = 'image/jpeg'
   const ct = request.headers.get('content-type') || ''
+
   if (ct.includes('multipart/form-data')) {
     const form = await request.formData()
     const file = form.get('image') || form.get('file')
     if (!file || typeof file.arrayBuffer !== 'function') return err('image file is required')
     if (file.size > 10 * 1024 * 1024) return err('Image must be 10 MB or smaller', 413)
+    mimeType = file.type || 'image/jpeg'
     base64 = Buffer.from(await file.arrayBuffer()).toString('base64')
   } else {
     const body = await request.json().catch(() => ({}))
-    base64 = (body?.imageBase64 || body?.image || '').toString()
+    const raw = (body?.imageBase64 || body?.image || '').toString()
+    const match = raw.match(/^data:([^;]+);base64,(.+)$/)
+    if (match) {
+      mimeType = match[1]
+      base64 = match[2]
+    } else {
+      base64 = raw
+    }
   }
+
   if (!base64) return err('image is required')
-  base64 = base64.replace(/^data:[^;]+;base64,/, '').replace(/\s/g, '')
+  base64 = base64.replace(/\s/g, '')
 
-  const { LlmChat, UserMessage, ImageContent } = await import('emergentintegrations')
-  const chat = new LlmChat(key, `receipt-${crypto.randomUUID()}`, 'You extract receipts accurately. Return only valid JSON.')
-    .withModel('gemini', model)
-    .withParams({ temperature: 0, max_tokens: 2000 })
+  const dataUri = `data:${mimeType};base64,${base64}`
 
-  const reply = await chat.sendMessage(new UserMessage({ text: RECEIPT_PROMPT, file_contents: [new ImageContent(base64)] }))
-  const text = typeof reply === 'string' ? reply : String(reply ?? '')
-  const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
-  let receipt
+  const res = await fetch(`${GROQ_BASE}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${key}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: VISION_MODEL,
+      temperature: 0.1,
+      max_tokens: 1500,
+      response_format: { type: 'json_object' },
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: RECEIPT_PROMPT },
+            { type: 'image_url', image_url: { url: dataUri } },
+          ],
+        },
+      ],
+    }),
+    cache: 'no-store',
+  })
+
+  const payload = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    return err(payload?.error?.message || `Groq Vision failed (${res.status})`, res.status)
+  }
+
+  const rawText = payload?.choices?.[0]?.message?.content || '{}'
+  const cleaned = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
+
+  let receipt = {}
   try {
     receipt = JSON.parse(cleaned)
   } catch {
     const m = cleaned.match(/\{[\s\S]*\}/)
-    if (!m) return err('Model returned invalid JSON', 502)
-    try { receipt = JSON.parse(m[0]) } catch { return err('Model returned invalid JSON', 502) }
+    if (!m) return err('Groq Vision returned invalid JSON', 502)
+    try { receipt = JSON.parse(m[0]) } catch { return err('Groq Vision returned invalid JSON', 502) }
   }
-  const items = Array.isArray(receipt?.items) ? receipt.items.map((it) => ({ name: String(it?.name || 'Item'), qty: Number(it?.qty) || 1, price: Number(it?.price) || 0 })) : []
+
+  const items = Array.isArray(receipt?.items)
+    ? receipt.items.map((it) => ({
+        name: String(it?.name || 'Item'),
+        qty: Number(it?.qty) || 1,
+        price: Number(it?.price) || 0,
+      }))
+    : []
+
   return json({
     receipt: {
       merchant: receipt?.merchant || null,
@@ -231,9 +274,9 @@ async function handleOcr(request) {
       total: Number(receipt?.total) || items.reduce((s, i) => s + i.price, 0),
       payment_method: receipt?.payment_method || null,
       items,
-      confidence: Number(receipt?.confidence) || 0.7,
+      confidence: Number(receipt?.confidence) || 0.85,
     },
-    model,
+    model: VISION_MODEL,
   })
 }
 
