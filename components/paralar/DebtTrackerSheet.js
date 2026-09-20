@@ -136,7 +136,7 @@ export default function DebtTrackerSheet({ open, onClose }) {
 
       {/* Add debt */}
       <Sheet open={adding} onClose={() => setAdding(false)} title="Add Debt / IOU" zIndex={70}
-        left={<button type="button" onClick={() => setAdding(false)} className="text-[15px] text-muted-foreground py-1 px-1">{t('cancel')}</button>}
+        left={<button type="button" onClick={() => setAdding(false)} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">{t('cancel')}</button>}
         right={<button type="button" onClick={save} disabled={!person.trim() || !(Number(amount) || 0)} className={cn('text-[15px] font-bold py-1 px-1', (!person.trim() || !(Number(amount) || 0)) && 'opacity-40')} data-testid="debt-save">{t('save')}</button>}>
         <div className="space-y-5 pt-2">
           <Segmented value={direction} onChange={setDirection} options={[{ id: 'lent', label: 'Lent' }, { id: 'borrowed', label: 'Borrowed' }]} />

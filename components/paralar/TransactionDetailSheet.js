@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, Pencil, Trash2, Eye, X, Plus, Check, UserPlus } from 'lucide-react'
+import { Pencil, Trash2, Eye, X, Plus, Check, UserPlus } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
 import { Sheet, Segmented, CategoryBadge, Card } from './ui'
@@ -102,7 +102,6 @@ export default function TransactionDetailSheet({ open, onClose, tx, onEdit }) {
       open={open}
       onClose={onClose}
       full
-      left={<button type="button" onClick={onClose} className="p-1"><ChevronLeft size={22} /></button>}
       right={<div className="flex items-center gap-1"><button type="button" onClick={() => onEdit?.(tx)} className="p-2" data-testid="tx-edit"><Pencil size={18} /></button><button type="button" onClick={remove} className="p-2 text-destructive" data-testid="tx-delete"><Trash2 size={18} /></button></div>}
     >
       <p className="text-center text-xs text-muted-foreground">

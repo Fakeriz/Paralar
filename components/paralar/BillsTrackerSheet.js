@@ -105,7 +105,6 @@ export default function BillsTrackerSheet({ open, onClose }) {
             <div className="text-[11px] font-normal text-muted-foreground">Monthly paid / unpaid checklist</div>
           </div>
         )}
-        left={<button type="button" onClick={onClose} className="text-[15px] font-medium py-1 px-1" data-testid="bills-done">Done</button>}
         right={<button type="button" onClick={openAdd} className="text-[15px] font-bold py-1 px-1" data-testid="bills-add">Add</button>}
       >
         {/* Month navigation */}
@@ -172,7 +171,7 @@ export default function BillsTrackerSheet({ open, onClose }) {
 
       {/* Add bill form */}
       <Sheet open={adding} onClose={() => setAdding(false)} title="Add Bill" zIndex={70}
-        left={<button type="button" onClick={() => setAdding(false)} className="text-[15px] text-muted-foreground py-1 px-1">{t('cancel')}</button>}
+        left={<button type="button" onClick={() => setAdding(false)} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">{t('cancel')}</button>}
         right={<button type="button" onClick={saveBill} disabled={!title.trim() || !Number(amount) || saving} className={cn('text-[15px] font-bold py-1 px-1', (!title.trim() || !Number(amount) || saving) && 'opacity-40')} data-testid="bill-save">{saving ? '...' : t('save')}</button>}
       >
         <div className="space-y-5 pt-2">

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Apple, Share2, ScanLine, Mic, Smartphone, ChevronDown, FlaskConical, Link2, Download, Check, Wifi } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
-import { Sheet, CloseButton, Pill, Segmented, Field } from './ui'
+import { Sheet, Pill, Segmented, Field } from './ui'
 import { cn } from '@/lib/utils'
 
 function Steps({ items = [] }) {
@@ -63,13 +63,9 @@ export default function SmartAutomationSheet({ open, onClose }) {
   const toggle = (id) => setExpanded((e) => (e === id ? null : id))
 
   return (
-    <Sheet open={open} onClose={onClose} full noPadding>
-      <div className="px-5 pt-1 pb-3 flex items-start justify-between">
-        <div>
-          <h2 className="text-2xl font-extrabold tracking-tight">{t('smart_automation')}</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">{t('automation_subtitle')}</p>
-        </div>
-        <CloseButton onClick={onClose} />
+    <Sheet open={open} onClose={onClose} full noPadding title={t('smart_automation')}>
+      <div className="px-5 pt-1 pb-3">
+        <p className="text-sm text-muted-foreground">{t('automation_subtitle')}</p>
       </div>
 
       <div className="px-5 pb-10 space-y-4">

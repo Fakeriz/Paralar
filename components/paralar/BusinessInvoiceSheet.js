@@ -145,7 +145,6 @@ export default function BusinessInvoiceSheet({ open, onClose }) {
   return (
     <>
       <Sheet open={open} onClose={onClose} full title={t('bi_title')}
-        left={<button type="button" onClick={onClose} className="text-[15px] font-medium py-1 px-1" data-testid="bi-done">{t('done')}</button>}
         right={<button type="button" onClick={openForm} className="text-[15px] font-bold py-1 px-1 flex items-center gap-1" data-testid="bi-new"><Plus size={16} /> {t('bi_new_invoice')}</button>}>
 
         {/* Business mode config */}
@@ -246,7 +245,7 @@ export default function BusinessInvoiceSheet({ open, onClose }) {
 
       {/* Invoice form modal */}
       <Sheet open={formOpen} onClose={() => setFormOpen(false)} full title={t('bi_new_invoice')} zIndex={70}
-        left={<button type="button" onClick={() => setFormOpen(false)} className="text-[15px] font-medium py-1 px-1">{t('cancel')}</button>}
+        left={<button type="button" onClick={() => setFormOpen(false)} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">{t('cancel')}</button>}
         right={<button type="button" onClick={saveInvoice} disabled={!canSave} className={cn('text-[15px] font-bold py-1 px-1', !canSave && 'opacity-40')} data-testid="bi-save">{t('save')}</button>}>
         <div className="space-y-4 mt-1">
           <div className="rounded-xl bg-zinc-100 border border-zinc-200/60 dark:bg-[#141416] dark:border-white/5 px-4 py-3 flex items-center justify-between">

@@ -58,7 +58,6 @@ export default function RecurringSheet({ open, onClose }) {
   return (
     <>
       <Sheet open={open} onClose={onClose} full title="Recurring Schedules"
-        left={<button type="button" onClick={onClose} className="text-[15px] font-medium py-1 px-1" data-testid="recurring-done">Done</button>}
         right={<button type="button" onClick={openAdd} className="text-[15px] font-bold py-1 px-1 flex items-center gap-1" data-testid="recurring-add"><Plus size={16} /> Add</button>}>
 
         <div className="mt-2 space-y-2.5">

@@ -132,7 +132,7 @@ export default function NewAccountSheet({ open, onClose }) {
         noPadding
         className="bg-white dark:bg-[#121214] text-foreground"
         title="New Account"
-        left={<button type="button" onClick={onClose} className="text-[15px] text-zinc-500 dark:text-white/60 py-1 px-1">{t('cancel')}</button>}
+        left={<button type="button" onClick={onClose} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">{t('cancel')}</button>}
         right={<button type="button" onClick={create} disabled={!canSave || saving} className={cn('text-[15px] font-bold py-1 px-1 text-foreground', (!canSave || saving) && 'opacity-40')} data-testid="account-save">{saving ? '...' : 'Create'}</button>}
       >
         <div className="p-4 space-y-6">

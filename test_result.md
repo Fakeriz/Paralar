@@ -314,10 +314,23 @@
 
 ## test_plan:
   current_focus:
-    - "More tab bottom sections: ACCOUNT + SUPPORT + footer"
+    - "Global Sheet standardization (Cancel header + drag handle + swipe-to-dismiss + max-h/scroll)"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
+
+## frontend_sheet_standardization:
+  - task: "Standardize all modals/bottom-sheets: Cancel header, drag handle, swipe-to-dismiss, max-h scroll"
+    implemented: true
+    working: "NA"
+    file: "components/paralar/ui.js (Sheet) + BillsTrackerSheet.js, RecurringSheet.js, HealthScoreSheet.js, BusinessInvoiceSheet.js, AccountSupportSection.js, ProfileSheet.js, TransactionDetailSheet.js, SmartAutomationSheet.js, NewAccountSheet.js, DebtTrackerSheet.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Centralized all rules in the shared Sheet (ui.js): (1) Standard 3-column header — left DEFAULT 'Cancel' text button (localized via t('cancel'), styling text-sm font-medium text-muted-foreground hover:text-foreground transition-colors) rendered automatically when no `left` prop passed and calls onClose; center bold title; right optional primary action. Removed all 'Done'/'Close'/'X'/back-chevron header buttons from RecurringSheet, BillsTrackerSheet, HealthScoreSheet, BusinessInvoiceSheet, AccountSupportSection(reports), ProfileSheet, TransactionDetailSheet so they now use the standardized Cancel; SmartAutomationSheet custom header CloseButton removed and title moved to Sheet title prop. Sub-form Cancel buttons (BillsTracker/DebtTracker/NewAccount/BusinessInvoice add forms) restyled to the same spec. (2) Drag handle bar: w-10 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700 mx-auto my-2.5 cursor-grab active:cursor-grabbing touch-none. (3) Swipe-to-dismiss via framer-motion useDragControls: drag='y' dragListener=false, drag initiated only from handle bar + title (keeps Cancel/action buttons clickable, avoids scroll conflict), dragConstraints top/bottom 0, dragElastic {top:0,bottom:0.5}, onDragEnd closes when offset.y>90 or velocity.y>500 else springs back (snap-back). (4) Layout: rounded-t-3xl overflow-hidden flex flex-col, max-h-[90vh] (full -> h-[90vh]); header sticky (shrink-0 non-scrolling), content flex-1 min-h-0 overflow-y-auto overscroll-contain. Removed now-unused imports (ChevronLeft in TransactionDetailSheet, CloseButton in SmartAutomation, LogOut in MoreTab earlier). Compiles 200, /api/health 200, node --check ui.js OK. Note: remaining ESLint 'no-empty' on empty catch blocks and 2 react-hooks/nested-component warnings are PRE-EXISTING project-wide style (not introduced by this change). UI/playwright testing skipped per user standing instruction."
 
 ## frontend_more_account_support:
   - task: "More tab: ACCOUNT + SUPPORT sections + Paralar v1.0.0 footer"

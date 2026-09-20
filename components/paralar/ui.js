@@ -1,7 +1,8 @@
 'use client'
 import { useEffect, Component } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useDragControls } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { useApp } from './context'
 import {
   Utensils, ShoppingBasket, Car, ShoppingBag, Receipt, Clapperboard, HeartPulse, GraduationCap, Plane, Home, User,
   Briefcase, Wallet, Laptop, TrendingUp, Gift, ArrowLeftRight, CircleDashed, X, Check,
@@ -157,14 +158,21 @@ export function CheckIcon({ active }) {
   return active ? <Check size={18} className="text-foreground" strokeWidth={2.5} /> : null
 }
 
-// Bottom sheet built on framer-motion (supports stacking)
+// Bottom sheet built on framer-motion (supports stacking, swipe-to-dismiss, standardized header)
 export function Sheet({ open, onClose, children, title, left, right, full = false, className, zIndex = 50, noPadding = false }) {
+  const app = useApp()
+  const cancelText = app?.t ? app.t('cancel') : 'Cancel'
+  const controls = useDragControls()
+
   useEffect(() => {
     if (!open) return
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => { document.body.style.overflow = prev }
   }, [open])
+
+  const startDrag = (e) => { try { controls.start(e) } catch { /* ignore */ } }
+  const onDragEnd = (_e, info) => { if ((info?.offset?.y || 0) > 90 || (info?.velocity?.y || 0) > 500) onClose?.() }
 
   return (
     <AnimatePresence>
@@ -176,23 +184,32 @@ export function Sheet({ open, onClose, children, title, left, right, full = fals
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 320 }}
+            drag="y"
+            dragControls={controls}
+            dragListener={false}
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.5 }}
+            onDragEnd={onDragEnd}
             className={cn(
-              'absolute inset-x-0 bottom-0 mx-auto w-full max-w-md bg-background rounded-t-[28px] shadow-2xl flex flex-col border-t border-border/40 dark:border-white/5',
-              full ? 'h-[96dvh]' : 'max-h-[92dvh]',
+              'absolute inset-x-0 bottom-0 mx-auto w-full max-w-md bg-background rounded-t-3xl shadow-2xl flex flex-col overflow-hidden border-t border-border/40 dark:border-white/5 max-h-[90vh]',
+              full && 'h-[90vh]',
               className
             )}
           >
-            <div className="pt-3 pb-1 flex justify-center" onClick={onClose}>
-              <div className="h-1.5 w-10 rounded-full bg-muted-foreground/30" />
-            </div>
-            {(title || left || right) ? (
-              <div className="flex items-center justify-between px-5 py-2 min-h-[44px]">
-                <div className="min-w-[64px] flex justify-start">{left}</div>
-                <h2 className="text-base font-bold text-center flex-1">{title}</h2>
-                <div className="min-w-[64px] flex justify-end">{right}</div>
+            {/* Drag handle + sticky header */}
+            <div className="shrink-0">
+              <div onPointerDown={startDrag} className="w-10 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700 mx-auto my-2.5 cursor-grab active:cursor-grabbing touch-none" />
+              <div className="flex items-center justify-between px-5 pb-2 min-h-[40px] gap-2">
+                <div className="min-w-[72px] flex justify-start">
+                  {left !== undefined ? left : (
+                    <button type="button" onClick={onClose} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">{cancelText}</button>
+                  )}
+                </div>
+                <h2 onPointerDown={startDrag} className="text-base font-bold text-foreground text-center flex-1 truncate cursor-grab active:cursor-grabbing">{title}</h2>
+                <div className="min-w-[72px] flex justify-end">{right}</div>
               </div>
-            ) : null}
-            <div className={cn('flex-1 overflow-y-auto no-scrollbar safe-bottom', noPadding ? '' : 'px-5 pb-8')}>{children}</div>
+            </div>
+            <div className={cn('flex-1 min-h-0 overflow-y-auto overscroll-contain no-scrollbar safe-bottom', noPadding ? '' : 'px-5 pb-8')}>{children}</div>
           </motion.div>
         </motion.div>
       ) : null}

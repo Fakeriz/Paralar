@@ -203,8 +203,7 @@ export default function AccountSupportSection() {
       </Sheet>
 
       {/* Reports & Support sheet */}
-      <Sheet open={reportsOpen} onClose={() => setReportsOpen(false)} full title={t('reports_support')}
-        left={<button type="button" onClick={() => setReportsOpen(false)} className="text-[15px] font-medium py-1 px-1">{t('done')}</button>}>
+      <Sheet open={reportsOpen} onClose={() => setReportsOpen(false)} full title={t('reports_support')}>
         <div className="pt-1 space-y-4">
           <div className="rounded-2xl bg-zinc-100 border border-zinc-200/60 dark:bg-[#141416] dark:border-white/5 p-4 space-y-4">
             <Field label={t('report_category')}>

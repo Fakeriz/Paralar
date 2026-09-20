@@ -51,7 +51,7 @@ export default function ProfileSheet({ open, onClose }) {
 
   return (
     <>
-      <Sheet open={open} onClose={onClose} full title={t('profile')} left={<SheetTextButton muted onClick={onClose}>{t('close')}</SheetTextButton>} right={<SheetTextButton bold onClick={save} data-testid="profile-save">{saving ? '...' : t('save')}</SheetTextButton>}>
+      <Sheet open={open} onClose={onClose} full title={t('profile')} right={<SheetTextButton bold onClick={save} data-testid="profile-save">{saving ? '...' : t('save')}</SheetTextButton>}>
         <div className="flex flex-col items-center pt-4">
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
           <button type="button" onClick={() => fileRef.current?.click()} className="relative">

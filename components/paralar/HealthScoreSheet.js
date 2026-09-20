@@ -122,7 +122,6 @@ export default function HealthScoreSheet({ open, onClose }) {
 
   return (
     <Sheet open={open} onClose={onClose} full title={t('hs_title')}
-      left={<button type="button" onClick={onClose} className="text-[15px] font-medium py-1 px-1" data-testid="hs-done">{t('done')}</button>}
       right={<button type="button" onClick={() => setHelp((v) => !v)} className="py-1 px-1 text-muted-foreground" aria-label="info" data-testid="hs-info"><Info size={19} strokeWidth={1.75} /></button>}>
 
       {help ? (
