@@ -35,26 +35,28 @@ export default function TransactionDetailSheet({ open, onClose, tx, onEdit }) {
     setNewPerson('')
   }, [open, tx]) // eslint-disable-line
 
-  const cur = tx?.currency || home
-  if (!tx) return null
-  const acc = accounts.find((a) => a.id === tx.account_id)
-  const d = tx.date ? new Date(tx.date) : new Date()
-  const isForeign = cur !== home
-  const total = Number(tx.amount) || items.reduce((s, i) => s + (Number(i.price) || 0), 0)
-
-  // per-person totals for split-by-items
+  // per-person totals for split-by-items.
+  // NOTE: declared BEFORE any conditional return so hook order stays constant (Rules of Hooks).
   const perPerson = useMemo(() => {
-    const totals = Object.fromEntries(people.map((p) => [p.id, 0]))
+    const totals = Object.fromEntries((people || []).map((p) => [p?.id, 0]))
     let unassigned = 0
-    items.forEach((it, idx) => {
-      const assignees = assign[idx] || []
-      const price = Number(it.price) || 0
+    ;(items || []).forEach((it, idx) => {
+      const assignees = assign?.[idx] || []
+      const price = Number(it?.price) || 0
       if (!assignees.length) { unassigned += price; return }
       const share = price / assignees.length
       assignees.forEach((pid) => { if (totals[pid] != null) totals[pid] += share })
     })
     return { totals, unassigned }
   }, [items, assign, people])
+
+  if (!tx) return null
+
+  const cur = tx?.currency || home
+  const acc = (accounts || []).find((a) => a?.id === tx?.account_id)
+  const d = tx.date ? new Date(tx.date) : new Date()
+  const isForeign = cur !== home
+  const total = Number(tx.amount) || (items || []).reduce((s, i) => s + (Number(i?.price) || 0), 0)
 
   const remove = async () => {
     try {
@@ -167,7 +169,7 @@ export default function TransactionDetailSheet({ open, onClose, tx, onEdit }) {
             <div>
               <p className="label-upper mb-2">{t('participants')}</p>
               <div className="flex flex-wrap gap-2">
-                {people.map((p) => (
+                {(people || []).map((p) => (
                   <button key={p.id} type="button" onClick={() => setActivePerson(p.id)} className={cn('inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium', activePerson === p.id ? 'bg-foreground text-background border-foreground' : 'bg-card border-border/60')}>
                     <span className="h-5 w-5 rounded-full bg-muted-foreground/20 flex items-center justify-center text-[10px] font-bold">{(p.name[0] || '?').toUpperCase()}</span>
                     {p.name}
@@ -214,7 +216,7 @@ export default function TransactionDetailSheet({ open, onClose, tx, onEdit }) {
 
             {/* Summary */}
             <Card className="p-4 space-y-2">
-              {people.map((p) => (
+              {(people || []).map((p) => (
                 <div key={p.id} className="flex items-center justify-between text-sm">
                   <span className="font-medium">{p.name}</span>
                   <span className="tabular-nums font-bold">{fmt(perPerson.totals[p.id] || 0, cur)}</span>

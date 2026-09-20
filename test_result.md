@@ -231,6 +231,17 @@
         -working: "NA"
         -agent: "main"
         -comment: "Sign In screen now has 'Forgot password?' link -> forgot mode (email + Send reset link) calling supabase.auth.resetPasswordForEmail(email, {redirectTo: origin+'/reset-password'}). Added /reset-password route that reuses App. onAuthStateChange in page.js intercepts PASSWORD_RECOVERY event -> shows NewPasswordSheet (Set new password) running supabase.auth.updateUser({password}) instead of routing to Home. UI testing SKIPPED per user request."
+  - task: "TransactionDetailSheet React Hook order fix (Rendered more hooks than during the previous render)"
+    implemented: true
+    working: "NA"
+    file: "components/paralar/TransactionDetailSheet.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "BUGFIX: perPerson useMemo was declared AFTER the early return `if (!tx) return null`, causing 'Rendered more hooks than during the previous render' / '11. undefined useMemo' when tx toggled null<->object. Moved the useMemo above all conditional returns (hook order now constant). useMemo already imported from react. Added safe fallbacks: (people||[]).map, (items||[]).forEach, (accounts||[]).find, and optional chaining on p?.id/it?.price. Needs testing agent verification: open a transaction detail sheet, switch to Split tab, ensure no client-side crash and per-person totals render."
 
 ## metadata:
   created_by: "main_agent"
@@ -240,11 +251,7 @@
 
 ## test_plan:
   current_focus:
-    - "GET /api/rates — live FX with static fallback"
-    - "POST /api/ai/parse — Groq NLP transaction parsing"
-    - "POST /api/ai/coach — Groq financial coach chat"
-    - "POST /api/ai/ocr — Gemini vision receipt extraction (Emergent key)"
-    - "POST /api/ai/transcribe — Groq whisper-large-v3 STT"
+    - "TransactionDetailSheet React Hook order fix (Rendered more hooks than during the previous render)"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
