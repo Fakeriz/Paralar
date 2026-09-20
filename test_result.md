@@ -314,10 +314,23 @@
 
 ## test_plan:
   current_focus:
-    - "Global Sheet standardization (Cancel header + drag handle + swipe-to-dismiss + max-h/scroll)"
+    - "Export & Import Transactions (CSV + XLSX)"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
+
+## frontend_export_import:
+  - task: "Export & Import Transactions (CSV + Excel .xlsx via SheetJS)"
+    implemented: true
+    working: "NA"
+    file: "components/paralar/ExportTransactionsSheet.js, components/paralar/ImportTransactionsSheet.js, components/paralar/TransactionsTab.js, components/paralar/AccountSupportSection.js, app/page.js, lib/i18n.js, package.json"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Added xlsx@0.18.5 (SheetJS, client-only via dynamic import()). NOTE: user asked for .tsx but project is JavaScript — created .js files per project standard. Triggers: (1) three-dot (MoreVertical) menu added to Transactions header top-right with Export/Import items (lightweight dropdown + backdrop); (2) shortcuts in More > ACCOUNT (data management) rows Export/Import. Both call global open('exportTx'|'importTx'); sheets rendered in page.js. EXPORT sheet: standardized Sheet (Cancel/drag/swipe), format Segmented [Excel(.xlsx)|CSV(.csv)], time range [Current Month|Last 3 Months|All Time|Custom(from/to)], account filter [All Accounts|specific], summary card w/ count + column list, black 'Download File' button. Columns: Date|Type|Category|Amount|Currency|Account|Payment Method|Note. Uses XLSX.utils.aoa_to_sheet + XLSX.writeFile (bookType csv for CSV) -> local device download. IMPORT sheet: dashed dropzone (click + drag/drop) accepting .csv/.xlsx/.xls, hint text; parses via XLSX.read {cellDates:true} + sheet_to_json(header:1); fuzzy column mapping (date/amount/type/category/note/currency/account/payment across en/id/ms/tr keywords); date normalization (YYYY-MM-DD, DD/MM/YYYY day-first w/ >12 disambiguation, Excel serial via cellDates); amount parsing (strip symbols, comma/dot decimal handling); type inference from keywords or amount sign (stored abs). Validation card 'Found {n} valid transactions' + mini preview table (first 5: Date/Amount/Category) + destination account selector (used when account not matched by name in file). Execute: batch store.createTransaction per valid row, then updates affected account balances by net (income +, expense -, transfer 0) converted to each account currency via convert() + roundMoney, then refresh(). Full null-safety: try/catch around parse & download & per-row insert, optional chaining, toast error t('invalid_file')/t('error') on failure. Monochrome cards (bg-zinc-100/border-zinc-200/60 light; bg-[#141416]/border-white/5 dark). i18n keys added en/id/ms/tr with {n} placeholders. Lint clean (4 files), compiles 200 (1921 modules), node --check i18n OK. UI/playwright testing skipped per user standing instruction."
 
 ## frontend_sheet_standardization:
   - task: "Standardize all modals/bottom-sheets: Cancel header, drag handle, swipe-to-dismiss, max-h scroll"

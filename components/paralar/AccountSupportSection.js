@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
-import { FolderX, LogOut, Trash2, MessageSquareDot, ChevronRight, AlertTriangle, Bug, MessageSquare, HelpCircle } from 'lucide-react'
+import { FolderX, LogOut, Trash2, MessageSquareDot, ChevronRight, AlertTriangle, Bug, MessageSquare, HelpCircle, Download, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
 import { Sheet, Field, TextInput, Segmented, PrimaryButton } from './ui'
@@ -26,7 +26,7 @@ function MenuRow({ icon: Icon, label, sub, onClick, danger, testId }) {
 }
 
 export default function AccountSupportSection() {
-  const { t, session, isGuest, store, refresh, signOut, transactions = [], accounts = [] } = useApp()
+  const { t, session, isGuest, store, refresh, signOut, open, transactions = [], accounts = [] } = useApp()
   const scope = session?.user?.id || 'guest'
   const REPORTS_KEY = `paralar_reports_${scope}`
 
@@ -116,6 +116,8 @@ export default function AccountSupportSection() {
       {/* ACCOUNT */}
       <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase mb-2 px-1 mt-7">{t('account_section')}</p>
       <div className="rounded-2xl divide-y divide-border/40 border border-border/40 bg-card overflow-hidden">
+        <MenuRow icon={Download} label={t('export_transactions')} sub={t('export_transactions_sub')} onClick={() => open?.('exportTx')} testId="acc-export" />
+        <MenuRow icon={Upload} label={t('import_transactions')} sub={t('import_transactions_sub')} onClick={() => open?.('importTx')} testId="acc-import" />
         <MenuRow icon={FolderX} label={t('clear_tx')} sub={t('clear_tx_sub')} onClick={openClear} testId="acc-clear-tx" />
         <MenuRow icon={LogOut} label={t('sign_out')} sub={t('sign_out_sub')} onClick={() => setSignOutOpen(true)} testId="acc-signout" />
         <MenuRow icon={Trash2} label={t('delete_account')} sub={t('delete_account_sub')} onClick={() => { setDeleteText(''); setDeleteOpen(true) }} danger testId="acc-delete" />

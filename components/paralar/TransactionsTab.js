@@ -1,6 +1,6 @@
 'use client'
 import { useMemo, useState } from 'react'
-import { Search, Receipt } from 'lucide-react'
+import { Search, Receipt, MoreVertical, Download, Upload } from 'lucide-react'
 import { useApp } from './context'
 import { Segmented, Card, EmptyState, TextInput, ErrorBoundary } from './ui'
 import TransactionRow from './TransactionRow'
@@ -23,6 +23,7 @@ function TransactionsContent() {
   const { t, transactions, open, fmt, home, convertToHome, lang } = useApp()
   const [filter, setFilter] = useState('all')
   const [q, setQ] = useState('')
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const list = Array.isArray(transactions) ? transactions : []
 
@@ -82,7 +83,21 @@ function TransactionsContent() {
 
   return (
     <div className="px-5 pb-28">
-      <h1 className="text-2xl font-extrabold tracking-tight pt-6">{t('transactions')}</h1>
+      <div className="flex items-center justify-between pt-6">
+        <h1 className="text-2xl font-extrabold tracking-tight">{t('transactions')}</h1>
+        <div className="relative">
+          <button type="button" onClick={() => setMenuOpen((v) => !v)} className="h-9 w-9 rounded-full flex items-center justify-center hover:bg-muted/60 active:bg-muted transition" aria-label="menu" data-testid="tx-menu"><MoreVertical size={20} /></button>
+          {menuOpen ? (
+            <>
+              <div className="fixed inset-0 z-[45]" onClick={() => setMenuOpen(false)} />
+              <div className="absolute right-0 top-11 z-[46] w-52 rounded-2xl bg-card border border-border/60 dark:border-white/10 shadow-xl overflow-hidden py-1">
+                <button type="button" onClick={() => { setMenuOpen(false); open?.('exportTx') }} className="w-full flex items-center gap-3 px-4 py-3 text-left text-[15px] font-medium hover:bg-muted/50" data-testid="tx-menu-export"><Download size={17} strokeWidth={1.75} /> {t('export_transactions')}</button>
+                <button type="button" onClick={() => { setMenuOpen(false); open?.('importTx') }} className="w-full flex items-center gap-3 px-4 py-3 text-left text-[15px] font-medium hover:bg-muted/50" data-testid="tx-menu-import"><Upload size={17} strokeWidth={1.75} /> {t('import_transactions')}</button>
+              </div>
+            </>
+          ) : null}
+        </div>
+      </div>
       <div className="relative mt-4">
         <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
         <TextInput value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('search')} className="pl-10" data-testid="tx-search" />

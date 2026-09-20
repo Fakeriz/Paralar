@@ -35,6 +35,8 @@ import BillsTrackerSheet from '@/components/paralar/BillsTrackerSheet'
 import LoanCalculatorSheet from '@/components/paralar/LoanCalculatorSheet'
 import CategoriesTemplatesSheet from '@/components/paralar/CategoriesTemplatesSheet'
 import DebtTrackerSheet from '@/components/paralar/DebtTrackerSheet'
+import ExportTransactionsSheet from '@/components/paralar/ExportTransactionsSheet'
+import ImportTransactionsSheet from '@/components/paralar/ImportTransactionsSheet'
 
 const GUEST_KEY = 'paralar_guest_mode'
 const ONBOARD_KEY = 'paralar_onboarded'
@@ -216,6 +218,8 @@ export default function App() {
         <LoanCalculatorSheet open={!!sheets.loan} onClose={() => close('loan')} />
         <CategoriesTemplatesSheet open={!!sheets.catman} onClose={() => close('catman')} />
         <DebtTrackerSheet open={!!sheets.debts} onClose={() => close('debts')} />
+        <ExportTransactionsSheet open={!!sheets.exportTx} onClose={() => close('exportTx')} />
+        <ImportTransactionsSheet open={!!sheets.importTx} onClose={() => close('importTx')} />
         <CurrencySheet
           open={!!sheets.currency}
           onClose={() => close('currency')}
