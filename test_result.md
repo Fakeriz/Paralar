@@ -314,11 +314,36 @@
 
 ## test_plan:
   current_focus:
-    - "TransactionDetailSheet React Hook order fix (Rendered more hooks than during the previous render)"
-    - "New Account modal full redesign (grouped sections, theme swatches, bank/e-wallet DB)"
+    - "Health Score module (Financial Health Score gauge + metrics)"
+    - "Business & Invoicing Mode module"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
+
+## frontend_advanced_modules:
+  - task: "Health Score module (Skor Kesehatan) — gauge ring + 4 metrics + tips"
+    implemented: true
+    working: "NA"
+    file: "components/paralar/HealthScoreSheet.js, components/paralar/MoreTab.js, lib/i18n.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "New More>Advanced module. Monochrome SVG gauge ring (0-100) with status (Very Good/Fair/Needs Attention). Auto-computes 4 metrics from current-month transactions + accounts (all null-safe, convertToHome guarded): Savings Rate (>20% full), Debt/obligations load (bills+housing vs income, <30% safe), Emergency Fund (cash / monthly expense, 6mo full), Budget Discipline (spending vs income). Weighted total (30/25/25/20). Metric cards w/ mini progress bars + status badges. Tips card surfaces weakest 3 areas. Info toggle explains scoring. Read-only, no persistence. Opened via local useState in MoreTab. i18n keys added for en/id/ms/tr. Lint clean, compiles 200. UI testing skipped per user standing instruction."
+  - task: "Business & Invoicing Mode module (Mode Bisnis & Invoice)"
+    implemented: true
+    working: "NA"
+    file: "components/paralar/BusinessInvoiceSheet.js, components/paralar/MoreTab.js, lib/i18n.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "New More>Advanced module. Top card: Enable Business Mode toggle + Brand name input (persist localStorage paralar_business_cfg). Segmented [Invoices | Revenue Summary]. Invoices tab: status filter chips [All|Unpaid|Paid], invoice rows with number/client/due/total + status badge, actions Mark as Paid & Share/Copy. Invoice form modal (nested Sheet zIndex 70): auto number INV-YEAR-00N, client, due date, currency picker, dynamic line items (desc/qty/price + live line total), payment note, live total. Mark as Paid updates status AND records an income transaction to first account via store.createTransaction + refresh(). Share builds a WhatsApp-ready text via navigator.share/clipboard. Summary tab: total revenue (paid), outstanding (unpaid), counts. Persistence: localStorage paralar_invoices_{scope} device-local (both guest & authed). All arrays null-safe. Opened via local useState in MoreTab. i18n keys added for en/id/ms/tr. Lint clean, compiles 200. UI testing skipped per user standing instruction."
+
 
 ## agent_communication:
     -agent: "main"

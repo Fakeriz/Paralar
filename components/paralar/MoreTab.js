@@ -9,6 +9,8 @@ import { getCurrency } from '@/lib/currencies'
 import { LANGUAGES } from '@/lib/i18n'
 import RecurringSheet from './RecurringSheet'
 import NetWorthSheet from './NetWorthSheet'
+import HealthScoreSheet from './HealthScoreSheet'
+import BusinessInvoiceSheet from './BusinessInvoiceSheet'
 
 function Row({ icon: Icon, label, onClick, right, testId }) {
   return (
@@ -28,6 +30,8 @@ export default function MoreTab() {
   const isPremium = profile?.plan_tier === 'premium'
   const [recurringOpen, setRecurringOpen] = useState(false)
   const [netWorthOpen, setNetWorthOpen] = useState(false)
+  const [healthOpen, setHealthOpen] = useState(false)
+  const [businessOpen, setBusinessOpen] = useState(false)
 
   return (
     <div className="px-5 pb-28">
@@ -56,8 +60,8 @@ export default function MoreTab() {
         <Row icon={Zap} label={t('smart_automation')} onClick={() => open('automation')} testId="more-automation" />
         <Row icon={Repeat} label={t('recurring')} onClick={() => setRecurringOpen(true)} testId="more-recurring" />
         <Row icon={TrendingUp} label={t('net_worth')} onClick={() => setNetWorthOpen(true)} testId="more-networth" />
-        <Row icon={HeartPulse} label={t('health_score')} onClick={soon} />
-        <Row icon={Briefcase} label={t('business_invoicing')} onClick={soon} />
+        <Row icon={HeartPulse} label={t('health_score')} onClick={() => setHealthOpen(true)} testId="more-health" />
+        <Row icon={Briefcase} label={t('business_invoicing')} onClick={() => setBusinessOpen(true)} testId="more-business" />
       </Card>
 
       <SectionLabel className="mt-7 mb-2 px-1">{t('profile')}</SectionLabel>
@@ -106,6 +110,8 @@ export default function MoreTab() {
 
       <RecurringSheet open={recurringOpen} onClose={() => setRecurringOpen(false)} />
       <NetWorthSheet open={netWorthOpen} onClose={() => setNetWorthOpen(false)} />
+      <HealthScoreSheet open={healthOpen} onClose={() => setHealthOpen(false)} />
+      <BusinessInvoiceSheet open={businessOpen} onClose={() => setBusinessOpen(false)} />
     </div>
   )
 }
