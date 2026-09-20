@@ -1,17 +1,18 @@
 'use client'
 import { useState } from 'react'
-import { Crown, ChevronRight, CreditCard, Bot, Calculator, Tags, Users, HandCoins, Zap, Repeat, TrendingUp, HeartPulse, Briefcase, Globe2, Coins, SunMoon, Check, ReceiptText } from 'lucide-react'
+import { Crown, ChevronRight, CreditCard, Bot, Calculator, Tags, Users, HandCoins, Zap, Repeat, TrendingUp, HeartPulse, Briefcase, Check, ReceiptText, Settings } from 'lucide-react'
 import { toast } from 'sonner'
-import { useTheme } from 'next-themes'
 import { useApp } from './context'
-import { Card, SectionLabel, Sheet, PrimaryButton, SecondaryButton, Segmented } from './ui'
+import { Card, SectionLabel, Sheet, PrimaryButton, SecondaryButton } from './ui'
 import { getCurrency } from '@/lib/currencies'
 import { LANGUAGES } from '@/lib/i18n'
+import { cn } from '@/lib/utils'
 import RecurringSheet from './RecurringSheet'
 import NetWorthSheet from './NetWorthSheet'
 import HealthScoreSheet from './HealthScoreSheet'
 import BusinessInvoiceSheet from './BusinessInvoiceSheet'
 import AccountSupportSection from './AccountSupportSection'
+import AppSettingsSheet from './AppSettingsSheet'
 
 function Row({ icon: Icon, label, onClick, right, testId }) {
   return (
@@ -25,17 +26,32 @@ function Row({ icon: Icon, label, onClick, right, testId }) {
 }
 
 export default function MoreTab() {
-  const { t, profile, open, lang, home, sheets, close } = useApp()
-  const { theme, setTheme } = useTheme()
+  const { t, profile, open, home, sheets, close } = useApp()
   const isPremium = profile?.plan_tier === 'premium'
+  const mode = profile?.usage_mode || 'personal'
   const [recurringOpen, setRecurringOpen] = useState(false)
   const [netWorthOpen, setNetWorthOpen] = useState(false)
   const [healthOpen, setHealthOpen] = useState(false)
   const [businessOpen, setBusinessOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [bizCtx, setBizCtxState] = useState(() => { try { return JSON.parse(localStorage.getItem('paralar_bizctx')) || 'personal' } catch { return 'personal' } })
+  const setBizCtx = (c) => { setBizCtxState(c); try { localStorage.setItem('paralar_bizctx', JSON.stringify(c)) } catch {} }
 
   return (
     <div className="px-5 pb-28">
-      <h1 className="text-2xl font-extrabold tracking-tight pt-6">{t('more')}</h1>
+      <div className="flex items-center justify-between pt-6">
+        <h1 className="text-2xl font-extrabold tracking-tight">{t('more')}</h1>
+        <div className="flex items-center gap-2">
+          {mode === 'both' ? (
+            <div className="flex rounded-full bg-muted p-0.5" data-testid="more-ctx-switch">
+              {['personal', 'business'].map((c) => (
+                <button key={c} type="button" onClick={() => setBizCtx(c)} className={cn('px-3 py-1 rounded-full text-xs font-semibold transition', bizCtx === c ? 'bg-foreground text-background' : 'text-muted-foreground')}>{t(c)}</button>
+              ))}
+            </div>
+          ) : null}
+          <button type="button" onClick={() => setSettingsOpen(true)} aria-label="settings" className="h-9 w-9 rounded-full flex items-center justify-center hover:bg-muted/60 active:bg-muted transition" data-testid="more-settings"><Settings size={22} strokeWidth={1.75} /></button>
+        </div>
+      </div>
 
       <button type="button" onClick={() => open('paywall')} className="w-full mt-5 rounded-2xl bg-[#0A0A0B] text-white p-5 text-left relative overflow-hidden border border-white/10" data-testid="premium-card">
         <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/[0.05]" />
@@ -62,17 +78,6 @@ export default function MoreTab() {
         <Row icon={TrendingUp} label={t('net_worth')} onClick={() => setNetWorthOpen(true)} testId="more-networth" />
         <Row icon={HeartPulse} label={t('health_score')} onClick={() => setHealthOpen(true)} testId="more-health" />
         <Row icon={Briefcase} label={t('business_invoicing')} onClick={() => setBusinessOpen(true)} testId="more-business" />
-      </Card>
-
-      <SectionLabel className="mt-7 mb-2 px-1">{t('profile')}</SectionLabel>
-      <Card className="divide-y divide-border/40 overflow-hidden">
-        <Row icon={Globe2} label={t('language')} right={LANGUAGES.find((l) => l.code === lang)?.name} onClick={() => open('language')} testId="more-language" />
-        <Row icon={Coins} label={t('home_currency')} right={`${getCurrency(home).flag} ${home}`} onClick={() => open('currency', { target: 'home' })} testId="more-currency" />
-        <div className="px-4 py-3.5 flex items-center gap-3">
-          <div className="h-9 w-9 rounded-xl bg-muted flex items-center justify-center"><SunMoon size={17} /></div>
-          <span className="flex-1 font-medium text-[15px]">{t('appearance')}</span>
-          <Segmented size="sm" className="w-44" value={theme || 'system'} onChange={setTheme} options={[{ id: 'light', label: t('light') }, { id: 'dark', label: t('dark') }, { id: 'system', label: t('system') }]} />
-        </div>
       </Card>
 
       <AccountSupportSection />
@@ -112,6 +117,7 @@ export default function MoreTab() {
       <NetWorthSheet open={netWorthOpen} onClose={() => setNetWorthOpen(false)} />
       <HealthScoreSheet open={healthOpen} onClose={() => setHealthOpen(false)} />
       <BusinessInvoiceSheet open={businessOpen} onClose={() => setBusinessOpen(false)} />
+      <AppSettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   )
 }

@@ -1,9 +1,10 @@
 'use client'
 import { useMemo, useState } from 'react'
 import { Search, Receipt, MoreVertical, Download, Upload } from 'lucide-react'
+import { toast } from 'sonner'
 import { useApp } from './context'
 import { Segmented, Card, EmptyState, TextInput, ErrorBoundary } from './ui'
-import TransactionRow from './TransactionRow'
+import SwipeTransactionRow from './SwipeTransactionRow'
 
 const LOCALE_BY_LANG = { en: 'en-GB', tr: 'tr-TR', ms: 'ms-MY', id: 'id-ID' }
 
@@ -20,10 +21,20 @@ function dayKey(d) {
 }
 
 function TransactionsContent() {
-  const { t, transactions, open, fmt, home, convertToHome, lang } = useApp()
+  const { t, transactions, open, fmt, home, convertToHome, lang, store, refresh } = useApp()
   const [filter, setFilter] = useState('all')
   const [q, setQ] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
+  const [openRowId, setOpenRowId] = useState(null)
+
+  const handleDelete = async (tx) => {
+    if (!tx?.id) return
+    try {
+      await store?.deleteTransaction?.(tx.id)
+      if (refresh) await refresh()
+      toast.success(t('deleted'))
+    } catch { toast.error(t('error')) }
+  }
 
   const list = Array.isArray(transactions) ? transactions : []
 
@@ -125,7 +136,17 @@ function TransactionsContent() {
                 <p className="text-xs font-semibold tabular-nums text-muted-foreground">{net < 0 ? '-' : '+'}{safeFmt(Math.abs(net), home)}</p>
               </div>
               <Card className="px-4 divide-y divide-border/40">
-                {(dayList || []).map((tx) => <TransactionRow key={tx?.id || Math.random()} tx={tx} onClick={() => open?.('txDetail', tx)} />)}
+                {(dayList || []).map((tx) => (
+                  <SwipeTransactionRow
+                    key={tx?.id || Math.random()}
+                    tx={tx}
+                    isOpen={openRowId === tx?.id}
+                    onOpenChange={(v) => setOpenRowId(v ? tx?.id : null)}
+                    onOpenDetail={() => open?.('txDetail', tx)}
+                    onEdit={() => open?.('addTx', { ...tx, editId: tx?.id })}
+                    onDelete={() => handleDelete(tx)}
+                  />
+                ))}
               </Card>
             </div>
           )

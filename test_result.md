@@ -314,10 +314,23 @@
 
 ## test_plan:
   current_focus:
-    - "Export & Import Transactions (CSV + XLSX)"
+    - "Profile Indonesia overhaul + App Settings sheet + swipe-to-edit/delete rows"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
+
+## frontend_profile_settings_swipe:
+  - task: "Profile & Usage Mode (Indonesia) + App Settings + Swipe edit/delete on tx rows"
+    implemented: true
+    working: "NA"
+    file: "components/paralar/ProfileSheet.js (rewrite), components/paralar/AppSettingsSheet.js (new), components/paralar/SwipeTransactionRow.js (new), components/paralar/MoreTab.js, components/paralar/TransactionsTab.js, lib/i18n.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "NOTE: request said .tsx but project is JS -> created .js. (1) ProfileSheet rewritten: avatar+camera, Full Name, 'How you use Paralar' Segmented [Personal|Business|Both] with hint; when Both shows Personal/Business context pill at top (persisted localStorage paralar_bizctx). Business config shown for Business/Both: Company Logo dropzone (3:1 PNG/JPG), Company name/Address/Phone(+62)/Email, Invoice bank account (Bank name datalist BCA/Mandiri/BRI/BNI..., Account holder, Account number). Tax & Business (Indonesia, replaced MY LHDN/SSM/SST): Company Legal Name (PT/CV/UD), NPWP 16-digit placeholder, NIB (OSS), Status Perpajakan Segmented [Non-PKP | PKP (PPN 11%/12%)]. Business Opening Balance (Rp). Save Changes -> updateProfile(full_name,usage_mode,avatar_url only, safe columns) + business config persisted device-local localStorage paralar_bizprofile_{scope} (avoids Supabase schema change). (2) AppSettingsSheet (new): gear (Settings) icon added top-right of More header; Both-mode pill switcher shown beside gear. Removed standalone Profile/Language/Home Currency/Appearance from More; grouped into App Settings monochrome cards: Profile(User)->open('profile'), Language(Globe)+active lang sub->open('language'), Home Currency(Coins)+sub->open('currency'), Appearance(Moon) inline theme Segmented, Month Start Date(CalendarDays), Account Backup(ShieldCheck), Notifications(Bell), Tutorial(PlayCircle), Help & Legal(ShieldAlert) [last 5 toast coming_soon placeholders]. Nav rows close settings then open target sheet. (3) SwipeTransactionRow (new) used in TransactionsTab: framer-motion drag='x' dragConstraints{left:-140,right:0}, touchAction pan-y (vertical scroll preserved); swipe left reveals Edit (Pencil squircle bg-zinc-200/800) + Delete (Trash2 squircle bg-rose-500). Edit opens open('addTx',{...tx,editId}); Delete store.deleteTransaction+refresh+toast. Single-open managed via openRowId; tapping open row snaps back to x:0. IMPORTANT (RCA): balances are opening-balance based (regular add does NOT mutate account.balance), so delete does NOT revert balance to stay consistent/avoid corruption (documented). (4) Universal modal standardization (Cancel/handle/swipe/max-h) already centralized in Sheet from prior turn -> applies automatically incl. Profile & App Settings. i18n keys added en/id/ms/tr. Lint clean (5 files), i18n node --check OK, / and /api/health 200. UI/playwright testing skipped per user standing instruction."
 
 ## frontend_export_import:
   - task: "Export & Import Transactions (CSV + Excel .xlsx via SheetJS)"
