@@ -266,6 +266,30 @@
   test_sequence: 2
   run_ui: false
 
+## frontend_new_tasks:
+  - task: "New Goal modal — monochrome outline Lucide icons (replace emojis) + apply on Goals cards"
+    implemented: true
+    working: "NA"
+    file: "components/paralar/GoalsTab.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Removed all system emojis from New Goal. Added GOAL_ICONS (Target/Plane/Home/Car/Gem/GraduationCap/ShieldCheck/TrendingUp/Heart/Gift) as monochrome outline Lucide (strokeWidth 1.5/2). Icon picker uses w-11 h-11 rounded-xl squircle pills inside a dark tray: inactive bg-[#1c1c1e] text-zinc-400 border border-white/10; active bg-white text-black ring-2 ring-white ring-offset-2 ring-offset-[#121214]. Goal stores `icon` id. Goals list cards + Add Funds sheet now render the chosen outline icon consistently (bg-muted squircle). Legacy goals fall back to Target. UI testing skipped per user standing instruction."
+  - task: "Bills Tracker module (monthly paid/unpaid checklist)"
+    implemented: true
+    working: "NA"
+    file: "components/paralar/BillsTrackerSheet.js, lib/store.js, app/page.js, components/paralar/MoreTab.js, lib/i18n.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "New Bills Tracker sheet opened from More > Bills Tracker. Header: Done (left) / 'Bills' + subtitle 'Monthly paid / unpaid checklist' (center) / Add (right). Month nav [<] Month Year [>]. Summary card: 'REMAINING THIS MONTH' big amount + two columns Paid & Total (all converted to home currency). Empty state: receipt squircle + 'No bills to track' + subtitle + black 'Add first bill' button. Add Bill form: title, amount, due day (1-31), category pills, source account pills. Bill rows have interactive paid/unpaid checkbox that recalculates Remaining/Paid/Total in real time (per active month via paid_months map). Persistence is device-local via new store.listBills/createBill/updateBill/deleteBill (localStorage, works in both guest & authed modes — NO Supabase schema change required). Lint clean, compiles 200. UI testing skipped per user standing instruction ('Lewati automated UI testing sepenuhnya')."
+
 ## test_plan:
   current_focus:
     - "TransactionDetailSheet React Hook order fix (Rendered more hooks than during the previous render)"

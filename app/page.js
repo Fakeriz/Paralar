@@ -31,6 +31,7 @@ import AnalyticsSheet from '@/components/paralar/AnalyticsSheet'
 import CurrencySheet from '@/components/paralar/CurrencySheet'
 import NotificationsSheet from '@/components/paralar/NotificationsSheet'
 import SmartAutomationSheet from '@/components/paralar/SmartAutomationSheet'
+import BillsTrackerSheet from '@/components/paralar/BillsTrackerSheet'
 
 const GUEST_KEY = 'paralar_guest_mode'
 const ONBOARD_KEY = 'paralar_onboarded'
@@ -208,6 +209,7 @@ export default function App() {
         <AnalyticsSheet open={!!sheets.analytics} onClose={() => close('analytics')} />
         <NotificationsSheet open={!!sheets.notifications} onClose={() => close('notifications')} />
         <SmartAutomationSheet open={!!sheets.automation} onClose={() => close('automation')} />
+        <BillsTrackerSheet open={!!sheets.bills} onClose={() => close('bills')} />
         <CurrencySheet
           open={!!sheets.currency}
           onClose={() => close('currency')}

@@ -1,5 +1,5 @@
 'use client'
-import { Crown, ChevronRight, CreditCard, Bot, Calculator, Tags, Users, HandCoins, Zap, Repeat, TrendingUp, HeartPulse, Briefcase, Globe2, Coins, SunMoon, Check, LogOut } from 'lucide-react'
+import { Crown, ChevronRight, CreditCard, Bot, Calculator, Tags, Users, HandCoins, Zap, Repeat, TrendingUp, HeartPulse, Briefcase, Globe2, Coins, SunMoon, Check, LogOut, ReceiptText } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTheme } from 'next-themes'
 import { useApp } from './context'
@@ -38,6 +38,7 @@ export default function MoreTab() {
       <SectionLabel className="mt-7 mb-2 px-1">{t('everyday')}</SectionLabel>
       <Card className="divide-y divide-border/40 overflow-hidden">
         <Row icon={CreditCard} label={t('accounts_cards')} onClick={() => open('accounts')} testId="more-accounts" />
+        <Row icon={ReceiptText} label={t('bills_tracker')} onClick={() => open('bills')} testId="more-bills" />
         <Row icon={Bot} label={t('ai_coach')} onClick={() => open('coach')} testId="more-coach" />
         <Row icon={Calculator} label={t('loan_calculator')} onClick={soon} />
         <Row icon={Tags} label={t('categories_templates')} onClick={soon} />
