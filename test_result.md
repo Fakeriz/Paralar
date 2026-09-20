@@ -314,11 +314,24 @@
 
 ## test_plan:
   current_focus:
-    - "Health Score module (Financial Health Score gauge + metrics)"
-    - "Business & Invoicing Mode module"
+    - "More tab bottom sections: ACCOUNT + SUPPORT + footer"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
+
+## frontend_more_account_support:
+  - task: "More tab: ACCOUNT + SUPPORT sections + Paralar v1.0.0 footer"
+    implemented: true
+    working: "NA"
+    file: "components/paralar/AccountSupportSection.js, components/paralar/MoreTab.js, lib/i18n.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "New isolated section rendered at bottom of More tab (after Profile card), replacing old standalone Logout row + old v0.1 footer. ACCOUNT box (rounded-2xl divide-y border bg-card): (1) Clear Transactions (FolderX) -> bottom sheet with filter Segmented [All Transactions|Date Range|Specific Account], live count of matched tx, double-confirmation step (rose danger screen) then bulk store.deleteTransaction + refresh. (2) Sign Out (LogOut) -> confirm sheet calling context signOut() (supabase.auth.signOut + guest reset). (3) Delete Account (Trash2, rose) -> danger sheet requiring typing 'DELETE' (case-insensitive) to enable; wipes transactions/accounts/goals via store + clears device-local keys (recurring/networth/invoices/bills/reports/business cfg) then signOut. SUPPORT box: Reports & Support (MessageSquareDot) -> full sheet with report form (category Segmented Bug/Feedback/Question + message textarea + submit) persisted to localStorage paralar_reports_{scope}, plus 'Your reports' list with status Open badge (submit & track). Footer 'Paralar v1.0.0 · Finance app' (text-xs text-muted-foreground/60 text-center py-6). Each MenuRow: flex items-center justify-between p-4 hover:bg-muted/40 + ChevronRight w-4 h-4 text-muted-foreground/50. All null-safe. i18n keys added en/id/ms/tr. Removed now-unused LogOut/signOut/soon from MoreTab. Lint clean, compiles 200. UI testing skipped per user standing instruction."
+
 
 ## frontend_advanced_modules:
   - task: "Health Score module (Skor Kesehatan) — gauge ring + 4 metrics + tips"

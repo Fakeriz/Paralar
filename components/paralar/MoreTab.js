@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { Crown, ChevronRight, CreditCard, Bot, Calculator, Tags, Users, HandCoins, Zap, Repeat, TrendingUp, HeartPulse, Briefcase, Globe2, Coins, SunMoon, Check, LogOut, ReceiptText } from 'lucide-react'
+import { Crown, ChevronRight, CreditCard, Bot, Calculator, Tags, Users, HandCoins, Zap, Repeat, TrendingUp, HeartPulse, Briefcase, Globe2, Coins, SunMoon, Check, ReceiptText } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTheme } from 'next-themes'
 import { useApp } from './context'
@@ -11,6 +11,7 @@ import RecurringSheet from './RecurringSheet'
 import NetWorthSheet from './NetWorthSheet'
 import HealthScoreSheet from './HealthScoreSheet'
 import BusinessInvoiceSheet from './BusinessInvoiceSheet'
+import AccountSupportSection from './AccountSupportSection'
 
 function Row({ icon: Icon, label, onClick, right, testId }) {
   return (
@@ -24,9 +25,8 @@ function Row({ icon: Icon, label, onClick, right, testId }) {
 }
 
 export default function MoreTab() {
-  const { t, profile, open, lang, home, sheets, close, signOut } = useApp()
+  const { t, profile, open, lang, home, sheets, close } = useApp()
   const { theme, setTheme } = useTheme()
-  const soon = () => toast(t('coming_soon'))
   const isPremium = profile?.plan_tier === 'premium'
   const [recurringOpen, setRecurringOpen] = useState(false)
   const [netWorthOpen, setNetWorthOpen] = useState(false)
@@ -73,9 +73,9 @@ export default function MoreTab() {
           <span className="flex-1 font-medium text-[15px]">{t('appearance')}</span>
           <Segmented size="sm" className="w-44" value={theme || 'system'} onChange={setTheme} options={[{ id: 'light', label: t('light') }, { id: 'dark', label: t('dark') }, { id: 'system', label: t('system') }]} />
         </div>
-        <Row icon={LogOut} label={t('logout')} onClick={signOut} testId="more-logout" />
       </Card>
-      <p className="text-center text-[11px] text-muted-foreground mt-8">Paralar v0.1 · PWA</p>
+
+      <AccountSupportSection />
 
       {/* Language sheet */}
       <Sheet open={!!sheets?.language} onClose={() => close('language')} title={t('language')}>
