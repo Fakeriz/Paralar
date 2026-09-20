@@ -267,6 +267,17 @@
   run_ui: false
 
 ## frontend_new_tasks:
+  - task: "3 More-menu modules: Loan Calculator, Categories & Templates, Debt Tracker"
+    implemented: true
+    working: "NA"
+    file: "components/paralar/LoanCalculatorSheet.js, CategoriesTemplatesSheet.js, DebtTrackerSheet.js, lib/store.js, app/page.js, components/paralar/MoreTab.js, supabase/schema.sql"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Built & wired 3 modules from More menu (were 'coming soon'). (1) Loan Calculator (open 'loan'): amount+currency, rate %/yr, tenure + Months/Years toggle, Flat vs Reducing segmented; real-time output card (monthly text-2xl, total interest, total payment) w/ Number(v)||0 + isFinite guards; '+ Add to Bills Tracker' creates a bill from the monthly installment. (2) Categories & Templates (open 'catman'): segmented [Categories|Quick Templates]; Categories has Expense/Income sub-selector, seeds preset list on first open (localStorage flag), monochrome Lucide icons, edit(rename)/delete, '+ Add Custom Category' with icon picker; Quick Templates lists template cards, '+ Create New Template' (title/amount/category/account), tapping a template opens Add Transaction prefilled via open('addTx', {...}). (3) Debt Tracker (open 'debts'): summary card I Am Owed / I Owe + Net Position badge, segmented [Owe Me|I Owe|Settled], '+ Add' form (Lent/Borrowed toggle, name, amount+currency, due date, note, account), items with Mark as Paid (settle) + Remind (copies polite reminder to clipboard). Persistence: store.{list,create,update,delete}{Categories,Templates,Debts} via hybridColl — Supabase for authed with transparent localStorage fallback on any error; pure localStorage for guest. schema.sql updated with categories/transaction_templates/debts + RLS (optional cloud sync). All array maps use (x||[]) + optional chaining. Lint clean, compiles 200. UI/playwright testing skipped per user standing instruction."
   - task: "UI standardization pass (goal icon picker, account cards, card themes, adaptive New Account modal, bank list, currency selector)"
     implemented: true
     working: "NA"

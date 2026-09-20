@@ -40,10 +40,10 @@ export default function MoreTab() {
         <Row icon={CreditCard} label={t('accounts_cards')} onClick={() => open('accounts')} testId="more-accounts" />
         <Row icon={ReceiptText} label={t('bills_tracker')} onClick={() => open('bills')} testId="more-bills" />
         <Row icon={Bot} label={t('ai_coach')} onClick={() => open('coach')} testId="more-coach" />
-        <Row icon={Calculator} label={t('loan_calculator')} onClick={soon} />
-        <Row icon={Tags} label={t('categories_templates')} onClick={soon} />
+        <Row icon={Calculator} label={t('loan_calculator')} onClick={() => open('loan')} testId="more-loan" />
+        <Row icon={Tags} label={t('categories_templates')} onClick={() => open('catman')} testId="more-catman" />
         <Row icon={Users} label={t('split_bill')} onClick={() => open('split')} />
-        <Row icon={HandCoins} label={t('debt_tracker')} onClick={soon} />
+        <Row icon={HandCoins} label={t('debt_tracker')} onClick={() => open('debts')} testId="more-debts" />
       </Card>
 
       <SectionLabel className="mt-7 mb-2 px-1">{t('advanced')}</SectionLabel>

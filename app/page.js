@@ -32,6 +32,9 @@ import CurrencySheet from '@/components/paralar/CurrencySheet'
 import NotificationsSheet from '@/components/paralar/NotificationsSheet'
 import SmartAutomationSheet from '@/components/paralar/SmartAutomationSheet'
 import BillsTrackerSheet from '@/components/paralar/BillsTrackerSheet'
+import LoanCalculatorSheet from '@/components/paralar/LoanCalculatorSheet'
+import CategoriesTemplatesSheet from '@/components/paralar/CategoriesTemplatesSheet'
+import DebtTrackerSheet from '@/components/paralar/DebtTrackerSheet'
 
 const GUEST_KEY = 'paralar_guest_mode'
 const ONBOARD_KEY = 'paralar_onboarded'
@@ -210,6 +213,9 @@ export default function App() {
         <NotificationsSheet open={!!sheets.notifications} onClose={() => close('notifications')} />
         <SmartAutomationSheet open={!!sheets.automation} onClose={() => close('automation')} />
         <BillsTrackerSheet open={!!sheets.bills} onClose={() => close('bills')} />
+        <LoanCalculatorSheet open={!!sheets.loan} onClose={() => close('loan')} />
+        <CategoriesTemplatesSheet open={!!sheets.catman} onClose={() => close('catman')} />
+        <DebtTrackerSheet open={!!sheets.debts} onClose={() => close('debts')} />
         <CurrencySheet
           open={!!sheets.currency}
           onClose={() => close('currency')}

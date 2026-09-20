@@ -116,3 +116,61 @@ create policy "goals own" on public.goals for all to authenticated
 drop policy if exists "split_bills own" on public.split_bills;
 create policy "split_bills own" on public.split_bills for all to authenticated
   using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+
+
+-- ============================================================================
+-- New modules: categories, transaction_templates, debts
+-- (App works device-local via localStorage; run this to enable cloud sync.)
+-- ============================================================================
+create table if not exists public.categories (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  icon text default 'CircleDashed',
+  type text default 'expense',           -- expense | income
+  preset boolean default false,
+  created_at timestamptz default now()
+);
+
+create table if not exists public.transaction_templates (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  title text not null,
+  amount numeric default 0,
+  currency text default 'USD',
+  category text default 'other',
+  account_id uuid,
+  created_at timestamptz default now()
+);
+
+create table if not exists public.debts (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  direction text default 'lent',         -- lent (owed to me) | borrowed (I owe)
+  person text not null,
+  amount numeric default 0,
+  currency text default 'USD',
+  due_date date,
+  note text,
+  account_id uuid,
+  settled boolean default false,
+  created_at timestamptz default now()
+);
+
+alter table public.categories enable row level security;
+alter table public.transaction_templates enable row level security;
+alter table public.debts enable row level security;
+
+grant select, insert, update, delete on public.categories, public.transaction_templates, public.debts to authenticated;
+
+drop policy if exists "categories own" on public.categories;
+create policy "categories own" on public.categories for all to authenticated
+  using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+
+drop policy if exists "transaction_templates own" on public.transaction_templates;
+create policy "transaction_templates own" on public.transaction_templates for all to authenticated
+  using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+
+drop policy if exists "debts own" on public.debts;
+create policy "debts own" on public.debts for all to authenticated
+  using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
