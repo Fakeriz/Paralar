@@ -5,10 +5,14 @@ import { cn } from '@/lib/utils'
 import {
   Utensils, ShoppingBasket, Car, ShoppingBag, Receipt, Clapperboard, HeartPulse, GraduationCap, Plane, Home, User,
   Briefcase, Wallet, Laptop, TrendingUp, Gift, ArrowLeftRight, CircleDashed, X, Check,
+  CreditCard, Banknote, Landmark, Smartphone, BarChart3, Vault, PiggyBank, Bitcoin,
 } from 'lucide-react'
 import { getCategory, getLogo } from '@/lib/categories'
 
 const ICONS = { Utensils, ShoppingBasket, Car, ShoppingBag, Receipt, Clapperboard, HeartPulse, GraduationCap, Plane, Home, User, Briefcase, Wallet, Laptop, TrendingUp, Gift, ArrowLeftRight, CircleDashed }
+
+// Icons usable by outline bank/e-wallet logos and account icons.
+export const LOGO_ICONS = { CreditCard, Banknote, Landmark, Smartphone, BarChart3, Vault, PiggyBank, Bitcoin, Wallet, TrendingUp, Briefcase }
 
 export function CategoryIcon({ id, className, size = 18 }) {
   const cat = getCategory(id)
@@ -28,7 +32,16 @@ export function CategoryBadge({ id, className, size = 'md' }) {
 export function LogoBadge({ logoId, className, size = 'md' }) {
   const logo = getLogo(logoId)
   const dims = size === 'lg' ? 'h-12 w-12 text-sm' : size === 'sm' ? 'h-7 w-7 text-[9px]' : 'h-9 w-9 text-[10px]'
+  const iconSize = size === 'lg' ? 22 : size === 'sm' ? 14 : 18
   if (!logo) return <div className={cn('rounded-xl bg-white/15 border border-white/20', dims, className)} />
+  if (logo.outline) {
+    const Icon = LOGO_ICONS[logo.icon] || Wallet
+    return (
+      <div className={cn('rounded-xl flex items-center justify-center border border-current text-current shrink-0', dims, className)}>
+        <Icon size={iconSize} strokeWidth={1.5} />
+      </div>
+    )
+  }
   return (
     <div className={cn('rounded-xl flex items-center justify-center font-extrabold tracking-tight shrink-0', dims, className)} style={{ background: logo.color, color: logo.dark ? '#111' : '#fff' }}>
       {logo.short}
