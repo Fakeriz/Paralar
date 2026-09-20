@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Eye, EyeOff, Loader2, ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
 import { PrimaryButton, TextInput } from './ui'
@@ -20,23 +20,39 @@ function AppleIcon() {
 
 export default function Login({ onGuest }) {
   const { t } = useApp()
+  const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [show, setShow] = useState(false)
-  const [mode, setMode] = useState('signin')
+  const [mode, setMode] = useState('signin') // 'signin' | 'signup' | 'forgot'
   const [busy, setBusy] = useState(false)
 
   const submit = async (e) => {
     e?.preventDefault?.()
-    if (!email || !password) return
     setBusy(true)
     try {
+      if (mode === 'forgot') {
+        if (!email) { setBusy(false); return }
+        const base = (typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_BASE_URL || ''))
+        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${base}/reset-password` })
+        if (error) throw error
+        toast.success(t('reset_email_sent'))
+        setMode('signin')
+        return
+      }
+
+      if (!email || !password) { setBusy(false); return }
+
       if (mode === 'signin') {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
         toast.success(t('welcome_back'))
       } else {
-        const { data, error } = await supabase.auth.signUp({ email, password })
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { full_name: fullName, name: fullName } },
+        })
         if (error) throw error
         if (!data?.session) toast.success(t('check_email'))
       }
@@ -58,6 +74,31 @@ export default function Login({ onGuest }) {
     }
   }
 
+  // ---- Forgot-password view ----
+  if (mode === 'forgot') {
+    return (
+      <div className="min-h-dvh bg-background max-w-md mx-auto flex flex-col px-6 safe-top">
+        <div className="flex-1 flex flex-col justify-center py-10">
+          <button type="button" onClick={() => setMode('signin')} className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground mb-8 self-start" data-testid="forgot-back">
+            <ArrowLeft size={16} /> {t('back_to_signin')}
+          </button>
+          <div className="mb-8">
+            <h1 className="text-3xl font-extrabold tracking-tight">{t('reset_password')}</h1>
+            <p className="text-muted-foreground mt-2">{t('enter_email_reset')}</p>
+          </div>
+          <form onSubmit={submit} className="space-y-3">
+            <TextInput type="email" autoComplete="email" placeholder={t('email')} value={email} onChange={(e) => setEmail(e.target.value)} data-testid="forgot-email" />
+            <PrimaryButton type="submit" disabled={busy || !email} data-testid="forgot-submit">
+              {busy ? <Loader2 className="animate-spin inline" size={18} /> : t('send_reset_link')}
+            </PrimaryButton>
+          </form>
+        </div>
+      </div>
+    )
+  }
+
+  // ---- Sign in / Sign up view ----
+  const isSignup = mode === 'signup'
   return (
     <div className="min-h-dvh bg-background max-w-md mx-auto flex flex-col px-6 safe-top">
       <div className="flex-1 flex flex-col justify-center py-10">
@@ -68,22 +109,32 @@ export default function Login({ onGuest }) {
         </div>
 
         <form onSubmit={submit} className="space-y-3">
+          {isSignup ? (
+            <TextInput type="text" autoComplete="name" placeholder={t('full_name')} value={fullName} onChange={(e) => setFullName(e.target.value)} data-testid="login-fullname" />
+          ) : null}
           <TextInput type="email" autoComplete="email" placeholder={t('email')} value={email} onChange={(e) => setEmail(e.target.value)} data-testid="login-email" />
           <div className="relative">
-            <TextInput type={show ? 'text' : 'password'} autoComplete="current-password" placeholder={t('password')} value={password} onChange={(e) => setPassword(e.target.value)} className="pr-12" data-testid="login-password" />
+            <TextInput type={show ? 'text' : 'password'} autoComplete={isSignup ? 'new-password' : 'current-password'} placeholder={t('password')} value={password} onChange={(e) => setPassword(e.target.value)} className="pr-12" data-testid="login-password" />
             <button type="button" onClick={() => setShow(!show)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground p-1" aria-label="toggle password">
               {show ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
-          <PrimaryButton type="submit" disabled={busy || !email || !password} data-testid="login-submit">
-            {busy ? <Loader2 className="animate-spin inline" size={18} /> : mode === 'signin' ? t('sign_in') : t('sign_up')}
+          {!isSignup ? (
+            <div className="flex justify-end -mt-1">
+              <button type="button" onClick={() => setMode('forgot')} className="text-sm font-semibold text-foreground/80 hover:text-foreground" data-testid="forgot-link">
+                {t('forgot_password')}
+              </button>
+            </div>
+          ) : null}
+          <PrimaryButton type="submit" disabled={busy || !email || !password || (isSignup && !fullName)} data-testid="login-submit">
+            {busy ? <Loader2 className="animate-spin inline" size={18} /> : isSignup ? t('sign_up') : t('sign_in')}
           </PrimaryButton>
         </form>
 
         <p className="text-sm text-center text-muted-foreground mt-4">
-          {mode === 'signin' ? t('no_account') : t('have_account')}{' '}
-          <button type="button" className="font-semibold text-foreground" onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}>
-            {mode === 'signin' ? t('sign_up') : t('sign_in')}
+          {isSignup ? t('have_account') : t('no_account')}{' '}
+          <button type="button" className="font-semibold text-foreground" onClick={() => setMode(isSignup ? 'signin' : 'signup')}>
+            {isSignup ? t('sign_in') : t('sign_up')}
           </button>
         </p>
 

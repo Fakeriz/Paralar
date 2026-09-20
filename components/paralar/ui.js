@@ -1,5 +1,5 @@
 'use client'
-import { useEffect } from 'react'
+import { useEffect, Component } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import {
@@ -209,6 +209,28 @@ export function CloseButton({ onClick }) {
       <X size={18} />
     </IconButton>
   )
+}
+
+// Local React Error Boundary — prevents a single bad tab from crashing the whole app.
+export class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false }
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+  componentDidCatch(error, info) {
+    // eslint-disable-next-line no-console
+    console.warn('ErrorBoundary caught:', error?.message, info?.componentStack)
+  }
+  render() {
+    if (this.state.hasError) {
+      if (typeof this.props.fallback === 'function') return this.props.fallback(() => this.setState({ hasError: false }))
+      return this.props.fallback ?? null
+    }
+    return this.props.children
+  }
 }
 
 export function EmptyState({ icon: Icon, title, subtitle }) {

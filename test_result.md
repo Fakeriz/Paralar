@@ -198,6 +198,39 @@
         -working: "NA"
         -agent: "main"
         -comment: "Implemented but NOT yet tested by testing agent (awaiting user permission for frontend tests)."
+  - task: "Transactions tab crash fix (defensive rendering + local ErrorBoundary)"
+    implemented: true
+    working: "NA"
+    file: "components/paralar/TransactionsTab.js, TransactionRow.js, ui.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Hardened Transactions tab against client-side exceptions: (transactions||[]) safe mapping, optional chaining on tx?.amount/currency/type/category/account_name, safe date parsing (dayKey/labelFor/safeDay never throw on null/invalid), multi-currency net guarded (falls back to raw nominal if conversion not ready), local React ErrorBoundary added in ui.js wrapping TransactionsTab with clean empty-state fallback. UI testing SKIPPED per user request."
+  - task: "Full Name field on Create Account + saved to Supabase Auth metadata"
+    implemented: true
+    working: "NA"
+    file: "components/paralar/Login.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Added Full Name input at top of signup form (above Email). signUp now passes options.data { full_name, name }. store.js already maps user_metadata.full_name/name to profile on first login. UI testing SKIPPED per user request."
+  - task: "Forgot password link + PASSWORD_RECOVERY handling"
+    implemented: true
+    working: "NA"
+    file: "components/paralar/Login.js, NewPasswordSheet.js, app/page.js, app/reset-password/page.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Sign In screen now has 'Forgot password?' link -> forgot mode (email + Send reset link) calling supabase.auth.resetPasswordForEmail(email, {redirectTo: origin+'/reset-password'}). Added /reset-password route that reuses App. onAuthStateChange in page.js intercepts PASSWORD_RECOVERY event -> shows NewPasswordSheet (Set new password) running supabase.auth.updateUser({password}) instead of routing to Home. UI testing SKIPPED per user request."
 
 ## metadata:
   created_by: "main_agent"
@@ -225,3 +258,7 @@
 ## agent_communication:
     -agent: "main"
     -message: "PHASE 2 + 3 complete. Added: (1) Itemized receipt Transaction Detail — Items tab now editable (add/edit/delete line items, persisted), Split tab is a functional split-by-items with participants + per-item checkoff assignment + live per-person totals + save. (2) SplitBillSheet upgraded with Equally/Uneven/By-items modes, manual line items, participant checkoff. (3) SmartAutomationSheet (Belanje-style): header + subtitle, Default Account selector (Unassigned hint), Connected status bar with Test/Disconnect, 5 expandable channel cards (Apple Pay with iOS 27+/26 toggle + step/video setup, Share to Paralar, Screenshot Scan with Download Shortcut + ask mode, Say it with Siri callout, Back Tap). Wired into More > Smart Automation. No UI testing per user request. Production `next build` PASSED (0 errors, route / = 253kB First Load). Export-ready."
+
+## agent_communication:
+    -agent: "main"
+    -message: "CONTINUATION (auth + runtime hardening). No backend changes. (1) Fixed fatal Transactions tab client-side crash: safe array mapping, optional chaining on all tx props, safe date parsing helpers (never throw on null/invalid), guarded multi-currency net (falls back to raw nominal), and a local React ErrorBoundary (components/paralar/ui.js) wrapping the tab with a clean empty-state fallback. (2) Added Full Name field to Create Account (top of signup form) and saved it to Supabase Auth metadata via signUp options.data {full_name,name}. (3) Added 'Forgot password?' link on Sign In -> reset-email mode (resetPasswordForEmail redirectTo origin+'/reset-password'); new /reset-password route reuses App; PASSWORD_RECOVERY event caught in onAuthStateChange opens a New Password screen (NewPasswordSheet) running updateUser({password}) instead of jumping to Home. Added i18n keys for all 4 languages. UI/playwright testing SKIPPED entirely per user instruction. yarn install required --ignore-engines (storage-js wants node>=22, running node 20). Dev server compiles / and /reset-password with 0 errors; /api/health 200."

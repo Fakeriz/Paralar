@@ -11,6 +11,7 @@ import { AppContext } from '@/components/paralar/context'
 
 import Onboarding from '@/components/paralar/Onboarding'
 import Login from '@/components/paralar/Login'
+import NewPasswordSheet from '@/components/paralar/NewPasswordSheet'
 import BottomNav from '@/components/paralar/BottomNav'
 import HomeTab from '@/components/paralar/HomeTab'
 import TransactionsTab from '@/components/paralar/TransactionsTab'
@@ -41,6 +42,7 @@ export default function App() {
   const [isGuest, setIsGuest] = useState(false)
   const [onboarded, setOnboarded] = useState(true)
   const [lang, setLangState] = useState('en')
+  const [recovery, setRecovery] = useState(false)
 
   const [profile, setProfile] = useState({ ...DEFAULT_PROFILE })
   const [accounts, setAccounts] = useState([])
@@ -76,6 +78,8 @@ export default function App() {
       .catch(() => {})
       .finally(() => { if (active) setBooting(false) })
     const { data: listener } = supabase.auth.onAuthStateChange((_e, next) => {
+      // Password recovery link opened — show the "Set new password" screen instead of Home.
+      if (_e === 'PASSWORD_RECOVERY') { setRecovery(true); setSession(next || null); return }
       setSession(next || null)
       if (next?.user) { setIsGuest(false); try { localStorage.removeItem(GUEST_KEY) } catch {} }
     })
@@ -157,6 +161,14 @@ export default function App() {
       <div className="min-h-dvh flex items-center justify-center bg-background">
         <div className="h-14 w-14 rounded-2xl bg-foreground text-background flex items-center justify-center text-2xl font-extrabold animate-pulse">P</div>
       </div>
+    )
+  }
+
+  if (recovery) {
+    return (
+      <AppContext.Provider value={ctx}>
+        <NewPasswordSheet onDone={() => setRecovery(false)} />
+      </AppContext.Provider>
     )
   }
 
