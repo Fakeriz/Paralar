@@ -31,8 +31,8 @@ export function CategoryBadge({ id, className, size = 'md' }) {
 
 export function LogoBadge({ logoId, className, size = 'md' }) {
   const logo = getLogo(logoId)
-  const dims = size === 'lg' ? 'h-12 w-12 text-sm' : size === 'sm' ? 'h-7 w-7 text-[9px]' : 'h-9 w-9 text-[10px]'
-  const iconSize = size === 'lg' ? 22 : size === 'sm' ? 14 : 18
+  const dims = size === 'lg' ? 'h-12 w-12 text-sm' : size === 'bank' ? 'h-11 w-11 text-[11px]' : size === 'sm' ? 'h-7 w-7 text-[9px]' : 'h-9 w-9 text-[10px]'
+  const iconSize = size === 'lg' ? 22 : size === 'bank' ? 19 : size === 'sm' ? 14 : 18
   if (!logo) return <div className={cn('rounded-xl bg-white/15 border border-white/20', dims, className)} />
   if (logo.outline) {
     const Icon = LOGO_ICONS[logo.icon] || Wallet

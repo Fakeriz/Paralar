@@ -18,8 +18,8 @@ export default function AccountsSheet({ open, onClose }) {
         <div className="space-y-4 pt-2">
           {accounts.map((a) => (
             <div key={a.id} className="relative">
-              <PreviewCard name={a.name} balance={a.balance} currency={a.currency} theme={a.theme} logo={a.logo} fmt={fmt} />
-              <button type="button" onClick={() => remove(a)} className="absolute top-3 right-3 h-8 w-8 rounded-full bg-black/30 backdrop-blur text-white flex items-center justify-center" aria-label="delete"><Trash2 size={15} /></button>
+              <PreviewCard name={a.name} balance={a.balance} currency={a.currency} theme={a.theme} logo={a.logo} type={a.type} id={a.id} fmt={fmt} />
+              <button type="button" onClick={() => remove(a)} className="absolute bottom-3 right-3 h-8 w-8 rounded-full bg-black/40 backdrop-blur text-white flex items-center justify-center ring-1 ring-white/20" aria-label="delete"><Trash2 size={15} /></button>
             </div>
           ))}
         </div>

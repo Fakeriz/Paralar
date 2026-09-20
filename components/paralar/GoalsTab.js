@@ -94,26 +94,26 @@ export default function GoalsTab() {
 
       <Sheet open={creating} onClose={() => setCreating(false)} title={t('new_goal')} left={<SheetTextButton muted onClick={() => setCreating(false)}>{t('cancel')}</SheetTextButton>} right={<SheetTextButton bold onClick={create}>{t('save')}</SheetTextButton>}>
         <div className="space-y-5 pt-2">
-          <div className="rounded-2xl bg-[#121214] p-3">
-            <div className="flex gap-2.5 overflow-x-auto no-scrollbar">
-              {GOAL_ICONS.map(({ id, Icon }) => {
-                const active = icon === id
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => setIcon(id)}
-                    className={cn(
-                      'h-11 w-11 rounded-xl flex items-center justify-center shrink-0 transition-all',
-                      active ? 'bg-white text-black ring-2 ring-white ring-offset-2 ring-offset-[#121214]' : 'bg-[#1c1c1e] text-zinc-400 border border-white/10'
-                    )}
-                    data-testid={`goal-icon-${id}`}
-                  >
-                    <Icon size={20} strokeWidth={active ? 2 : 1.5} />
-                  </button>
-                )
-              })}
-            </div>
+          <div className="flex items-center gap-2 overflow-x-auto py-2 no-scrollbar">
+            {GOAL_ICONS.map(({ id, Icon }) => {
+              const active = icon === id
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setIcon(id)}
+                  className={cn(
+                    'w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-all',
+                    active
+                      ? 'bg-black text-white shadow-md ring-2 ring-black ring-offset-2 ring-offset-white dark:bg-white dark:text-black dark:ring-white dark:ring-offset-zinc-950'
+                      : 'bg-zinc-100 text-zinc-600 border border-zinc-200/60 dark:bg-zinc-900 dark:text-zinc-400 dark:border-white/10'
+                  )}
+                  data-testid={`goal-icon-${id}`}
+                >
+                  <Icon size={20} strokeWidth={active ? 2 : 1.5} />
+                </button>
+              )
+            })}
           </div>
           <Field label={t('goal_name')}><TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder={t('goal_placeholder')} data-testid="goal-name" /></Field>
           <Field label={`${t('target_amount')} (${home})`}><TextInput type="number" inputMode="decimal" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="0" data-testid="goal-target" /></Field>

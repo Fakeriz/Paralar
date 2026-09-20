@@ -267,6 +267,17 @@
   run_ui: false
 
 ## frontend_new_tasks:
+  - task: "UI standardization pass (goal icon picker, account cards, card themes, adaptive New Account modal, bank list, currency selector)"
+    implemented: true
+    working: "NA"
+    file: "components/paralar/NewAccountSheet.js, AccountsSheet.js, CurrencySheet.js, GoalsTab.js, ui.js, lib/categories.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "6-part UI standardization: (1) New Goal icon picker — removed black capsule wrapper, horizontal flow, squircle w-12 h-12; active solid black/white (adaptive light/dark) w/ single ring, inactive zinc-100/zinc-900. (2) Account cards (PreviewCard) — aspect-[1.58/1] min-h-[180px], shows name/type/bold balance/•••• last4; delete button moved to bottom-right (no longer overlaps bank logo). (3) CARD_THEMES rebuilt: 8 glass themes at /50 opacity + backdrop-blur + text-foreground (Midnight Blue/Emerald/Amethyst/Topaz/Ruby/Coral/Ocean Tosca/Rose Pink) + 2 solid (Obsidian #0c0c0e, Glacier #fff). (4) New Account modal bg now adaptive (bg-white dark:bg-[#121214]); inputs zinc-100 light / #1c1c1e dark; active controls bg-foreground text-background. (5) Bank list now horizontal swipe (snap-x, gap-1.5), logo boxes w-11 h-11 (size='bank', -25%), tiny 9px labels; Generic tab+items removed; 'None' dashed-border reset button added first. (6) Country tabs text-only [All|Malaysia|Turkey|Indonesia] (no flags/codes); CurrencySheet flags removed, one-line [CODE · Name] left + symbol/check right. Lint clean, compiles 200. UI/playwright testing skipped per user standing instruction."
   - task: "New Goal modal — monochrome outline Lucide icons (replace emojis) + apply on Goals cards"
     implemented: true
     working: "NA"

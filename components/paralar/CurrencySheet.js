@@ -40,7 +40,6 @@ export default function CurrencySheet({ open, onClose, value, onSelect, zIndex =
               className={cn('w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left active:bg-muted transition', active && 'bg-muted/70')}
               data-testid={`currency-${c.code}`}
             >
-              <span className="text-2xl w-8 text-center">{c.flag}</span>
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-[15px]">{c.code} <span className="text-muted-foreground font-medium text-sm">· {c.name}</span></p>
               </div>
