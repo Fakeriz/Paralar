@@ -92,7 +92,6 @@ function BalanceCarousel() {
                 onClick={() => setHideBalance(!hideBalance)}
                 className="text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white p-1 rounded-lg transition-colors active:scale-95"
                 aria-label="toggle balance"
-                data-testid="toggle-balance"
               >
                 {hideBalance ? <EyeOff size={9} /> : <Eye size={9} />}
               </button>

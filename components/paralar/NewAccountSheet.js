@@ -1,6 +1,10 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronRight, Search, Check, Ban, CreditCard, Wallet, Banknote, Landmark, Smartphone, BarChart3, Briefcase } from 'lucide-react'
+import { 
+  ChevronRight, Search, Check, Ban, 
+  CreditCard, Wallet, Banknote, Landmark, 
+  Smartphone, BarChart3, Briefcase 
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
 import { Sheet, LogoBadge } from './ui'
@@ -19,14 +23,22 @@ const COUNTRY_TABS = [
   { id: 'my', labelKey: 'malaysia', defaultLabel: 'Malaysia' },
 ]
 
+// Pemetaan kunci nama string ke komponen Lucide React
 const ICON_MAP = {
   card: CreditCard,
+  creditcard: CreditCard,
   wallet: Wallet,
   cash: Banknote,
+  banknote: Banknote,
+  bank: Landmark,
   bankbuilding: Landmark,
+  landmark: Landmark,
   phone: Smartphone,
+  smartphone: Smartphone,
   chart: BarChart3,
+  barchart3: BarChart3,
   business: Briefcase,
+  briefcase: Briefcase,
 }
 
 // Adaptive input styling: light grey on light mode, obsidian on dark mode.
@@ -68,13 +80,24 @@ export default function NewAccountSheet({ open, onClose }) {
 
   useEffect(() => {
     if (!open) return
-    setName(''); setType('bank'); setIcon('card'); setCurrency(home); setTheme('parang'); setLogo(null)
-    setTab('all'); setQuery(''); setSource('new'); setFromId(accounts[0]?.id || null); setBalance('')
+    setName('')
+    setType('bank')
+    setIcon('card')
+    setCurrency(home)
+    setTheme('parang')
+    setLogo(null)
+    setTab('all')
+    setQuery('')
+    setSource('new')
+    setFromId(accounts[0]?.id || null)
+    setBalance('')
   }, [open]) // eslint-disable-line
 
   const logos = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return (BANK_LOGOS || []).filter((l) => l.country !== 'generic' && (tab === 'all' || l.country === tab) && (!q || l.name.toLowerCase().includes(q)))
+    return (BANK_LOGOS || []).filter(
+      (l) => l.country !== 'generic' && (tab === 'all' || l.country === tab) && (!q || l.name.toLowerCase().includes(q))
+    )
   }, [tab, query])
 
   const activeTheme = getTheme(theme)
@@ -101,17 +124,32 @@ export default function NewAccountSheet({ open, onClose }) {
           const delta = convert(num, currency, from.currency, rates)
           await store.updateAccount(from.id, { balance: roundMoney((Number(from.balance) || 0) - delta, from.currency) })
           await store.createTransaction({
-            type: 'transfer', amount: roundMoney(num, currency), currency, home_currency: home,
-            home_currency_amount: roundMoney(convert(num, currency, home, rates), home), rate: getRate(currency, home, rates),
-            category: 'transfer', payment_method: 'bank', account_id: from.id, to_account_id: acc?.id, fee: 0,
-            note: `${t('opening_balance')}: ${name.trim()}`, items: [], tax_deductible: false, date: new Date().toISOString(),
+            type: 'transfer',
+            amount: roundMoney(num, currency),
+            currency,
+            home_currency: home,
+            home_currency_amount: roundMoney(convert(num, currency, home, rates), home),
+            rate: getRate(currency, home, rates),
+            category: 'transfer',
+            payment_method: 'bank',
+            account_id: from.id,
+            to_account_id: acc?.id,
+            fee: 0,
+            note: `${t('opening_balance')}: ${name.trim()}`,
+            items: [],
+            tax_deductible: false,
+            date: new Date().toISOString(),
           })
         }
       }
       await refresh()
       toast.success(t('saved_msg'))
       onClose?.()
-    } catch (e) { toast.error(e?.missingTable ? t('db_missing') : e?.message || t('error')) } finally { setSaving(false) }
+    } catch (e) {
+      toast.error(e?.missingTable ? t('db_missing') : e?.message || t('error'))
+    } finally {
+      setSaving(false)
+    }
   }
 
   const Label = ({ children, right }) => (
@@ -130,8 +168,26 @@ export default function NewAccountSheet({ open, onClose }) {
         noPadding
         className="bg-white dark:bg-[#121214] text-zinc-950 dark:text-white"
         title={t('new_account')}
-        left={<button type="button" onClick={onClose} className="text-sm font-semibold text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white transition-colors">{t('cancel')}</button>}
-        right={<button type="button" onClick={create} disabled={!canSave || saving} className={cn('text-[15px] font-bold py-1 px-1 text-zinc-950 dark:text-white', (!canSave || saving) && 'opacity-40')} data-testid="account-save">{saving ? '...' : (t('create_btn') || t('create'))}</button>}
+        left={
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-sm font-semibold text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white transition-colors"
+          >
+            {t('cancel')}
+          </button>
+        }
+        right={
+          <button
+            type="button"
+            onClick={create}
+            disabled={!canSave || saving}
+            className={cn('text-[15px] font-bold py-1 px-1 text-zinc-950 dark:text-white', (!canSave || saving) && 'opacity-40')}
+            data-testid="account-save"
+          >
+            {saving ? '...' : (t('create_btn') || t('create'))}
+          </button>
+        }
       >
         <div className="p-4 space-y-6">
           {/* Card Preview with realistic EMV chip, contactless wave, chosen motif and icon fallback */}
@@ -225,28 +281,33 @@ export default function NewAccountSheet({ open, onClose }) {
             </div>
           </section>
 
-          {/* Section 4 — ICON */}
+{/* Section 4 — ICON (Horizontal Swipeable Row) */}
           <section>
             <Label>{t('account_icon')}</Label>
-            <div className="flex flex-wrap gap-2.5">
-              {ACCOUNT_ICONS.map((ic) => {
-                const Icon = ICON_MAP[ic.icon] || CreditCard
+            <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar snap-x touch-pan-x py-1 -mx-4 px-4">
+              {(ACCOUNT_ICONS || []).map((ic) => {
+                const iconKey = String(ic.id || ic.icon || '').toLowerCase()
+                const IconComponent = ICON_MAP[iconKey] || CreditCard
                 const active = icon === ic.id
+
                 return (
                   <button
                     key={ic.id}
                     type="button"
-                    onClick={() => setIcon(ic.id)}
+                    onClick={() => {
+                      setIcon(ic.id)
+                      setLogo(null)
+                    }}
                     className={cn(
-                      'h-12 w-12 rounded-xl flex items-center justify-center border transition-all active:scale-95',
+                      'w-11 h-11 rounded-2xl flex items-center justify-center border shrink-0 snap-start transition-all active:scale-95',
                       active
-                        ? 'border-zinc-950 bg-zinc-950/10 text-zinc-950 dark:border-white dark:bg-white/10 dark:text-white ring-2 ring-zinc-950/30 dark:ring-white/30'
-                        : 'border-zinc-200 dark:border-white/10 bg-zinc-100 dark:bg-[#1c1c1e] text-zinc-600 dark:text-zinc-400'
+                        ? 'bg-zinc-200/90 text-zinc-950 border-zinc-400 ring-2 ring-zinc-950 dark:bg-white dark:text-zinc-950 dark:border-white dark:ring-white'
+                        : 'bg-zinc-100 border-zinc-200 text-zinc-700 hover:bg-zinc-200/60 dark:bg-[#1c1c1e] dark:border-white/10 dark:text-zinc-400 dark:hover:bg-zinc-800'
                     )}
                     title={ic.id}
                     data-testid={`icon-${ic.id}`}
                   >
-                    <Icon size={20} strokeWidth={1.8} />
+                    <IconComponent size={20} strokeWidth={1.8} />
                   </button>
                 )
               })}
@@ -266,7 +327,8 @@ export default function NewAccountSheet({ open, onClose }) {
                 data-testid="logo-search"
               />
             </div>
-            {/* Country tabs in order: [All] -> [Indonesia] -> [Turkey] -> [Malaysia] */}
+            
+            {/* Country tabs */}
             <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 mt-3">
               {COUNTRY_TABS.map((c) => {
                 const active = tab === c.id
@@ -289,9 +351,10 @@ export default function NewAccountSheet({ open, onClose }) {
                 )
               })}
             </div>
-            {/* Bank Selector: Locked w-12 h-12 boxes, items-start, and w-12 h-4 text-[11px] labels */}
+
+            {/* Bank Selector */}
             <div className="flex items-start gap-2.5 overflow-x-auto py-2 no-scrollbar snap-x touch-pan-x mt-2">
-              {/* None option — resets to default account icon */}
+              {/* None option */}
               <button
                 type="button"
                 onClick={() => setLogo(null)}
@@ -423,4 +486,3 @@ export default function NewAccountSheet({ open, onClose }) {
     </>
   )
 }
-

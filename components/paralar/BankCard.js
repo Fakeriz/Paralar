@@ -72,7 +72,7 @@ export function NetworkBadge({ network = 'visa', isLight = false, className = ''
     <span
       className={cn(
         'font-black italic tracking-tighter text-sm shrink-0 font-sans select-none',
-        isLight ? 'text-zinc-950 font-black' : 'text-white/95 drop-shadow-sm',
+        isLight ? 'text-zinc-950 font-black' : 'text-zinc-950 dark:text-white/95 drop-shadow-sm',
         className
       )}
     >
@@ -219,10 +219,18 @@ export function BankCard({
   const isGlacier = th.isLight || th.id === 'glacier'
   const motif = th.motif || 'parang'
 
-  // Strict text contrast enforcement
-  const titleCls = isGlacier ? 'text-zinc-950' : 'text-white'
-  const subCls = isGlacier ? 'text-zinc-600' : 'text-zinc-300/85'
-  const accentCls = isGlacier ? 'text-zinc-800' : 'text-zinc-200'
+  // Jika Glacier selalu hitam. Untuk kartu lain: hitam di Light Mode, putih di Dark Mode
+  const titleCls = isGlacier 
+    ? 'text-zinc-950' 
+    : 'text-zinc-950 dark:text-white'
+
+  const subCls = isGlacier 
+    ? 'text-zinc-600' 
+    : 'text-zinc-600 dark:text-zinc-300/85'
+
+  const accentCls = isGlacier 
+    ? 'text-zinc-800' 
+    : 'text-zinc-700 dark:text-zinc-200'
 
   const formattedBalance = useMemo(() => {
     if (hideBalance) return '••••••••'
@@ -245,10 +253,10 @@ export function BankCard({
       <CardMotifTexture motif={motif} isLight={isGlacier} />
 
       {/* 2) Top Section: Chip EMV + Contactless Wave + Bank/Icon Badge */}
-      <div className="flex items-start justify-between gap-3 relative z-10">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-3 relative z-10">
+        <div className="flex items-center gap-2.5">
           <EmvChip isLight={isGlacier} />
-          <ContactlessWave className={cn('opacity-75', isGlacier ? 'text-zinc-700' : 'text-zinc-300')} />
+          <ContactlessWave className={cn('opacity-75', isGlacier ? 'text-zinc-700' : 'text-zinc-700 dark:text-zinc-300')} />
         </div>
 
         {rightHeader ? (
@@ -263,7 +271,7 @@ export function BankCard({
                   'h-9 w-9 rounded-xl flex items-center justify-center border shrink-0 backdrop-blur-sm',
                   isGlacier
                     ? 'bg-zinc-950/5 border-zinc-300 text-zinc-900'
-                    : 'bg-white/10 border-white/20 text-white'
+                    : 'bg-zinc-900/10 border-zinc-300 text-zinc-900 dark:bg-white/10 dark:border-white/20 dark:text-white'
                 )}
                 title="Account Icon"
               >
