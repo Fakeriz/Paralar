@@ -7,6 +7,7 @@ import { Sheet, TextInput, Field, PrimaryButton } from './ui'
 import SwipeBillRow from './SwipeBillRow'
 import { CATEGORIES } from '@/lib/categories'
 import { roundMoney } from '@/lib/currencies'
+import { applyTxToBalances } from '@/lib/ledger'
 import { cn } from '@/lib/utils'
 
 const LOCALE = { en: 'en-GB', tr: 'tr-TR', ms: 'ms-MY', id: 'id-ID' }
@@ -14,7 +15,21 @@ const monthKeyOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStar
 const EXPENSE_CATS = CATEGORIES.filter((c) => c.types?.includes('expense'))
 
 export default function BillsTrackerSheet({ open, onClose }) {
-  const { t, fmt, home, accounts = [], store, lang, convertToHome, refresh } = useApp()
+  const {
+    t,
+    fmt,
+    home,
+    accounts = [],
+    transactions = [],
+    store,
+    lang,
+    convertToHome,
+    refresh,
+    user,
+    session,
+    addTransaction,
+    rates,
+  } = useApp()
   const [bills, setBills] = useState([])
   const [month, setMonth] = useState(new Date())
   const [adding, setAdding] = useState(false)
@@ -28,7 +43,7 @@ export default function BillsTrackerSheet({ open, onClose }) {
   const [dueDay, setDueDay] = useState('1')
   const [category, setCategory] = useState('cat_bills')
   const [accountId, setAccountId] = useState(null)
-  const [autoLogExpense, setAutoLogExpense] = useState(false)
+  const [autoLogExpense, setAutoLogExpense] = useState(true)
   const [saving, setSaving] = useState(false)
 
   // Edit bill form state
@@ -103,13 +118,16 @@ export default function BillsTrackerSheet({ open, onClose }) {
 
   const shiftMonth = (delta) => setMonth((d) => new Date(d.getFullYear(), d.getMonth() + delta, 1))
 
-  const toggle = async (b) => {
+  const handleTogglePaid = async (b) => {
+    if (!b?.id) return
     const isNowPaid = !b.paid
     const pm = { ...(b?.paid_months || {}) }
+    const activeMonthKey = mKey // e.g. "2026-09"
+
     if (isNowPaid) {
-      pm[mKey] = true
+      pm[activeMonthKey] = true
     } else {
-      delete pm[mKey]
+      delete pm[activeMonthKey]
     }
 
     // Optimistic UI update
@@ -117,23 +135,85 @@ export default function BillsTrackerSheet({ open, onClose }) {
 
     try {
       await store.updateBill(b.id, { paid_months: pm })
-      if (isNowPaid && b.auto_log_expense) {
-        try {
-          if (store?.createTransaction) {
-            await store.createTransaction({
-              amount: Number(b.amount) || 0,
-              currency: b.currency || home,
+
+      if (isNowPaid) {
+        // 1. Periksa apakah opsi auto_log_expense aktif (atau default selalu catat jika setting tersebut true)
+        const isAutoLog = b.auto_log_expense !== false
+        const billAmount = Number(b.amount)
+
+        // 2. Pastikan nominal tagihan valid (bill.amount > 0)
+        if (isAutoLog && billAmount > 0) {
+          // 3. Tentukan account_id target:
+          // Gunakan b.account_id jika ada. Jika kosong/unassigned, otomatis arahkan ke akun utama pengguna (accounts[0]?.id).
+          const targetAccountId = b.account_id || accounts[0]?.id || null
+
+          // Cek duplikasi: berikan penanda agar bisa dilacak & mencegah duplikasi
+          const isDuplicate = (transactions || []).some((tx) => {
+            if (tx.bill_id && tx.bill_id === b.id && tx.billing_month === activeMonthKey) {
+              return true
+            }
+            if (tx.note && (tx.note.includes(b.id) || tx.note.includes(b.title || b.name)) && tx.note.includes(activeMonthKey)) {
+              return true
+            }
+            return false
+          })
+
+          if (!isDuplicate) {
+            const billTitle = b.name || b.title || 'Tagihan'
+            const currentIso = new Date().toISOString()
+            const newTransaction = {
+              user_id: user?.id || session?.user?.id || null,
+              account_id: targetAccountId,
+              amount: billAmount,
               type: 'expense',
-              category: b.category || 'cat_bills',
-              account_id: b.account_id || accounts[0]?.id || null,
-              note: `[Bill] ${b.title} (${monthLabel})`,
-              date: new Date().toISOString().slice(0, 10),
-            })
-            toast.success(t('bill_paid_logged'))
-            if (typeof refresh === 'function') await refresh()
+              category: b.category || 'Bills & Utilities',
+              description: `Pembayaran Tagihan: ${billTitle}`,
+              transaction_date: currentIso,
+              // Berikan penanda agar bisa dilacak & mencegah duplikasi
+              bill_id: b.id,
+              billing_month: activeMonthKey,
+              // Field kompatibilitas tambahan untuk database & antarmuka
+              currency: b.currency || home || 'USD',
+              note: `Pembayaran Tagihan: ${billTitle}`,
+              date: currentIso,
+            }
+
+            try {
+              if (typeof addTransaction === 'function') {
+                await addTransaction(newTransaction)
+              } else if (store?.createTransaction) {
+                await store.createTransaction(newTransaction)
+                try {
+                  await applyTxToBalances(store, accounts, newTransaction, 1, rates)
+                } catch (balErr) {
+                  console.warn('Balance apply error:', balErr)
+                }
+                if (typeof refresh === 'function') await refresh()
+              }
+              toast.success(t('bill_paid_logged'))
+            } catch (txErr) {
+              console.warn('Auto log bill payment transaction error:', txErr)
+            }
           }
-        } catch (txErr) {
-          console.warn('Auto log expense error:', txErr)
+        }
+      } else {
+        // Ketika di-uncheck (status berubah dari paid -> unpaid), cari dan revert transaksi terkait bila ada
+        const linkedTx = (transactions || []).find((tx) =>
+          (tx.bill_id && tx.bill_id === b.id && tx.billing_month === activeMonthKey) ||
+          (tx.note && (tx.note.includes(b.id) || tx.note.includes(b.title || b.name)) && tx.note.includes(activeMonthKey))
+        )
+        if (linkedTx?.id && store?.deleteTransaction) {
+          try {
+            await store.deleteTransaction(linkedTx.id)
+            try {
+              await applyTxToBalances(store, accounts, linkedTx, -1, rates)
+            } catch (revertBalErr) {
+              console.warn('Balance revert error:', revertBalErr)
+            }
+            if (typeof refresh === 'function') await refresh()
+          } catch (revertErr) {
+            console.warn('Revert bill payment transaction error:', revertErr)
+          }
         }
       }
       await load()
@@ -143,13 +223,16 @@ export default function BillsTrackerSheet({ open, onClose }) {
     }
   }
 
+  const toggleBill = handleTogglePaid
+  const toggle = handleTogglePaid
+
   const openAdd = () => {
     setTitle('')
     setAmount('')
     setDueDay('1')
     setCategory('cat_bills')
     setAccountId(accounts[0]?.id || null)
-    setAutoLogExpense(false)
+    setAutoLogExpense(true)
     setAdding(true)
   }
 
@@ -258,10 +341,12 @@ export default function BillsTrackerSheet({ open, onClose }) {
           <button
             type="button"
             onClick={openAdd}
-            className="text-[15px] font-bold py-1 px-1 text-emerald-600 dark:text-emerald-400 hover:opacity-80 transition-colors cursor-pointer"
+            className="w-9 h-9 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center hover:bg-emerald-500/20 active:scale-90 transition-all cursor-pointer"
+            aria-label={t('add_bill') || 'Add Bill'}
+            title={t('add_bill') || 'Add Bill'}
             data-testid="bills-add"
           >
-            {t('add_bill') || 'Add'}
+            <Plus size={20} strokeWidth={2.5} />
           </button>
         }
       >

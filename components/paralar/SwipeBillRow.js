@@ -98,8 +98,8 @@ export default function SwipeBillRow({
         animate={controls}
         onClick={handleCardClick}
         className={cn(
-          'relative z-10 w-full bg-card bg-white dark:bg-[#18181b] border border-border/40 dark:border-white/10 rounded-2xl p-4 flex items-center justify-between shadow-xs transition-colors',
-          isPaid && 'bg-zinc-50 dark:bg-[#141416] opacity-85',
+          'relative z-10 w-full bg-white dark:bg-[#18181b] border border-border/40 dark:border-white/10 rounded-2xl p-4 flex items-center justify-between shadow-xs transition-colors',
+          isPaid && 'bg-zinc-50 dark:bg-[#141416]',
           isMirror && 'hover:border-emerald-500/40 cursor-pointer'
         )}
       >

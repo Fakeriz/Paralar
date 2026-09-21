@@ -1,10 +1,11 @@
 'use client'
 import { useMemo, useState } from 'react'
-import { Search, Receipt, MoreVertical, Download, Upload } from 'lucide-react'
+import { Search, Receipt, MoreVertical, Download, Upload, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
-import { Segmented, Card, EmptyState, TextInput, ErrorBoundary } from './ui'
+import { Segmented, Card, EmptyState, ErrorBoundary } from './ui'
 import SwipeTransactionRow from './SwipeTransactionRow'
+import { applyTxToBalances } from '@/lib/ledger'
 
 const LOCALE_BY_LANG = { en: 'en-GB', tr: 'tr-TR', ms: 'ms-MY', id: 'id-ID' }
 
@@ -21,19 +22,33 @@ function dayKey(d) {
 }
 
 function TransactionsContent() {
-  const { t, transactions, open, fmt, home, convertToHome, lang, store, refresh } = useApp()
+  const { t, transactions, open, fmt, home, convertToHome, lang, store, refresh, accounts = [], rates } = useApp()
   const [filter, setFilter] = useState('all')
   const [q, setQ] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
   const [openRowId, setOpenRowId] = useState(null)
+  const [deletingTx, setDeletingTx] = useState(null)
 
-  const handleDelete = async (tx) => {
-    if (!tx?.id) return
+  const handleEdit = (tx) => {
+    open?.('addTx', { ...tx, editId: tx?.id })
+  }
+
+  const handleDelete = (tx) => {
+    setDeletingTx(tx)
+  }
+
+  const confirmDelete = async () => {
+    if (!deletingTx?.id) return
     try {
-      await store?.deleteTransaction?.(tx.id)
+      await applyTxToBalances(store, accounts, deletingTx, -1, rates)
+      await store?.deleteTransaction?.(deletingTx.id)
       if (refresh) await refresh()
       toast.success(t('deleted'))
-    } catch { toast.error(t('error')) }
+    } catch {
+      toast.error(t('error'))
+    } finally {
+      setDeletingTx(null)
+    }
   }
 
   const list = Array.isArray(transactions) ? transactions : []
@@ -43,12 +58,12 @@ function TransactionsContent() {
       .filter((tx) => filter === 'all' || tx?.type === filter)
       .filter((tx) => {
         if (!q) return true
-        const s = `${tx?.note || ''} ${tx?.merchant || ''} ${tx?.category || ''} ${tx?.amount ?? ''}`.toLowerCase()
+        const s = `${tx?.note || ''} ${tx?.description || ''} ${tx?.merchant || ''} ${tx?.category || ''} ${tx?.amount ?? ''}`.toLowerCase()
         return s.includes(q.toLowerCase())
       })
     const map = new Map()
     ;(filtered || []).forEach((tx) => {
-      const k = dayKey(tx?.date || tx?.created_at)
+      const k = dayKey(tx?.date || tx?.transaction_date || tx?.created_at)
       if (!map.has(k)) map.set(k, [])
       map.get(k).push(tx)
     })
@@ -140,26 +155,61 @@ function TransactionsContent() {
           }, 0)
           return (
             <div key={k} className="mt-5">
-              <div className="flex items-center justify-between mb-1 px-1">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-600 dark:text-zinc-400">{labelFor(k)}</p>
-                <p className="text-xs font-semibold tabular-nums text-zinc-600 dark:text-zinc-400">{net < 0 ? '-' : '+'}{safeFmt(Math.abs(net), home)}</p>
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex justify-between items-center mb-2 px-1">
+                <span>{labelFor(k)}</span>
+                <span className="tabular-nums">{net < 0 ? '-' : '+'}{safeFmt(Math.abs(net), home)}</span>
               </div>
-              <Card className="px-4 divide-y divide-zinc-200/60 dark:divide-white/5">
+              <div className="space-y-2 mb-4 touch-pan-y">
                 {(dayList || []).map((tx) => (
                   <SwipeTransactionRow
                     key={tx?.id || Math.random()}
-                    tx={tx}
+                    transaction={tx}
                     isOpen={openRowId === tx?.id}
                     onOpenChange={(v) => setOpenRowId(v ? tx?.id : null)}
                     onOpenDetail={() => open?.('txDetail', tx)}
-                    onEdit={() => open?.('addTx', { ...tx, editId: tx?.id })}
-                    onDelete={() => handleDelete(tx)}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
                   />
                 ))}
-              </Card>
+              </div>
             </div>
           )
         })
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {deletingTx && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-3xl bg-white dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 p-6 shadow-2xl text-center space-y-4">
+            <div className="h-14 w-14 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 mx-auto flex items-center justify-center">
+              <Trash2 size={28} />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-zinc-950 dark:text-white">
+                {t('clear_confirm_title')}
+              </h3>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-2 leading-relaxed">
+                {deletingTx?.merchant || deletingTx?.note || deletingTx?.description ? `"${deletingTx.merchant || deletingTx.note || deletingTx.description}" - ` : ''}{t('clear_confirm_body')}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setDeletingTx(null)}
+                className="w-full rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-bold py-2.5 text-sm transition-all active:scale-95 cursor-pointer"
+              >
+                {t('cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                className="w-full rounded-xl bg-rose-600 text-white font-bold py-2.5 text-sm transition-all active:scale-95 cursor-pointer hover:bg-rose-700"
+              >
+                {t('delete')}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

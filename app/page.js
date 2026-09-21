@@ -7,6 +7,7 @@ import { createStore, DEFAULT_PROFILE } from '@/lib/store'
 import { translate, LOCALE_MAP } from '@/lib/i18n'
 import { formatMoney } from '@/lib/currencies'
 import { convert, FALLBACK_RATES } from '@/lib/rates'
+import { applyTxToBalances } from '@/lib/ledger'
 import { AppContext } from '@/components/paralar/context'
 
 import Onboarding from '@/components/paralar/Onboarding'
@@ -143,11 +144,22 @@ export default function App() {
   const enterGuest = () => { try { localStorage.setItem(GUEST_KEY, '1') } catch {}; setIsGuest(true) }
   const finishOnboarding = () => { try { localStorage.setItem(ONBOARD_KEY, '1') } catch {}; setOnboarded(true) }
 
+  const addTransaction = useCallback(async (txData) => {
+    const res = await store.createTransaction(txData)
+    try {
+      await applyTxToBalances(store, accounts, txData, 1, rates)
+    } catch (err) {
+      console.warn('applyTxToBalances error:', err)
+    }
+    await refresh()
+    return res
+  }, [store, accounts, rates, refresh])
+
   // stats
   const stats = useMemo(() => {
     const totalBalance = accounts.reduce((s, a) => s + convert(Number(a.balance) || 0, a.currency, home, rates), 0)
     const now = new Date()
-    const inMonth = transactions.filter((tx) => { const d = new Date(tx.date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() })
+    const inMonth = transactions.filter((tx) => { const d = new Date(tx.date || tx.transaction_date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() })
     const income = inMonth.filter((tx) => tx.type === 'income').reduce((s, tx) => s + convert(tx.amount, tx.currency, home, rates), 0)
     const spending = inMonth.filter((tx) => tx.type === 'expense').reduce((s, tx) => s + convert(tx.amount, tx.currency, home, rates), 0)
     return { totalBalance, income, spending }
@@ -155,8 +167,8 @@ export default function App() {
 
   const ctx = {
     t, lang, setLang, fmt, home, rates, convertToHome,
-    session, isGuest, profile, updateProfile, signOut,
-    accounts, transactions, goals, stats, store, refresh,
+    session, user: session?.user || null, isGuest, profile, updateProfile, signOut,
+    accounts, transactions, goals, stats, store, refresh, addTransaction,
     tab, setTab, sheets, open, close,
     hideBalance, setHideBalance,
   }

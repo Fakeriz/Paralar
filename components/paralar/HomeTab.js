@@ -1,12 +1,13 @@
 'use client'
 import { useRef, useState, useCallback, useEffect } from 'react'
-import { Bell, Eye, EyeOff, ArrowDownLeft, ArrowUpRight, Receipt, Users, PieChart, FileText, Plus, ChevronRight, Sparkles } from 'lucide-react'
+import { Bell, Eye, EyeOff, ArrowDownLeft, ArrowUpRight, Receipt, Users, PieChart, FileText, Plus, ChevronRight, Sparkles, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
 import { Avatar, Card, SectionLabel, EmptyState } from './ui'
-import TransactionRow from './TransactionRow'
+import SwipeTransactionRow from './SwipeTransactionRow'
 import { BankCard, EmvChip, ContactlessWave } from './BankCard'
 import { cn } from '@/lib/utils'
+import { applyTxToBalances } from '@/lib/ledger'
 
 function Header() {
   const { t, profile, open, isGuest } = useApp()
@@ -217,7 +218,32 @@ function QuickGrid() {
 }
 
 export default function HomeTab() {
-  const { t, transactions = [], setTab, open, isGuest } = useApp()
+  const { t, transactions = [], setTab, open, isGuest, store, refresh, accounts = [], rates } = useApp()
+  const [openRowId, setOpenRowId] = useState(null)
+  const [deletingTx, setDeletingTx] = useState(null)
+
+  const handleEdit = (tx) => {
+    open?.('addTx', { ...tx, editId: tx?.id })
+  }
+
+  const handleDelete = (tx) => {
+    setDeletingTx(tx)
+  }
+
+  const confirmDelete = async () => {
+    if (!deletingTx?.id) return
+    try {
+      await applyTxToBalances(store, accounts, deletingTx, -1, rates)
+      await store?.deleteTransaction?.(deletingTx.id)
+      if (refresh) await refresh()
+      toast.success(t('deleted'))
+    } catch {
+      toast.error(t('error'))
+    } finally {
+      setDeletingTx(null)
+    }
+  }
+
   const recent = transactions.slice(0, 6)
   return (
     <div className="px-5 pb-28">
@@ -239,13 +265,61 @@ export default function HomeTab() {
           {t('see_all')} <ChevronRight size={14} />
         </button>
       </div>
-      <Card className="px-4 divide-y divide-zinc-200/60 dark:divide-white/5">
-        {recent.length === 0 ? (
+
+      {recent.length === 0 ? (
+        <Card className="px-4 py-8">
           <EmptyState icon={Receipt} title={t('no_transactions')} subtitle={t('no_transactions_sub')} />
-        ) : (
-          recent.map((tx) => <TransactionRow key={tx.id} tx={tx} onClick={() => open('txDetail', tx)} />)
-        )}
-      </Card>
+        </Card>
+      ) : (
+        <div className="space-y-2 mb-4 touch-pan-y">
+          {recent.map((tx) => (
+            <SwipeTransactionRow
+              key={tx.id}
+              transaction={tx}
+              isOpen={openRowId === tx.id}
+              onOpenChange={(v) => setOpenRowId(v ? tx.id : null)}
+              onOpenDetail={() => open('txDetail', tx)}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {deletingTx && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-3xl bg-white dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 p-6 shadow-2xl text-center space-y-4">
+            <div className="h-14 w-14 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 mx-auto flex items-center justify-center">
+              <Trash2 size={28} />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-zinc-950 dark:text-white">
+                {t('clear_confirm_title')}
+              </h3>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-2 leading-relaxed">
+                {deletingTx?.merchant || deletingTx?.note || deletingTx?.description ? `"${deletingTx.merchant || deletingTx.note || deletingTx.description}" - ` : ''}{t('clear_confirm_body')}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setDeletingTx(null)}
+                className="w-full rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-bold py-2.5 text-sm transition-all active:scale-95 cursor-pointer"
+              >
+                {t('cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                className="w-full rounded-xl bg-rose-600 text-white font-bold py-2.5 text-sm transition-all active:scale-95 cursor-pointer hover:bg-rose-700"
+              >
+                {t('delete')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

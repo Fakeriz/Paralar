@@ -54,7 +54,7 @@ export default function TransactionDetailSheet({ open, onClose, tx, onEdit }) {
 
   const cur = tx?.currency || home
   const acc = (accounts || []).find((a) => a?.id === tx?.account_id)
-  const d = tx.date ? new Date(tx.date) : new Date()
+  const d = (tx?.date || tx?.transaction_date) ? new Date(tx?.date || tx?.transaction_date) : new Date()
   const isForeign = cur !== home
   const total = Number(tx.amount) || (items || []).reduce((s, i) => s + (Number(i?.price) || 0), 0)
 
@@ -112,7 +112,7 @@ export default function TransactionDetailSheet({ open, onClose, tx, onEdit }) {
       <div className="flex items-center gap-3 mt-4">
         <CategoryBadge id={tx.category} size="lg" />
         <div className="flex-1">
-          <p className="text-xl font-extrabold text-zinc-950 dark:text-white">{tx.merchant || tx.note || t(`cat_${tx.category || 'other'}`)}</p>
+          <p className="text-xl font-extrabold text-zinc-950 dark:text-white">{tx.merchant || tx.note || tx.description || t(`cat_${tx.category || 'other'}`)}</p>
           <span className="inline-block mt-1 text-[10px] font-bold uppercase rounded-md bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 text-zinc-600 dark:text-zinc-400">{t(`cat_${tx.category || 'other'}`)}</span>
         </div>
       </div>

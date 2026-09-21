@@ -34,7 +34,7 @@ export default function TransactionRow({ tx, onClick, showDate = false }) {
   const isTransfer = tx?.type === 'transfer'
   const acc = accList.find((a) => a?.id === tx?.account_id)
   const toAcc = accList.find((a) => a?.id === tx?.to_account_id)
-  const title = tx?.merchant || tx?.note || (t ? t(`cat_${tx?.category || 'other'}`) : (tx?.category || 'Other'))
+  const title = tx?.merchant || tx?.note || tx?.description || (t ? t(`cat_${tx?.category || 'other'}`) : (tx?.category || 'Other'))
   const foreign = tx?.currency && tx?.currency !== home
 
   // Guard conversion — only show ≈ home amount when we actually have a number.
@@ -45,8 +45,8 @@ export default function TransactionRow({ tx, onClick, showDate = false }) {
   const showHomeApprox = foreign && typeof homeAmount === 'number' && !isNaN(homeAmount)
 
   const locale = lang === 'en' ? 'en-US' : lang === 'tr' ? 'tr-TR' : lang === 'ms' ? 'ms-MY' : 'id-ID'
-  const timeStr = safeTime(tx?.date, locale)
-  const dateStr = showDate ? safeDay(tx?.date) : ''
+  const timeStr = safeTime(tx?.date || tx?.transaction_date, locale)
+  const dateStr = showDate ? safeDay(tx?.date || tx?.transaction_date) : ''
 
   const safeFmt = (amount, code) => {
     try { return typeof fmt === 'function' ? fmt(amount, code) : String(amount ?? '') } catch { return String(amount ?? '') }
