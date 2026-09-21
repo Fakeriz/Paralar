@@ -1,10 +1,12 @@
 'use client'
-import { useEffect, useMemo, useState } from 'react'
-import { FolderX, LogOut, Trash2, MessageSquareDot, ChevronRight, AlertTriangle, Bug, MessageSquare, HelpCircle, Download, Upload } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { FolderX, LogOut, Trash2, MessageSquareDot, ChevronRight, AlertTriangle, Bug, MessageSquare, HelpCircle, Download, Upload, Paperclip, Image as ImageIcon, X, Loader2, Sparkles, ExternalLink } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
 import { Sheet, Field, TextInput, Segmented, PrimaryButton } from './ui'
 import { cn } from '@/lib/utils'
+import { supabase } from '@/lib/supabase'
+import { sendTelegramSupportNotification } from '@/lib/telegram'
 
 const uid = () => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `rp_${Date.now()}_${Math.random().toString(36).slice(2)}`)
 const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d } catch { return d } }
@@ -46,13 +48,138 @@ export default function AccountSupportSection() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteText, setDeleteText] = useState('')
 
-  // Reports & support
+  // Reports & support ticket
   const [reportsOpen, setReportsOpen] = useState(false)
   const [reports, setReports] = useState([])
-  const [rptCat, setRptCat] = useState('bug')
-  const [rptMsg, setRptMsg] = useState('')
+  const [rptType, setRptType] = useState('bug') // 'bug' | 'feature' | 'question'
+  const [subject, setSubject] = useState('')
+  const [description, setDescription] = useState('')
+  const [file, setFile] = useState(null)
+  const [filePreview, setFilePreview] = useState(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const fileInputRef = useRef(null)
 
   useEffect(() => { if (reportsOpen) setReports(lsGet(REPORTS_KEY, []) || []) }, [reportsOpen]) // eslint-disable-line
+
+  const handleFileChange = (e) => {
+    const selected = e.target.files?.[0]
+    if (!selected) return
+    if (selected.size > 5 * 1024 * 1024) {
+      toast.error('Ukuran file maksimal 5MB')
+      return
+    }
+    setFile(selected)
+    if (selected.type?.startsWith('image/')) {
+      const reader = new FileReader()
+      reader.onload = () => setFilePreview(reader.result)
+      reader.readAsDataURL(selected)
+    } else {
+      setFilePreview(null)
+    }
+  }
+
+  const handleRemoveFile = () => {
+    setFile(null)
+    setFilePreview(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleSubmitReport = async (e) => {
+    e?.preventDefault?.()
+    if (!subject.trim()) {
+      toast.error('Mohon isi subjek laporan')
+      return
+    }
+    if (!description.trim()) {
+      toast.error('Mohon isi deskripsi kendala')
+      return
+    }
+
+    setIsSubmitting(true)
+    let attachment_url = null
+
+    try {
+      // 1. Kirim langsung ke Telegram Admin via FormData (Native multipart/form-data)
+      await sendTelegramSupportNotification({
+        type: rptType,
+        subject: subject.trim(),
+        description: description.trim(),
+        userEmail: session?.user?.email || null,
+        userId: session?.user?.id || null,
+        file: file || null,
+      })
+
+      // 2. Upload opsional ke Supabase Storage untuk riwayat aplikasi
+      if (file) {
+        const sanitized = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+        const fileName = `${Date.now()}_${sanitized}`
+        try {
+          const { error: uploadError } = await supabase.storage
+            .from('support_attachments')
+            .upload(fileName, file, { cacheControl: '3600', upsert: false })
+
+          if (uploadError) {
+            console.warn('Storage upload notice:', uploadError)
+          } else {
+            const { data: urlData } = supabase.storage
+              .from('support_attachments')
+              .getPublicUrl(fileName)
+            attachment_url = urlData?.publicUrl || null
+          }
+        } catch (uploadEx) {
+          console.warn('Upload exception:', uploadEx)
+        }
+      }
+
+      // 3. Simpan ke database Supabase jika tersedia
+      const ticketPayload = {
+        user_id: session?.user?.id || null,
+        user_email: session?.user?.email || null,
+        type: rptType,
+        subject: subject.trim(),
+        description: description.trim(),
+        attachment_url: attachment_url || null,
+      }
+
+      try {
+        const { error: dbError } = await supabase
+          .from('support_tickets')
+          .insert([ticketPayload])
+        if (dbError) {
+          console.warn('Database insert notice:', dbError)
+        }
+      } catch (dbEx) {
+        console.warn('DB insert exception:', dbEx)
+      }
+
+      // 4. Simpan ke riwayat lokal
+      const localEntry = {
+        id: uid(),
+        type: rptType,
+        subject: subject.trim(),
+        description: description.trim(),
+        attachment_url,
+        status: 'open',
+        created_at: new Date().toISOString()
+      }
+      const next = [localEntry, ...(reports || [])]
+      setReports(next)
+      lsSet(REPORTS_KEY, next)
+
+      // 5. Berikan feedback sukses dan reset formulir
+      toast.success('Laporan berhasil dikirim! Tim Paralar akan segera memeriksanya.')
+      setSubject('')
+      setDescription('')
+      setRptType('bug')
+      handleRemoveFile()
+      setReportsOpen(false)
+    } catch (err) {
+      console.error('Submit report to Telegram error:', err)
+      toast.error(err?.message || 'Gagal mengirim laporan ke Telegram. Silakan periksa koneksi.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   const matched = useMemo(() => {
     const list = transactions || []
@@ -99,16 +226,16 @@ export default function AccountSupportSection() {
     try { await signOut?.() } catch {}
   }
 
-  const submitReport = () => {
-    if (!rptMsg.trim()) return
-    const row = { id: uid(), category: rptCat, message: rptMsg.trim(), status: 'open', created_at: new Date().toISOString() }
-    const next = [row, ...(reports || [])]
-    setReports(next); lsSet(REPORTS_KEY, next)
-    setRptMsg(''); toast.success(t('report_submitted'))
+  const typeLabels = {
+    bug: 'Masalah / Bug',
+    feature: 'Saran Fitur',
+    question: 'Pertanyaan Umum'
   }
-
-  const catIcon = { bug: Bug, feedback: MessageSquare, question: HelpCircle }
-  const catLabel = { bug: t('report_bug'), feedback: t('report_feedback'), question: t('report_question') }
+  const typeIcons = {
+    bug: Bug,
+    feature: Sparkles,
+    question: HelpCircle
+  }
   const canDelete = deleteText.trim().toUpperCase() === 'DELETE'
 
   return (
@@ -205,40 +332,194 @@ export default function AccountSupportSection() {
       </Sheet>
 
       {/* Reports & Support sheet */}
-      <Sheet open={reportsOpen} onClose={() => setReportsOpen(false)} full title={t('reports_support')}>
+      <Sheet
+        open={reportsOpen}
+        onClose={() => { if (!isSubmitting) setReportsOpen(false) }}
+        full
+        title="Laporkan Masalah / Bantuan"
+        left={
+          <button
+            type="button"
+            onClick={() => setReportsOpen(false)}
+            className="text-sm font-semibold text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white transition-colors"
+          >
+            Batal
+          </button>
+        }
+      >
         <div className="pt-1 space-y-4">
-          <div className="rounded-2xl bg-zinc-100 border border-zinc-200/60 dark:bg-[#141416] dark:border-white/5 p-4 space-y-4">
-            <Field label={t('report_category')}>
-              <Segmented value={rptCat} onChange={setRptCat} options={[{ id: 'bug', label: t('report_bug') }, { id: 'feedback', label: t('report_feedback') }, { id: 'question', label: t('report_question') }]} />
-            </Field>
-            <Field label={t('report_message')}>
-              <textarea value={rptMsg} onChange={(e) => setRptMsg(e.target.value)} rows={4} placeholder={t('report_message_ph')} className="w-full rounded-xl bg-card border border-border/60 dark:border-white/10 px-4 py-3 text-[15px] outline-none focus:ring-2 focus:ring-ring/60 placeholder:text-muted-foreground resize-none" data-testid="report-msg" />
-            </Field>
-            <PrimaryButton onClick={submitReport} disabled={!rptMsg.trim()} data-testid="report-submit">{t('report_submit')}</PrimaryButton>
+          <div className="rounded-3xl bg-zinc-100/80 border border-zinc-200/60 dark:bg-[#141416] dark:border-white/5 p-4 space-y-4">
+            {/* Pilihan Tipe */}
+            <div>
+              <Segmented
+                value={rptType}
+                onChange={setRptType}
+                options={[
+                  { id: 'bug', label: 'Masalah / Bug' },
+                  { id: 'feature', label: 'Saran Fitur' },
+                  { id: 'question', label: 'Pertanyaan Umum' }
+                ]}
+              />
+            </div>
+
+            {/* Subjek */}
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase block mb-1.5 px-0.5">
+                SUBJEK
+              </label>
+              <input
+                type="text"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="e.g. Saldo tidak sinkron, error kamera saat scan struk..."
+                className="w-full rounded-2xl bg-muted/40 border border-border/40 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-border transition-colors"
+                data-testid="support-subject"
+              />
+            </div>
+
+            {/* Deskripsi */}
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase block mb-1.5 px-0.5">
+                DESKRIPSI
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Jelaskan langkah terjadinya kendala secara mendetail..."
+                className="w-full min-h-[110px] rounded-2xl bg-muted/40 p-4 text-sm text-foreground border border-border/40 outline-none focus:border-border transition-colors resize-none placeholder:text-muted-foreground"
+                data-testid="support-description"
+              />
+            </div>
+
+            {/* Lampiran Berkas / Foto */}
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase block mb-1.5 px-0.5">
+                LAMPIRAN BUKTI (OPSIONAL)
+              </label>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                className="hidden"
+                accept="image/*,.pdf,.doc,.docx,.txt"
+                data-testid="support-file-input"
+              />
+              {!file ? (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full rounded-2xl p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-muted/40 transition-colors border border-dashed border-border/60 bg-muted/10 text-center"
+                  data-testid="support-upload-box"
+                >
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Paperclip size={18} />
+                    <ImageIcon size={18} />
+                  </div>
+                  <p className="text-xs font-medium text-foreground">Klik untuk unggah berkas atau tangkapan layar</p>
+                  <p className="text-[11px] text-muted-foreground">PNG, JPG, PDF (Maks. 5MB)</p>
+                </div>
+              ) : (
+                <div className="relative flex items-center gap-3 p-3 rounded-2xl bg-muted/40 border border-border/40">
+                  {filePreview ? (
+                    <img
+                      src={filePreview}
+                      alt="Preview"
+                      className="w-14 h-14 object-cover rounded-xl border border-border/50 shrink-0"
+                    />
+                  ) : (
+                    <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center text-muted-foreground shrink-0">
+                      <Paperclip size={22} />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground truncate">{file?.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {file?.size ? `${(file.size / 1024).toFixed(1)} KB` : ''}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRemoveFile}
+                    className="h-8 w-8 rounded-full bg-background border border-border/60 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+                    aria-label="Batalkan berkas"
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Tombol Kirim Laporan */}
+            <button
+              type="button"
+              disabled={isSubmitting || !subject.trim() || !description.trim()}
+              onClick={handleSubmitReport}
+              className="w-full bg-foreground text-background font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 active:scale-[0.99] transition-all disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+              data-testid="report-submit"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>{file ? 'Mengirim berkas...' : 'Mengirim...'}</span>
+                </>
+              ) : (
+                <span>Kirim Laporan</span>
+              )}
+            </button>
           </div>
 
           <div>
-            <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase mb-2 px-1">{t('your_reports')}</p>
+            <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase mb-2 px-1">
+              Riwayat Laporan Anda
+            </p>
             <div className="space-y-2">
               {(reports || []).length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10 text-center">
-                  <div className="h-12 w-12 rounded-2xl bg-zinc-100 dark:bg-white/[0.06] flex items-center justify-center mb-3"><MessageSquareDot size={22} className="text-muted-foreground" strokeWidth={1.5} /></div>
+                  <div className="h-12 w-12 rounded-2xl bg-zinc-100 dark:bg-white/[0.06] flex items-center justify-center mb-3">
+                    <MessageSquareDot size={22} className="text-muted-foreground" strokeWidth={1.5} />
+                  </div>
                   <p className="font-semibold">{t('report_none')}</p>
                   <p className="text-sm text-muted-foreground mt-1">{t('report_none_sub')}</p>
                 </div>
               ) : null}
               {(reports || []).map((r) => {
-                const Ic = catIcon[r?.category] || MessageSquare
+                const Ic = typeIcons[r?.type] || MessageSquare
                 return (
-                  <div key={r?.id} className="flex items-start gap-3 rounded-2xl bg-zinc-100 border border-zinc-200/60 dark:bg-[#141416] dark:border-white/5 px-4 py-3.5" data-testid="report-row">
-                    <div className="h-9 w-9 rounded-xl bg-background flex items-center justify-center text-foreground shrink-0"><Ic size={16} strokeWidth={1.75} /></div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-[14px]">{catLabel[r?.category] || r?.category}</p>
-                        <span className="rounded-full border border-border/70 text-muted-foreground px-2 py-0.5 text-[10px] font-semibold">{t('report_status_open')}</span>
+                  <div key={r?.id} className="rounded-2xl bg-zinc-100/80 border border-zinc-200/60 dark:bg-[#141416] dark:border-white/5 p-3.5 space-y-2" data-testid="report-row">
+                    <div className="flex items-start gap-3">
+                      <div className="h-9 w-9 rounded-xl bg-background flex items-center justify-center text-foreground shrink-0 mt-0.5">
+                        <Ic size={16} strokeWidth={1.75} />
                       </div>
-                      <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">{r?.message}</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-bold text-[14px] truncate text-foreground">{r?.subject || r?.message}</p>
+                          <span className="rounded-full border border-border/70 bg-background/50 text-muted-foreground px-2 py-0.5 text-[10px] font-semibold shrink-0">
+                            {r?.status === 'resolved' ? 'Selesai' : 'Dalam Proses'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground font-medium mt-0.5">
+                          {typeLabels[r?.type] || r?.type || 'Laporan'}
+                          {r?.created_at ? ` · ${new Date(r.created_at).toLocaleDateString()}` : ''}
+                        </p>
+                        {r?.description ? (
+                          <p className="text-xs text-foreground/80 mt-1 line-clamp-2">{r.description}</p>
+                        ) : null}
+                      </div>
                     </div>
+
+                    {r?.attachment_url ? (
+                      <div className="pt-1 pl-12">
+                        <a
+                          href={r.attachment_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-muted/60 hover:bg-muted text-[11px] font-semibold text-foreground border border-border/40 transition-colors"
+                        >
+                          <Paperclip size={12} />
+                          <span>Lihat Lampiran Bukti</span>
+                          <ExternalLink size={11} className="text-muted-foreground" />
+                        </a>
+                      </div>
+                    ) : null}
                   </div>
                 )
               })}
