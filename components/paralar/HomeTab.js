@@ -271,11 +271,12 @@ export default function HomeTab() {
           <EmptyState icon={Receipt} title={t('no_transactions')} subtitle={t('no_transactions_sub')} />
         </Card>
       ) : (
-        <div className="space-y-2 mb-4 touch-pan-y">
+        <div className="rounded-2xl border border-border/40 bg-card overflow-hidden divide-y divide-border/30 mb-4 touch-pan-y shadow-xs">
           {recent.map((tx) => (
             <SwipeTransactionRow
               key={tx.id}
               transaction={tx}
+              isGrouped
               isOpen={openRowId === tx.id}
               onOpenChange={(v) => setOpenRowId(v ? tx.id : null)}
               onOpenDetail={() => open('txDetail', tx)}

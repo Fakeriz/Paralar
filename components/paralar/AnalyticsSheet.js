@@ -1,6 +1,6 @@
 'use client'
-import { useMemo, useState } from 'react'
-import { Share2, ChevronLeft, ChevronRight, PieChart as PieIcon } from 'lucide-react'
+import { useMemo, useState, useEffect } from 'react'
+import { Share2, ChevronLeft, ChevronRight, PieChart as PieIcon, Download } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
 import { Sheet, CategoryBadge } from './ui'
@@ -8,11 +8,39 @@ import { convert } from '@/lib/rates'
 import { cn } from '@/lib/utils'
 
 export default function AnalyticsSheet({ open, onClose }) {
-  const { t, home, fmt, transactions = [], accounts = [], rates } = useApp()
+  const { t, home, fmt, transactions = [], accounts = [], rates, store } = useApp()
 
   const [period, setPeriod] = useState('Month') // 'Week' | 'Month' | 'Quarter' | 'Year'
   const [cursorDate, setCursorDate] = useState(() => new Date())
   const [selectedAcc, setSelectedAcc] = useState('all')
+  const [subscriptions, setSubscriptions] = useState([])
+  const [debts, setDebts] = useState([])
+
+  useEffect(() => {
+    if (open) {
+      if (store?.listSubscriptions) store.listSubscriptions().then((res) => setSubscriptions(res || [])).catch(() => {})
+      if (store?.listDebts) store.listDebts().then((res) => setDebts(res || [])).catch(() => {})
+    }
+  }, [open, store])
+
+  const fixedMonthlyCosts = useMemo(() => {
+    const subTotal = (subscriptions || []).reduce((sum, s) => {
+      const rawAmt = Number(s?.amount) || 0
+      let m = rawAmt
+      if (s.cycle === 'weekly') m = rawAmt * (52 / 12)
+      else if (s.cycle === '3_months') m = rawAmt / 3
+      else if (s.cycle === '6_months') m = rawAmt / 6
+      else if (s.cycle === 'yearly') m = rawAmt / 12
+      return sum + convert(m, s?.currency || home, home, rates)
+    }, 0)
+
+    const debtTotal = (debts || []).reduce((sum, d) => {
+      const amt = Number(d?.installment_amount || d?.monthly_payment || d?.amount) || 0
+      return sum + convert(amt, d?.currency || home, home, rates)
+    }, 0)
+
+    return { subTotal, debtTotal, total: subTotal + debtTotal }
+  }, [subscriptions, debts, home, rates])
 
   // Date range based on selected period and cursorDate
   const range = useMemo(() => {
@@ -183,6 +211,31 @@ export default function AnalyticsSheet({ open, onClose }) {
     }
   }
 
+  const handleExportCsv = () => {
+    if (!filteredTxs || filteredTxs.length === 0) {
+      toast.info('Tidak ada transaksi pada periode ini untuk diekspor')
+      return
+    }
+    const headers = ['Date', 'Type', 'Category', 'Amount', 'Currency', 'Note/Merchant']
+    const rows = filteredTxs.map((tx) => [
+      tx.date || tx.transaction_date || '',
+      tx.type || 'expense',
+      tx.category || '',
+      tx.amount || 0,
+      tx.currency || home,
+      `"${(tx.merchant || tx.note || '').replace(/"/g, '""')}"`
+    ])
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n')
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement('a')
+    link.setAttribute('href', encodedUri)
+    link.setAttribute('download', `paralar_report_${period.toLowerCase()}_${periodLabel.replace(/\s+/g, '_')}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    toast.success('Laporan CSV berhasil diunduh')
+  }
+
   return (
     <Sheet
       open={open}
@@ -212,11 +265,20 @@ export default function AnalyticsSheet({ open, onClose }) {
             </span>
             <button
               type="button"
+              onClick={handleExportCsv}
+              className="h-8 w-8 rounded-full bg-muted/60 border border-border/50 flex items-center justify-center text-foreground hover:bg-muted active:scale-95 transition-all cursor-pointer"
+              title="Ekspor CSV"
+              aria-label="Ekspor CSV"
+            >
+              <Download size={14} />
+            </button>
+            <button
+              type="button"
               onClick={handleShare}
               className="h-8 w-8 rounded-full bg-muted/60 border border-border/50 flex items-center justify-center text-foreground hover:bg-muted active:scale-95 transition-all cursor-pointer"
               aria-label="Bagikan laporan"
             >
-              <Share2 size={15} />
+              <Share2 size={14} />
             </button>
           </div>
         </div>
@@ -352,22 +414,40 @@ export default function AnalyticsSheet({ open, onClose }) {
           </div>
         </div>
 
-        {/* Section SPENDING PACE */}
+        {/* Section SPENDING PACE & FIXED COMMITMENTS */}
         <div className="mb-5">
           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 px-1">
-            SPENDING PACE
+            SPENDING PACE &amp; FIXED COMMITMENTS
           </p>
-          <div className="rounded-3xl bg-muted/30 border border-border/40 p-5 space-y-1">
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-              SPENT SO FAR
-            </p>
-            <p className="text-2xl font-extrabold text-foreground tabular-nums">
-              {fmt(periodExpense, home)}
-            </p>
-            <div className="pt-2 flex items-center justify-between text-xs text-muted-foreground font-medium">
-              <span>Rata-rata: {fmt(avgPerDay, home)} / hari</span>
-              <span>{entryCount} transaksi</span>
+          <div className="rounded-3xl bg-muted/30 border border-border/40 p-5 space-y-3">
+            <div>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                SPENT SO FAR
+              </p>
+              <p className="text-2xl font-extrabold text-foreground tabular-nums mt-0.5">
+                {fmt(periodExpense, home)}
+              </p>
+              <div className="pt-2 flex items-center justify-between text-xs text-muted-foreground font-medium">
+                <span>Rata-rata: {fmt(avgPerDay, home)} / hari</span>
+                <span>{entryCount} transaksi</span>
+              </div>
             </div>
+
+            {/* Fixed Obligations from Goals (Subscriptions & Loans/BNPL) */}
+            {fixedMonthlyCosts.total > 0 && (
+              <div className="pt-3 border-t border-border/30 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-foreground">Fixed Monthly Obligations</span>
+                  <span className="text-xs font-bold tabular-nums text-foreground">
+                    ~{fmt(fixedMonthlyCosts.total, home)}/mo
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                  <span>Subscriptions: {fmt(fixedMonthlyCosts.subTotal, home)}/mo</span>
+                  <span>Loans &amp; BNPL: {fmt(fixedMonthlyCosts.debtTotal, home)}/mo</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

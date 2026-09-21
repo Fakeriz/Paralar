@@ -159,11 +159,12 @@ function TransactionsContent() {
                 <span>{labelFor(k)}</span>
                 <span className="tabular-nums">{net < 0 ? '-' : '+'}{safeFmt(Math.abs(net), home)}</span>
               </div>
-              <div className="space-y-2 mb-4 touch-pan-y">
+              <div className="rounded-2xl border border-border/40 bg-card overflow-hidden divide-y divide-border/30 mb-4 touch-pan-y shadow-xs">
                 {(dayList || []).map((tx) => (
                   <SwipeTransactionRow
                     key={tx?.id || Math.random()}
                     transaction={tx}
+                    isGrouped
                     isOpen={openRowId === tx?.id}
                     onOpenChange={(v) => setOpenRowId(v ? tx?.id : null)}
                     onOpenDetail={() => open?.('txDetail', tx)}

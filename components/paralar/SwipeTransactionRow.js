@@ -38,6 +38,7 @@ export default function SwipeTransactionRow({
   onEdit,
   onDelete,
   showDate = false,
+  isGrouped = false,
 }) {
   const tx = transaction || propTx
   const { t, fmt, accounts, home, lang, convertToHome } = useApp()
@@ -121,7 +122,13 @@ export default function SwipeTransactionRow({
   ].filter(Boolean).join(' · ')
 
   return (
-    <div className="relative overflow-hidden rounded-2xl select-none my-1.5 touch-pan-y" data-testid="tx-swipe-row">
+    <div
+      className={cn(
+        'relative overflow-hidden select-none touch-pan-y',
+        isGrouped ? 'my-0' : 'rounded-2xl my-1.5'
+      )}
+      data-testid="tx-swipe-row"
+    >
       {/* Lapisan Belakang (Background Actions - Z-0) */}
       <div className="absolute inset-y-0 right-0 flex items-center justify-end pr-3 gap-2 w-full z-0 pointer-events-auto">
         <button
@@ -130,7 +137,7 @@ export default function SwipeTransactionRow({
             closeSwipe()
             onEdit?.(tx)
           }}
-          className="w-9 h-9 rounded-xl bg-zinc-200 dark:bg-zinc-800 text-foreground flex items-center justify-center active:scale-90 transition-transform shadow-xs cursor-pointer"
+          className="w-9 h-9 rounded-xl bg-muted/70 text-foreground flex items-center justify-center active:scale-90 transition-transform shadow-xs cursor-pointer"
           aria-label="edit transaction"
           data-testid="tx-swipe-edit"
         >
@@ -159,7 +166,12 @@ export default function SwipeTransactionRow({
         onDragEnd={handleDragEnd}
         animate={controls}
         onClick={handleCardClick}
-        className="relative z-10 bg-card bg-white dark:bg-[#18181b] border border-border/40 rounded-2xl p-3.5 flex items-center justify-between w-full shadow-xs cursor-pointer"
+        className={cn(
+          'relative z-10 bg-card p-3.5 flex items-center justify-between w-full cursor-pointer transition-colors',
+          isGrouped
+            ? 'rounded-none border-0'
+            : 'border border-border/40 rounded-2xl shadow-xs'
+        )}
       >
         {/* Sisi Kiri: Ikon squircle kategori rounded-2xl + Nama transaksi tebal + Subteks "Kategori · Akun · Waktu" */}
         <div className="flex items-center gap-3 min-w-0 flex-1">

@@ -341,7 +341,7 @@ export default function BillsTrackerSheet({ open, onClose }) {
           <button
             type="button"
             onClick={openAdd}
-            className="w-9 h-9 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center hover:bg-emerald-500/20 active:scale-90 transition-all cursor-pointer"
+            className="w-9 h-9 rounded-full bg-foreground text-background flex items-center justify-center hover:opacity-90 active:scale-95 transition-all cursor-pointer shadow-xs"
             aria-label={t('add_bill') || 'Add Bill'}
             title={t('add_bill') || 'Add Bill'}
             data-testid="bills-add"
@@ -386,7 +386,10 @@ export default function BillsTrackerSheet({ open, onClose }) {
             {t('remaining_this_month')}
           </p>
           <p
-            className="text-2xl sm:text-3xl font-extrabold tabular-nums mt-0.5 text-white tracking-tight"
+            className={cn(
+              "text-2xl sm:text-3xl tabular-nums mt-0.5 tracking-tight",
+              summary.remaining === 0 ? "text-emerald-500 font-extrabold" : "text-white font-extrabold"
+            )}
             data-testid="bills-remaining"
           >
             {fmt(summary.remaining, home)}
