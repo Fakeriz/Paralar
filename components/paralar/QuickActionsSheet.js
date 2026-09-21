@@ -16,15 +16,15 @@ export default function QuickActionsSheet({ open, onClose }) {
     <Sheet open={open} onClose={onClose} title={t('quick_actions')}>
       <div className="grid grid-cols-2 gap-3 pt-2">
         {tiles.map((tile) => (
-          <button key={tile.id} type="button" onClick={tile.onClick} className="rounded-2xl bg-card border border-border/40 dark:border-white/5 p-5 flex flex-col items-start gap-3 active:scale-[0.98] transition text-left" data-testid={`qa-${tile.id}`}>
-            <div className="h-11 w-11 rounded-xl bg-foreground text-background flex items-center justify-center"><tile.icon size={20} /></div>
-            <span className="font-semibold">{tile.label}</span>
+          <button key={tile.id} type="button" onClick={tile.onClick} className="rounded-2xl bg-white dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 p-5 flex flex-col items-start gap-3 active:scale-[0.98] transition text-left" data-testid={`qa-${tile.id}`}>
+            <div className="h-11 w-11 rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 flex items-center justify-center"><tile.icon size={20} /></div>
+            <span className="font-bold text-sm text-zinc-950 dark:text-white">{tile.label}</span>
           </button>
         ))}
       </div>
-      <button type="button" onClick={() => go(() => openSheet('newAccount'))} className="w-full mt-3 rounded-2xl bg-card border border-border/40 dark:border-white/5 p-4 flex items-center gap-3 active:scale-[0.98] transition" data-testid="qa-account">
-        <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center"><CreditCard size={18} /></div>
-        <span className="font-semibold">{t('new_account')}</span>
+      <button type="button" onClick={() => go(() => openSheet('newAccount'))} className="w-full mt-3 rounded-2xl bg-white dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 p-4 flex items-center gap-3 active:scale-[0.98] transition" data-testid="qa-account">
+        <div className="h-10 w-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white flex items-center justify-center"><CreditCard size={18} /></div>
+        <span className="font-bold text-zinc-950 dark:text-white text-sm">{t('new_account')}</span>
       </button>
       <div className="h-4" />
     </Sheet>

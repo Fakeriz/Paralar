@@ -155,27 +155,27 @@ export default function AddTransactionSheet({ open, onClose, initial }) {
         {/* Amount */}
         <div className="mt-6 text-center">
           <div className="flex items-center justify-center gap-2">
-            <button type="button" onClick={() => setPickCurrency(true)} className="rounded-xl bg-card border border-border/60 px-3 py-1.5 text-sm font-bold flex items-center gap-1.5" data-testid="currency-pill">
-              <span>{cur.flag}</span> {currency} <ChevronRight size={14} className="text-muted-foreground" />
+            <button type="button" onClick={() => setPickCurrency(true)} className="rounded-xl bg-white dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 px-3 py-1.5 text-sm font-bold text-zinc-950 dark:text-white flex items-center gap-1.5 shadow-sm" data-testid="currency-pill">
+              <span>{cur.flag}</span> {currency} <ChevronRight size={14} className="text-zinc-400 dark:text-zinc-500" />
             </button>
-            <button type="button" onClick={() => setShowCalc(!showCalc)} className={cn('h-9 w-9 rounded-xl border border-border/60 flex items-center justify-center', showCalc ? 'bg-foreground text-background' : 'bg-card')} aria-label="calculator" data-testid="calc-toggle">
+            <button type="button" onClick={() => setShowCalc(!showCalc)} className={cn('h-9 w-9 rounded-xl border flex items-center justify-center transition-colors', showCalc ? 'bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 border-transparent' : 'bg-white dark:bg-[#1c1c1e] text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-white/10')} aria-label="calculator" data-testid="calc-toggle">
               <Calculator size={16} />
             </button>
           </div>
           <div className="mt-3 flex items-baseline justify-center gap-2">
-            <span className="text-2xl font-semibold text-muted-foreground">{cur.symbol}</span>
+            <span className="text-2xl font-bold text-zinc-600 dark:text-zinc-400">{cur.symbol}</span>
             <input
               value={amount}
               onChange={(e) => setAmount(e.target.value.replace(/[^0-9.,+\-*/×÷−]/g, ''))}
               inputMode="decimal"
               placeholder="0"
-              className="bg-transparent text-5xl font-bold tabular-nums tracking-tight text-center outline-none w-full max-w-[260px] placeholder:text-muted-foreground/40"
+              className="bg-transparent text-5xl font-bold tabular-nums tracking-tight text-center outline-none w-full max-w-[260px] text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-600"
               data-testid="amount-input"
             />
           </div>
-          {/[+\-*/×÷−]/.test(amount.slice(1)) ? <p className="text-sm text-muted-foreground mt-1">= {fmt(num, currency)}</p> : null}
+          {/[+\-*/×÷−]/.test(amount.slice(1)) ? <p className="text-sm font-semibold text-zinc-600 dark:text-zinc-400 mt-1">= {fmt(num, currency)}</p> : null}
           {isForeign && num > 0 ? (
-            <div className="inline-flex mt-3 rounded-xl bg-muted px-3 py-2 text-xs font-semibold text-muted-foreground" data-testid="conversion-badge">
+            <div className="inline-flex mt-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 px-3 py-2 text-xs font-semibold text-zinc-600 dark:text-zinc-400" data-testid="conversion-badge">
               ≈ {fmt(converted, home)} {home} <span className="mx-1.5 opacity-40">|</span> {t('rate')}: 1 {currency} = {formatRate(rate)} {home}
             </div>
           ) : null}
@@ -184,11 +184,11 @@ export default function AddTransactionSheet({ open, onClose, initial }) {
         {showCalc ? (
           <div className="grid grid-cols-4 gap-2 mt-4">
             {KEYS.map((k) => (
-              <button key={k} type="button" onClick={() => pressKey(k)} className={cn('h-12 rounded-xl font-bold text-lg active:scale-95 transition', /[÷×−+]/.test(k) ? 'bg-foreground text-background' : 'bg-card border border-border/60')}>
+              <button key={k} type="button" onClick={() => pressKey(k)} className={cn('h-12 rounded-xl font-bold text-lg active:scale-95 transition', /[÷×−+]/.test(k) ? 'bg-zinc-950 text-white dark:bg-white dark:text-zinc-950' : 'bg-white dark:bg-[#1c1c1e] text-zinc-950 dark:text-white border border-zinc-200 dark:border-white/10')}>
                 {k === '⌫' ? <Delete size={18} className="mx-auto" /> : k}
               </button>
             ))}
-            <button type="button" onClick={() => pressKey('=')} className="col-span-4 h-11 rounded-xl bg-muted font-bold">=</button>
+            <button type="button" onClick={() => pressKey('=')} className="col-span-4 h-11 rounded-xl bg-zinc-200 dark:bg-zinc-800 text-zinc-950 dark:text-white font-bold">=</button>
           </div>
         ) : null}
 
@@ -198,10 +198,10 @@ export default function AddTransactionSheet({ open, onClose, initial }) {
             <Card onClick={() => setPickCategory(true)} className="flex items-center gap-3 p-3" data-testid="category-card">
               <CategoryBadge id={category} />
               <div className="flex-1">
-                <p className="label-upper">{t('category')}</p>
-                <p className="font-semibold">{t(`cat_${category}`)}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-600 dark:text-zinc-400">{t('category')}</p>
+                <p className="font-bold text-zinc-950 dark:text-white">{t(`cat_${category}`)}</p>
               </div>
-              <ChevronRight size={18} className="text-muted-foreground" />
+              <ChevronRight size={18} className="text-zinc-400 dark:text-zinc-500" />
             </Card>
 
             <Field label={t('payment_method')}>
@@ -230,22 +230,22 @@ export default function AddTransactionSheet({ open, onClose, initial }) {
                 {receipt?.dataUrl ? (
                   <img src={receipt.dataUrl} alt="receipt" className="h-12 w-12 rounded-xl object-cover" />
                 ) : (
-                  <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center">{receipt?.isPdf ? <FileText size={20} /> : <Camera size={20} />}</div>
+                  <div className="h-12 w-12 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center justify-center">{receipt?.isPdf ? <FileText size={20} /> : <Camera size={20} />}</div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold truncate">{receipt ? receipt.name : t('add_receipt')}</p>
-                  <p className="text-xs text-muted-foreground">{t('photo_or_pdf')}</p>
+                  <p className="font-bold text-zinc-950 dark:text-white truncate">{receipt ? receipt.name : t('add_receipt')}</p>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-400 font-medium">{t('photo_or_pdf')}</p>
                 </div>
-                {receipt ? <button type="button" onClick={(e) => { e.stopPropagation(); setReceipt(null) }} className="p-2"><X size={16} /></button> : <ChevronRight size={18} className="text-muted-foreground" />}
+                {receipt ? <button type="button" onClick={(e) => { e.stopPropagation(); setReceipt(null) }} className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white"><X size={16} /></button> : <ChevronRight size={18} className="text-zinc-400 dark:text-zinc-500" />}
               </Card>
-              {items?.length ? <p className="text-xs text-muted-foreground px-1">{items.length} {t('items').toLowerCase()} · {receiptNumber ? `${t('receipt_no')} ${receiptNumber}` : ''}</p> : null}
+              {items?.length ? <p className="text-xs text-zinc-600 dark:text-zinc-400 px-1 font-medium">{items.length} {t('items').toLowerCase()} · {receiptNumber ? `${t('receipt_no')} ${receiptNumber}` : ''}</p> : null}
             </Field>
 
             {type === 'expense' ? (
               <Card className="flex items-center gap-3 p-4">
                 <div className="flex-1">
-                  <p className="font-semibold">{t('tax_deductible')}</p>
-                  <p className="text-xs text-muted-foreground">{t('tax_deductible_sub')}</p>
+                  <p className="font-bold text-zinc-950 dark:text-white">{t('tax_deductible')}</p>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-400">{t('tax_deductible_sub')}</p>
                 </div>
                 <Switch checked={tax} onCheckedChange={setTax} data-testid="tax-switch" />
               </Card>
@@ -260,7 +260,7 @@ export default function AddTransactionSheet({ open, onClose, initial }) {
               </div>
             </Field>
             {!showFee ? (
-              <button type="button" onClick={() => setShowFee(true)} className="text-sm font-semibold">{t('add_charges')}</button>
+              <button type="button" onClick={() => setShowFee(true)} className="text-sm font-bold text-zinc-950 dark:text-white">{t('add_charges')}</button>
             ) : (
               <Field label={`${t('charges')} (${currency})`}>
                 <TextInput type="number" inputMode="decimal" value={fee} onChange={(e) => setFee(e.target.value)} placeholder="0" />
@@ -272,7 +272,7 @@ export default function AddTransactionSheet({ open, onClose, initial }) {
             <Field label={t('notes')}>
               <TextInput value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('note_placeholder')} />
             </Field>
-            {accounts.length < 2 ? <p className="text-xs text-muted-foreground">{t('select_accounts')}</p> : null}
+            {accounts.length < 2 ? <p className="text-xs text-zinc-600 dark:text-zinc-400 font-medium">{t('select_accounts')}</p> : null}
           </div>
         )}
         <div className="h-6" />
@@ -284,10 +284,10 @@ export default function AddTransactionSheet({ open, onClose, initial }) {
         <div className="grid grid-cols-4 gap-3 pt-2 pb-4">
           {CATEGORIES.filter((c) => c.types.includes(type)).map((c) => (
             <button key={c.id} type="button" onClick={() => { setCategory(c.id); setPickCategory(false) }} className="flex flex-col items-center gap-2" data-testid={`cat-${c.id}`}>
-              <div className={cn('h-14 w-14 rounded-2xl flex items-center justify-center border', category === c.id ? 'bg-foreground text-background border-foreground' : 'bg-card border-border/50')}>
+              <div className={cn('h-14 w-14 rounded-2xl flex items-center justify-center border transition-all', category === c.id ? 'bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 border-zinc-950 dark:border-white shadow-md' : 'bg-white dark:bg-[#1c1c1e] text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-white/10')}>
                 <CategoryIcon id={c.id} size={22} />
               </div>
-              <span className="text-[11px] font-medium text-center leading-tight">{t(`cat_${c.id}`)}</span>
+              <span className="text-[11px] font-semibold text-center leading-tight text-zinc-950 dark:text-white">{t(`cat_${c.id}`)}</span>
             </button>
           ))}
         </div>

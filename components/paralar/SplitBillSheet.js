@@ -65,46 +65,46 @@ export default function SplitBillSheet({ open, onClose }) {
           <Field label={`${t('total')} (${getCurrency(home).code})`}><TextInput type="number" inputMode="decimal" value={total} onChange={(e) => setTotal(e.target.value)} placeholder="0" className="text-lg font-bold" data-testid="split-total" /></Field>
         ) : (
           <div>
-            <div className="flex items-center justify-between mb-1"><p className="label-upper">{t('items')}</p><span className="text-sm font-bold tabular-nums">{fmt(totalNum, home)}</span></div>
-            <Card className="overflow-hidden">
+            <div className="flex items-center justify-between mb-1"><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-600 dark:text-zinc-400">{t('items')}</p><span className="text-sm font-bold tabular-nums text-zinc-950 dark:text-white">{fmt(totalNum, home)}</span></div>
+            <Card className="overflow-hidden bg-white dark:bg-[#1c1c1e] border-zinc-200 dark:border-white/10">
               {items.map((it, i) => {
                 const a = assign[i] || []; const mine = a.includes(activePerson)
                 return (
-                  <div key={i} className="flex items-center gap-2 px-3 py-2 border-b border-border/30 last:border-0">
-                    <button type="button" onClick={() => toggleAssign(i)} className={cn('h-5 w-5 rounded-md border flex items-center justify-center shrink-0', mine ? 'bg-foreground border-foreground text-background' : 'border-border')}>{mine ? <Check size={12} strokeWidth={3} /> : null}</button>
-                    <input value={it.name} onChange={(e) => setItem(i, { name: e.target.value })} placeholder={t('item_name')} className="flex-1 bg-transparent outline-none text-sm min-w-0" />
-                    <input type="number" inputMode="decimal" value={it.price} onChange={(e) => setItem(i, { price: Number(e.target.value) || 0 })} className="w-20 bg-muted rounded-lg px-2 py-1 text-right text-sm outline-none tabular-nums" placeholder="0" />
-                    <button type="button" onClick={() => delItem(i)} className="p-1 text-muted-foreground"><X size={14} /></button>
+                  <div key={i} className="flex items-center gap-2 px-3 py-2 border-b border-zinc-200/60 dark:border-white/5 last:border-0">
+                    <button type="button" onClick={() => toggleAssign(i)} className={cn('h-5 w-5 rounded-md border flex items-center justify-center shrink-0 transition-colors', mine ? 'bg-zinc-950 border-zinc-950 text-white dark:bg-white dark:border-white dark:text-zinc-950' : 'border-zinc-300 dark:border-zinc-700')}>{mine ? <Check size={12} strokeWidth={3} /> : null}</button>
+                    <input value={it.name} onChange={(e) => setItem(i, { name: e.target.value })} placeholder={t('item_name')} className="flex-1 bg-transparent outline-none text-sm min-w-0 text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 font-medium" />
+                    <input type="number" inputMode="decimal" value={it.price} onChange={(e) => setItem(i, { price: Number(e.target.value) || 0 })} className="w-20 bg-zinc-100 dark:bg-zinc-800 rounded-lg px-2 py-1 text-right text-sm outline-none tabular-nums font-bold text-zinc-950 dark:text-white border border-zinc-200 dark:border-white/5" placeholder="0" />
+                    <button type="button" onClick={() => delItem(i)} className="p-1 text-zinc-400 hover:text-rose-500 dark:text-zinc-500 dark:hover:text-rose-400 transition-colors"><X size={14} /></button>
                   </div>
                 )
               })}
-              <button type="button" onClick={addItem} className="w-full px-3 py-2.5 text-sm font-semibold flex items-center gap-1.5 text-muted-foreground"><Plus size={14} /> {t('add_item')}</button>
+              <button type="button" onClick={addItem} className="w-full px-3 py-2.5 text-sm font-bold flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white transition-colors"><Plus size={14} /> {t('add_item')}</button>
             </Card>
-            {perPerson.unassigned > 0 ? <p className="text-xs text-muted-foreground mt-1">{t('unassigned_items')}: {fmt(perPerson.unassigned, home)}</p> : null}
+            {perPerson.unassigned > 0 ? <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">{t('unassigned_items')}: {fmt(perPerson.unassigned, home)}</p> : null}
           </div>
         )}
 
-        {mode === 'equally' && named.length ? <p className="text-center text-sm text-muted-foreground">{fmt(equalShare, home)} / {t('person')} × {named.length}</p> : null}
+        {mode === 'equally' && named.length ? <p className="text-center text-sm font-semibold text-zinc-700 dark:text-zinc-300">{fmt(equalShare, home)} / {t('person')} × {named.length}</p> : null}
 
         <div>
-          <p className="label-upper mb-2">{t('participants')}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-600 dark:text-zinc-400 mb-2">{t('participants')}</p>
           <div className="space-y-2">
             {people.map((p) => (
-              <Card key={p.id} className={cn('flex items-center gap-2 p-2.5', mode === 'items' && activePerson === p.id && 'ring-2 ring-foreground/30')} onClick={mode === 'items' ? () => setActivePerson(p.id) : undefined}>
-                <div className="h-9 w-9 rounded-full bg-foreground text-background flex items-center justify-center text-sm font-bold shrink-0">{(p.name.trim()[0] || '?').toUpperCase()}</div>
-                <input value={p.name} onChange={(e) => setPerson(p.id, { name: e.target.value })} placeholder="Name" className="flex-1 bg-transparent outline-none text-sm font-medium min-w-0" onClick={(e) => e.stopPropagation()} />
+              <div key={p.id} className={cn('flex items-center gap-2 p-2.5 bg-white dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 rounded-2xl transition-all', mode === 'items' && activePerson === p.id && 'ring-2 ring-zinc-950 dark:ring-white')} onClick={mode === 'items' ? () => setActivePerson(p.id) : undefined}>
+                <div className="h-9 w-9 rounded-full bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 flex items-center justify-center text-sm font-bold shrink-0">{(p.name.trim()[0] || '?').toUpperCase()}</div>
+                <input value={p.name} onChange={(e) => setPerson(p.id, { name: e.target.value })} placeholder="Name" className="flex-1 bg-transparent outline-none text-sm font-bold min-w-0 text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500" onClick={(e) => e.stopPropagation()} />
                 {mode === 'uneven' ? (
-                  <input type="number" inputMode="decimal" value={p.amount || ''} onChange={(e) => setPerson(p.id, { amount: e.target.value })} placeholder="0" className="w-20 bg-muted rounded-lg px-2 py-1.5 text-sm text-right outline-none" onClick={(e) => e.stopPropagation()} />
+                  <input type="number" inputMode="decimal" value={p.amount || ''} onChange={(e) => setPerson(p.id, { amount: e.target.value })} placeholder="0" className="w-20 bg-zinc-100 dark:bg-zinc-800 rounded-lg px-2 py-1.5 text-sm font-bold text-right outline-none text-zinc-950 dark:text-white border border-zinc-200 dark:border-white/5" onClick={(e) => e.stopPropagation()} />
                 ) : (
-                  <span className="text-sm font-semibold tabular-nums text-muted-foreground pr-1">{fmt(perPerson.totals[p.id] || 0, home)}</span>
+                  <span className="text-sm font-bold tabular-nums text-zinc-950 dark:text-white pr-1">{fmt(perPerson.totals[p.id] || 0, home)}</span>
                 )}
-                {p.id !== 'me' ? <button type="button" onClick={(e) => { e.stopPropagation(); removePerson(p.id) }} className="p-1.5 text-muted-foreground"><X size={15} /></button> : null}
-              </Card>
+                {p.id !== 'me' ? <button type="button" onClick={(e) => { e.stopPropagation(); removePerson(p.id) }} className="p-1.5 text-zinc-400 hover:text-rose-500 dark:text-zinc-500 dark:hover:text-rose-400 transition-colors"><X size={15} /></button> : null}
+              </div>
             ))}
           </div>
           <div className="flex gap-2 mt-2">
             <TextInput value={newPerson} onChange={(e) => setNewPerson(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addPerson()} placeholder={t('add_participant')} className="py-2" data-testid="split-add" />
-            <button type="button" onClick={addPerson} className="h-[42px] w-[42px] rounded-xl bg-foreground text-background flex items-center justify-center shrink-0"><UserPlus size={16} /></button>
+            <button type="button" onClick={addPerson} className="h-[42px] w-[42px] rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 flex items-center justify-center shrink-0"><UserPlus size={16} /></button>
           </div>
         </div>
 

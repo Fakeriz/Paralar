@@ -61,10 +61,10 @@ export default function ScanReceiptSheet({ open, onClose, onUse }) {
 
       {!preview ? (
         <div className="pt-4 pb-4">
-          <div className="rounded-2xl border-2 border-dashed border-border h-48 flex flex-col items-center justify-center text-muted-foreground gap-2">
+          <div className="rounded-2xl border-2 border-dashed border-zinc-300 dark:border-zinc-700 h-48 flex flex-col items-center justify-center text-zinc-500 dark:text-zinc-400 gap-2">
             <ScanLine size={36} />
-            <p className="text-sm font-medium">{t('upload_receipt')}</p>
-            <p className="text-[10px]">Gemini Vision OCR</p>
+            <p className="text-sm font-semibold text-zinc-950 dark:text-white">{t('upload_receipt')}</p>
+            <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">Gemini Vision OCR</p>
           </div>
           <div className="grid grid-cols-2 gap-3 mt-4">
             <PrimaryButton onClick={() => camRef.current?.click()}><Camera size={18} className="inline mr-2" />{t('take_photo')}</PrimaryButton>
@@ -73,12 +73,12 @@ export default function ScanReceiptSheet({ open, onClose, onUse }) {
         </div>
       ) : (
         <div className="pt-2 pb-6">
-          <div className="relative rounded-2xl overflow-hidden bg-muted">
+          <div className="relative rounded-2xl overflow-hidden bg-zinc-100 dark:bg-zinc-800">
             <img src={preview} alt="receipt" className="w-full max-h-64 object-contain" />
             {busy ? (
               <div className="absolute inset-0 bg-background/70 backdrop-blur-sm flex flex-col items-center justify-center gap-2">
-                <Loader2 className="animate-spin" size={28} />
-                <p className="text-sm font-semibold">{t('scanning')}</p>
+                <Loader2 className="animate-spin text-zinc-950 dark:text-white" size={28} />
+                <p className="text-sm font-bold text-zinc-950 dark:text-white">{t('scanning')}</p>
               </div>
             ) : null}
           </div>
@@ -87,21 +87,21 @@ export default function ScanReceiptSheet({ open, onClose, onUse }) {
             <div className="mt-5" data-testid="scan-result">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xl font-extrabold">{result.merchant || t('merchant')}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{result.receipt_number ? `${t('receipt_no')} ${result.receipt_number}` : ''} {result.date ? `· ${result.date}` : ''}</p>
+                  <p className="text-xl font-extrabold text-zinc-950 dark:text-white">{result.merchant || t('merchant')}</p>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-400 font-medium mt-0.5">{result.receipt_number ? `${t('receipt_no')} ${result.receipt_number}` : ''} {result.date ? `· ${result.date}` : ''}</p>
                 </div>
-                <span className="text-[10px] font-semibold uppercase rounded-md bg-foreground text-background px-2 py-1">{t(`cat_${result.category || 'other'}`)}</span>
+                <span className="text-[10px] font-bold uppercase rounded-md bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 px-2 py-1">{t(`cat_${result.category || 'other'}`)}</span>
               </div>
-              <p className="text-4xl font-bold mt-4 tabular-nums">{fmt(result.total, cur)}</p>
+              <p className="text-4xl font-extrabold mt-4 tabular-nums text-zinc-950 dark:text-white">{fmt(result.total, cur)}</p>
               <Card className="mt-4 overflow-hidden">
-                <div className="grid grid-cols-[1fr_auto] px-4 py-2 label-upper border-b border-border/40"><span>{t('item')}</span><span>{t('price')}</span></div>
+                <div className="grid grid-cols-[1fr_auto] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-600 dark:text-zinc-400 border-b border-zinc-200/60 dark:border-white/5"><span>{t('item')}</span><span>{t('price')}</span></div>
                 {(result.items || []).map((it, i) => (
-                  <div key={i} className="grid grid-cols-[1fr_auto] px-4 py-2.5 text-sm border-b border-border/30 last:border-0">
-                    <span className="truncate">{it.qty > 1 ? `${it.qty}× ` : ''}{it.name}</span>
-                    <span className="tabular-nums font-semibold">{fmt(it.price, cur)}</span>
+                  <div key={i} className="grid grid-cols-[1fr_auto] px-4 py-2.5 text-sm border-b border-zinc-200/40 dark:border-white/5 last:border-0 text-zinc-950 dark:text-white">
+                    <span className="truncate font-medium">{it.qty > 1 ? `${it.qty}× ` : ''}{it.name}</span>
+                    <span className="tabular-nums font-bold">{fmt(it.price, cur)}</span>
                   </div>
                 ))}
-                {!(result.items || []).length ? <p className="px-4 py-3 text-sm text-muted-foreground">—</p> : null}
+                {!(result.items || []).length ? <p className="px-4 py-3 text-sm text-zinc-400 dark:text-zinc-500">—</p> : null}
               </Card>
               <div className="mt-5 space-y-2">
                 <PrimaryButton onClick={useIt} data-testid="scan-use">{t('use_this')}</PrimaryButton>

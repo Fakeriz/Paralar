@@ -25,7 +25,7 @@ export default function CurrencySheet({ open, onClose, value, onSelect, zIndex =
     <Sheet open={open} onClose={onClose} title={title || t('select_currency')} full zIndex={zIndex} noPadding>
       <div className="px-5 pb-3 sticky top-0 bg-background z-10">
         <div className="relative">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500 dark:text-zinc-400" />
           <TextInput value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('search_currency')} className="pl-10" autoFocus data-testid="currency-search" />
         </div>
       </div>
@@ -37,14 +37,14 @@ export default function CurrencySheet({ open, onClose, value, onSelect, zIndex =
               key={c.code}
               type="button"
               onClick={() => { onSelect?.(c.code); onClose?.() }}
-              className={cn('w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left active:bg-muted transition', active && 'bg-muted/70')}
+              className={cn('w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left active:bg-zinc-100 dark:active:bg-zinc-800 transition', active && 'bg-zinc-100 dark:bg-zinc-800')}
               data-testid={`currency-${c.code}`}
             >
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-[15px]">{c.code} <span className="text-muted-foreground font-medium text-sm">· {c.name}</span></p>
+                <p className="font-bold text-[15px] text-zinc-950 dark:text-white">{c.code} <span className="text-zinc-600 dark:text-zinc-400 font-medium text-sm">· {c.name}</span></p>
               </div>
-              <span className="text-sm text-muted-foreground font-semibold w-10 text-right">{c.symbol}</span>
-              <span className="w-5">{active ? <Check size={18} strokeWidth={2.5} /> : null}</span>
+              <span className="text-sm text-zinc-600 dark:text-zinc-400 font-semibold w-10 text-right">{c.symbol}</span>
+              <span className="w-5 text-zinc-950 dark:text-white">{active ? <Check size={18} strokeWidth={2.5} /> : null}</span>
             </button>
           )
         })}

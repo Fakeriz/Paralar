@@ -16,11 +16,11 @@ import AppSettingsSheet from './AppSettingsSheet'
 
 function Row({ icon: Icon, label, onClick, right, testId }) {
   return (
-    <button type="button" onClick={onClick} className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-muted/60 transition" data-testid={testId}>
-      <div className="h-9 w-9 rounded-xl bg-muted flex items-center justify-center"><Icon size={17} /></div>
-      <span className="flex-1 font-medium text-[15px]">{label}</span>
-      {right ? <span className="text-sm text-muted-foreground">{right}</span> : null}
-      <ChevronRight size={16} className="text-muted-foreground" />
+    <button type="button" onClick={onClick} className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-zinc-100 dark:active:bg-zinc-800/60 transition" data-testid={testId}>
+      <div className="h-9 w-9 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white flex items-center justify-center"><Icon size={17} /></div>
+      <span className="flex-1 font-semibold text-[15px] text-zinc-950 dark:text-white">{label}</span>
+      {right ? <span className="text-sm text-zinc-600 dark:text-zinc-400 font-medium">{right}</span> : null}
+      <ChevronRight size={16} className="text-zinc-400 dark:text-zinc-500" />
     </button>
   )
 }
@@ -40,16 +40,16 @@ export default function MoreTab() {
   return (
     <div className="px-5 pb-28">
       <div className="flex items-center justify-between pt-6">
-        <h1 className="text-2xl font-extrabold tracking-tight">{t('more')}</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight text-zinc-950 dark:text-white">{t('more')}</h1>
         <div className="flex items-center gap-2">
           {mode === 'both' ? (
-            <div className="flex rounded-full bg-muted p-0.5" data-testid="more-ctx-switch">
+            <div className="flex rounded-full bg-zinc-100 dark:bg-zinc-800 p-0.5" data-testid="more-ctx-switch">
               {['personal', 'business'].map((c) => (
-                <button key={c} type="button" onClick={() => setBizCtx(c)} className={cn('px-3 py-1 rounded-full text-xs font-semibold transition', bizCtx === c ? 'bg-foreground text-background' : 'text-muted-foreground')}>{t(c)}</button>
+                <button key={c} type="button" onClick={() => setBizCtx(c)} className={cn('px-3 py-1 rounded-full text-xs font-semibold transition', bizCtx === c ? 'bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold' : 'text-zinc-600 dark:text-zinc-400')}>{t(c)}</button>
               ))}
             </div>
           ) : null}
-          <button type="button" onClick={() => setSettingsOpen(true)} aria-label="settings" className="h-9 w-9 rounded-full flex items-center justify-center hover:bg-muted/60 active:bg-muted transition" data-testid="more-settings"><Settings size={22} strokeWidth={1.75} /></button>
+          <button type="button" onClick={() => setSettingsOpen(true)} aria-label="settings" className="h-9 w-9 rounded-full flex items-center justify-center text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 active:bg-zinc-200 transition" data-testid="more-settings"><Settings size={22} strokeWidth={1.75} /></button>
         </div>
       </div>
 
@@ -57,11 +57,11 @@ export default function MoreTab() {
         <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/[0.05]" />
         <div className="flex items-center gap-2"><Crown size={18} /><p className="font-bold">{t('premium_title')}</p></div>
         <p className="text-sm text-white/60 mt-1">{t('current_plan')}: {isPremium ? t('premium') : t('free')}</p>
-        <span className="inline-block mt-3 rounded-xl bg-white text-black text-sm font-semibold px-4 py-2">{t('upgrade')}</span>
+        <span className="inline-block mt-3 rounded-xl bg-white text-zinc-950 text-sm font-bold px-4 py-2">{t('upgrade')}</span>
       </button>
 
       <SectionLabel className="mt-7 mb-2 px-1">{t('everyday')}</SectionLabel>
-      <Card className="divide-y divide-border/40 overflow-hidden">
+      <Card className="divide-y divide-zinc-200/60 dark:divide-white/5 overflow-hidden">
         <Row icon={CreditCard} label={t('accounts_cards')} onClick={() => open('accounts')} testId="more-accounts" />
         <Row icon={ReceiptText} label={t('bills_tracker')} onClick={() => open('bills')} testId="more-bills" />
         <Row icon={Bot} label={t('ai_coach')} onClick={() => open('coach')} testId="more-coach" />
@@ -72,7 +72,7 @@ export default function MoreTab() {
       </Card>
 
       <SectionLabel className="mt-7 mb-2 px-1">{t('advanced')}</SectionLabel>
-      <Card className="divide-y divide-border/40 overflow-hidden">
+      <Card className="divide-y divide-zinc-200/60 dark:divide-white/5 overflow-hidden">
         <Row icon={Zap} label={t('smart_automation')} onClick={() => open('automation')} testId="more-automation" />
         <Row icon={Repeat} label={t('recurring')} onClick={() => setRecurringOpen(true)} testId="more-recurring" />
         <Row icon={TrendingUp} label={t('net_worth')} onClick={() => setNetWorthOpen(true)} testId="more-networth" />
@@ -94,18 +94,18 @@ export default function MoreTab() {
       {/* Paywall */}
       <Sheet open={!!sheets?.paywall} onClose={() => close('paywall')}>
         <div className="pt-2 pb-2">
-          <div className="h-14 w-14 rounded-2xl bg-foreground text-background flex items-center justify-center mx-auto"><Crown size={26} /></div>
-          <h2 className="text-2xl font-extrabold text-center mt-4">{t('unlock_premium')}</h2>
-          <p className="text-center text-muted-foreground text-sm mt-1">{t('current_plan')}: {isPremium ? t('premium') : t('free')}</p>
+          <div className="h-14 w-14 rounded-2xl bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 flex items-center justify-center mx-auto"><Crown size={26} /></div>
+          <h2 className="text-2xl font-extrabold text-center mt-4 text-zinc-950 dark:text-white">{t('unlock_premium')}</h2>
+          <p className="text-center text-zinc-600 dark:text-zinc-400 text-sm mt-1">{t('current_plan')}: {isPremium ? t('premium') : t('free')}</p>
           <div className="mt-6 space-y-3">
             {[t('perk_wallets'), t('perk_ocr'), t('perk_invoicing'), t('perk_tax')].map((p) => (
-              <div key={p} className="flex items-center gap-3 rounded-xl bg-card border border-border/40 px-4 py-3">
-                <div className="h-6 w-6 rounded-full bg-foreground text-background flex items-center justify-center"><Check size={14} strokeWidth={3} /></div>
-                <span className="font-medium">{p}</span>
+              <div key={p} className="flex items-center gap-3 rounded-xl bg-white dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 px-4 py-3">
+                <div className="h-6 w-6 rounded-full bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 flex items-center justify-center"><Check size={14} strokeWidth={3} /></div>
+                <span className="font-semibold text-zinc-950 dark:text-white">{p}</span>
               </div>
             ))}
           </div>
-          <p className="text-center mt-6"><span className="text-3xl font-extrabold">{getCurrency(home).symbol} {home === 'IDR' ? '49.000' : home === 'MYR' ? '14.90' : home === 'TRY' ? '99' : '4.99'}</span><span className="text-muted-foreground text-sm"> {t('per_month')}</span></p>
+          <p className="text-center mt-6"><span className="text-3xl font-extrabold text-zinc-950 dark:text-white">{getCurrency(home).symbol} {home === 'IDR' ? '49.000' : home === 'MYR' ? '14.90' : home === 'TRY' ? '99' : '4.99'}</span><span className="text-zinc-600 dark:text-zinc-400 text-sm"> {t('per_month')}</span></p>
           <div className="mt-5 space-y-2">
             <PrimaryButton onClick={() => { toast(t('coming_soon')); close('paywall') }}>{t('upgrade_now')}</PrimaryButton>
             <SecondaryButton onClick={() => close('paywall')}>{t('maybe_later')}</SecondaryButton>
@@ -126,10 +126,10 @@ function LangRow({ l }) {
   const { lang, setLang, close } = useApp()
   const active = lang === l.code
   return (
-    <button type="button" onClick={() => { setLang(l.code); close('language') }} className="w-full flex items-center gap-3 rounded-xl bg-card border border-border/40 px-4 py-3.5" data-testid={`lang-${l.code}`}>
+    <button type="button" onClick={() => { setLang(l.code); close('language') }} className="w-full flex items-center gap-3 rounded-xl bg-white dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 px-4 py-3.5 text-zinc-950 dark:text-white" data-testid={`lang-${l.code}`}>
       <span className="text-2xl">{l.flag}</span>
-      <span className="flex-1 text-left font-medium">{l.name}</span>
-      {active ? <Check size={18} strokeWidth={2.5} /> : null}
+      <span className="flex-1 text-left font-semibold text-zinc-950 dark:text-white">{l.name}</span>
+      {active ? <Check size={18} strokeWidth={2.5} className="text-zinc-950 dark:text-white" /> : null}
     </button>
   )
 }

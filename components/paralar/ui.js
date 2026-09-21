@@ -24,7 +24,7 @@ export function CategoryIcon({ id, className, size = 18 }) {
 export function CategoryBadge({ id, className, size = 'md' }) {
   const dims = size === 'lg' ? 'h-14 w-14 rounded-2xl' : size === 'sm' ? 'h-9 w-9 rounded-xl' : 'h-11 w-11 rounded-2xl'
   return (
-    <div className={cn('flex items-center justify-center bg-foreground text-background shrink-0', dims, className)}>
+    <div className={cn('flex items-center justify-center bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shrink-0', dims, className)}>
       <CategoryIcon id={id} size={size === 'lg' ? 24 : size === 'sm' ? 16 : 18} />
     </div>
   )
@@ -34,7 +34,7 @@ export function LogoBadge({ logoId, className, size = 'md' }) {
   const logo = getLogo(logoId)
   const dims = size === 'lg' ? 'h-12 w-12 text-sm' : size === 'bank' ? 'h-11 w-11 text-[11px]' : size === 'sm' ? 'h-7 w-7 text-[9px]' : 'h-9 w-9 text-[10px]'
   const iconSize = size === 'lg' ? 22 : size === 'bank' ? 19 : size === 'sm' ? 14 : 18
-  if (!logo) return <div className={cn('rounded-xl bg-white/15 border border-white/20', dims, className)} />
+  if (!logo) return <div className={cn('rounded-xl bg-zinc-200/50 dark:bg-white/15 border border-zinc-300/60 dark:border-white/20', dims, className)} />
   if (logo.outline) {
     const Icon = LOGO_ICONS[logo.icon] || Wallet
     return (
@@ -51,21 +51,23 @@ export function LogoBadge({ logoId, className, size = 'md' }) {
 }
 
 export function SectionLabel({ children, className }) {
-  return <p className={cn('label-upper', className)}>{children}</p>
+  return <p className={cn('text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-600 dark:text-zinc-400', className)}>{children}</p>
 }
 
 export function Segmented({ options = [], value, onChange, className, size = 'md' }) {
   return (
-    <div className={cn('flex bg-muted rounded-xl p-1 gap-1', className)}>
+    <div className={cn('flex bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/60 dark:border-white/10 rounded-xl p-1 gap-1', className)}>
       {options.map((o) => (
         <button
           key={o.id}
           type="button"
           onClick={() => onChange?.(o.id)}
           className={cn(
-            'flex-1 rounded-lg font-semibold transition-all',
+            'flex-1 rounded-lg transition-all',
             size === 'sm' ? 'py-1.5 text-xs' : 'py-2 text-sm',
-            value === o.id ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            value === o.id
+              ? 'bg-white text-zinc-950 font-bold shadow-sm dark:bg-[#1c1c1e] dark:text-white'
+              : 'text-zinc-600 hover:text-zinc-950 font-semibold dark:text-zinc-400 dark:hover:text-white'
           )}
         >
           {o.label}
@@ -81,8 +83,10 @@ export function Pill({ active, children, onClick, className, icon: Icon }) {
       type="button"
       onClick={onClick}
       className={cn(
-        'inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border px-3.5 py-2 text-sm font-medium transition-all',
-        active ? 'bg-foreground text-background border-foreground' : 'bg-card border-border/60 text-foreground hover:bg-muted',
+        'inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border px-3.5 py-2 text-sm transition-all',
+        active
+          ? 'bg-zinc-950 text-white border-zinc-950 font-bold dark:bg-white dark:text-zinc-950 dark:border-white'
+          : 'bg-zinc-100 border-zinc-200 text-zinc-700 font-medium hover:bg-zinc-200 dark:bg-[#1c1c1e] dark:border-white/10 dark:text-zinc-300 dark:hover:bg-zinc-800',
         className
       )}
     >
@@ -97,7 +101,7 @@ export function PrimaryButton({ children, className, disabled, ...props }) {
     <button
       type="button"
       disabled={disabled}
-      className={cn('w-full rounded-xl bg-foreground text-background font-semibold py-3.5 text-[15px] transition-all active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100', className)}
+      className={cn('w-full rounded-xl bg-zinc-950 text-white hover:bg-zinc-900 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100 font-bold py-3.5 text-[15px] transition-all active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100', className)}
       {...props}
     >
       {children}
@@ -109,7 +113,7 @@ export function SecondaryButton({ children, className, ...props }) {
   return (
     <button
       type="button"
-      className={cn('w-full rounded-xl bg-card border border-border/60 text-foreground font-semibold py-3.5 text-[15px] transition-all active:scale-[0.98]', className)}
+      className={cn('w-full rounded-xl bg-zinc-100 border border-zinc-200 text-zinc-950 dark:bg-[#1c1c1e] dark:border-white/10 dark:text-white font-semibold py-3.5 text-[15px] transition-all active:scale-[0.98]', className)}
       {...props}
     >
       {children}
@@ -119,7 +123,7 @@ export function SecondaryButton({ children, className, ...props }) {
 
 export function Card({ children, className, onClick }) {
   return (
-    <div onClick={onClick} className={cn('rounded-2xl bg-card border border-border/40 dark:border-white/5', onClick && 'cursor-pointer active:scale-[0.99] transition-transform', className)}>
+    <div onClick={onClick} className={cn('rounded-2xl bg-white dark:bg-[#121214] border border-zinc-200/80 dark:border-white/5', onClick && 'cursor-pointer active:scale-[0.99] transition-transform', className)}>
       {children}
     </div>
   )
@@ -137,7 +141,7 @@ export function Field({ label, children, className }) {
 export function TextInput({ className, ...props }) {
   return (
     <input
-      className={cn('w-full rounded-xl bg-card border border-border/60 dark:border-white/10 px-4 py-3 text-[15px] outline-none focus:ring-2 focus:ring-ring/60 placeholder:text-muted-foreground', className)}
+      className={cn('w-full rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-950 placeholder:text-zinc-400 dark:bg-[#1c1c1e] dark:border-white/10 dark:text-white dark:placeholder:text-zinc-500 px-4 py-3 text-[15px] outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-white/25', className)}
       {...props}
     />
   )
@@ -148,7 +152,7 @@ export function Avatar({ profile, size = 'md', onClick, className }) {
   const initial = (name.trim()[0] || 'U').toUpperCase()
   const dims = size === 'lg' ? 'h-24 w-24 text-3xl' : size === 'sm' ? 'h-8 w-8 text-xs' : 'h-11 w-11 text-base'
   return (
-    <button type="button" onClick={onClick} className={cn('rounded-full overflow-hidden bg-foreground text-background font-bold flex items-center justify-center shrink-0', dims, className)}>
+    <button type="button" onClick={onClick} className={cn('rounded-full overflow-hidden bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold flex items-center justify-center shrink-0', dims, className)}>
       {profile?.avatar_url ? <img src={profile.avatar_url} alt="avatar" className="h-full w-full object-cover" /> : initial}
     </button>
   )
@@ -191,7 +195,7 @@ export function Sheet({ open, onClose, children, title, left, right, full = fals
             dragElastic={{ top: 0, bottom: 0.5 }}
             onDragEnd={onDragEnd}
             className={cn(
-              'absolute inset-x-0 bottom-0 mx-auto w-full max-w-md bg-background rounded-t-3xl shadow-2xl flex flex-col overflow-hidden border-t border-border/40 dark:border-white/5 max-h-[90vh]',
+              'absolute inset-x-0 bottom-0 mx-auto w-full max-w-md bg-white dark:bg-[#121214] rounded-t-3xl shadow-2xl flex flex-col overflow-hidden border-t border-zinc-200 dark:border-white/10 max-h-[90vh]',
               full && 'h-[90vh]',
               className
             )}
@@ -202,10 +206,10 @@ export function Sheet({ open, onClose, children, title, left, right, full = fals
               <div className="flex items-center justify-between px-5 pb-2 min-h-[40px] gap-2">
                 <div className="min-w-[72px] flex justify-start">
                   {left !== undefined ? left : (
-                    <button type="button" onClick={onClose} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">{cancelText}</button>
+                    <button type="button" onClick={onClose} className="text-sm font-semibold text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white transition-colors">{cancelText}</button>
                   )}
                 </div>
-                <h2 onPointerDown={startDrag} className="text-base font-bold text-foreground text-center flex-1 truncate cursor-grab active:cursor-grabbing">{title}</h2>
+                <h2 onPointerDown={startDrag} className="text-base font-bold text-zinc-950 dark:text-white text-center flex-1 truncate cursor-grab active:cursor-grabbing">{title}</h2>
                 <div className="min-w-[72px] flex justify-end">{right}</div>
               </div>
             </div>
@@ -219,7 +223,16 @@ export function Sheet({ open, onClose, children, title, left, right, full = fals
 
 export function SheetTextButton({ children, onClick, bold, muted, className }) {
   return (
-    <button type="button" onClick={onClick} className={cn('text-[15px] py-1', bold && 'font-bold', muted && 'text-muted-foreground', className)}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'text-[15px] py-1 transition-colors',
+        bold && 'font-bold text-zinc-950 dark:text-white',
+        muted && 'font-medium text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white',
+        className
+      )}
+    >
       {children}
     </button>
   )
@@ -227,7 +240,7 @@ export function SheetTextButton({ children, onClick, bold, muted, className }) {
 
 export function IconButton({ children, onClick, className, ...props }) {
   return (
-    <button type="button" onClick={onClick} className={cn('h-10 w-10 rounded-full flex items-center justify-center bg-card border border-border/50 dark:border-white/5 active:scale-95 transition', className)} {...props}>
+    <button type="button" onClick={onClick} className={cn('h-10 w-10 rounded-full flex items-center justify-center bg-zinc-100 border border-zinc-200 text-zinc-900 dark:bg-[#1c1c1e] dark:border-white/10 dark:text-white active:scale-95 transition', className)} {...props}>
       {children}
     </button>
   )
@@ -266,9 +279,9 @@ export class ErrorBoundary extends Component {
 export function EmptyState({ icon: Icon, title, subtitle }) {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
-      <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-4">{Icon ? <Icon size={26} className="text-muted-foreground" /> : null}</div>
-      <p className="font-semibold">{title}</p>
-      {subtitle ? <p className="text-sm text-muted-foreground mt-1 max-w-[240px]">{subtitle}</p> : null}
+      <div className="h-16 w-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-4">{Icon ? <Icon size={26} className="text-zinc-600 dark:text-zinc-400" /> : null}</div>
+      <p className="font-bold text-zinc-950 dark:text-white">{title}</p>
+      {subtitle ? <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1 max-w-[240px]">{subtitle}</p> : null}
     </div>
   )
 }

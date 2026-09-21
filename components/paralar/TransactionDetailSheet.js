@@ -102,9 +102,9 @@ export default function TransactionDetailSheet({ open, onClose, tx, onEdit }) {
       open={open}
       onClose={onClose}
       full
-      right={<div className="flex items-center gap-1"><button type="button" onClick={() => onEdit?.(tx)} className="p-2" data-testid="tx-edit"><Pencil size={18} /></button><button type="button" onClick={remove} className="p-2 text-destructive" data-testid="tx-delete"><Trash2 size={18} /></button></div>}
+      right={<div className="flex items-center gap-1"><button type="button" onClick={() => onEdit?.(tx)} className="p-2 text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white" data-testid="tx-edit"><Pencil size={18} /></button><button type="button" onClick={remove} className="p-2 text-rose-500 hover:text-rose-600" data-testid="tx-delete"><Trash2 size={18} /></button></div>}
     >
-      <p className="text-center text-xs text-muted-foreground">
+      <p className="text-center text-xs text-zinc-600 dark:text-zinc-400 font-medium">
         {t('paid_by')} {profile?.full_name?.split(' ')[0] || t('user')} {t('on')} {d.toLocaleDateString(lang === 'en' ? 'en-GB' : 'id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
         {tx.receipt_number ? ` · ${t('receipt_no')} ${tx.receipt_number}` : ''}
       </p>
@@ -112,22 +112,22 @@ export default function TransactionDetailSheet({ open, onClose, tx, onEdit }) {
       <div className="flex items-center gap-3 mt-4">
         <CategoryBadge id={tx.category} size="lg" />
         <div className="flex-1">
-          <p className="text-xl font-extrabold">{tx.merchant || tx.note || t(`cat_${tx.category || 'other'}`)}</p>
-          <span className="inline-block mt-1 text-[10px] font-semibold uppercase rounded-md bg-muted px-2 py-0.5 text-muted-foreground">{t(`cat_${tx.category || 'other'}`)}</span>
+          <p className="text-xl font-extrabold text-zinc-950 dark:text-white">{tx.merchant || tx.note || t(`cat_${tx.category || 'other'}`)}</p>
+          <span className="inline-block mt-1 text-[10px] font-bold uppercase rounded-md bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 text-zinc-600 dark:text-zinc-400">{t(`cat_${tx.category || 'other'}`)}</span>
         </div>
       </div>
 
       {tx.receipt_url ? (
-        <button type="button" onClick={() => setViewImg(true)} className="relative mt-4 w-full rounded-2xl overflow-hidden bg-muted">
+        <button type="button" onClick={() => setViewImg(true)} className="relative mt-4 w-full rounded-2xl overflow-hidden bg-zinc-100 dark:bg-zinc-800">
           <img src={tx.receipt_url} alt="receipt" className="w-full max-h-52 object-contain" />
-          <span className="absolute bottom-2 right-2 h-8 w-8 rounded-full bg-background/80 flex items-center justify-center"><Eye size={16} /></span>
+          <span className="absolute bottom-2 right-2 h-8 w-8 rounded-full bg-zinc-950/80 text-white flex items-center justify-center"><Eye size={16} /></span>
         </button>
       ) : null}
 
       <div className="text-center mt-6">
-        <p className={cn('text-4xl font-bold tabular-nums', tx.type === 'income' && 'text-emerald-600 dark:text-emerald-400')}>{tx.type === 'expense' ? '-' : tx.type === 'income' ? '+' : ''}{fmt(total, cur)}</p>
-        {isForeign ? <p className="text-sm text-muted-foreground mt-1">≈ {fmt(convertToHome(total, cur), home)} {home} · {t('rate')} {tx.rate ? Number(tx.rate).toPrecision(4) : ''}</p> : null}
-        <p className="text-xs text-muted-foreground mt-2">{t(tx.payment_method || 'cash')}{acc ? ` · ${acc.name}` : ''}{tx.tax_deductible ? ` · ${t('tax_deductible')}` : ''}</p>
+        <p className={cn('text-4xl font-extrabold tabular-nums', tx.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-950 dark:text-white')}>{tx.type === 'expense' ? '-' : tx.type === 'income' ? '+' : ''}{fmt(total, cur)}</p>
+        {isForeign ? <p className="text-sm text-zinc-600 dark:text-zinc-400 font-medium mt-1">≈ {fmt(convertToHome(total, cur), home)} {home} · {t('rate')} {tx.rate ? Number(tx.rate).toPrecision(4) : ''}</p> : null}
+        <p className="text-xs text-zinc-600 dark:text-zinc-400 font-medium mt-2">{t(tx.payment_method || 'cash')}{acc ? ` · ${acc.name}` : ''}{tx.tax_deductible ? ` · ${t('tax_deductible')}` : ''}</p>
       </div>
 
       <div className="mt-6">
@@ -136,41 +136,41 @@ export default function TransactionDetailSheet({ open, onClose, tx, onEdit }) {
         {subTab === 'items' ? (
           <div className="mt-3">
             <div className="flex items-center justify-between mb-2 px-1">
-              <p className="label-upper">{items.length} {t('items')}</p>
-              <button type="button" onClick={() => { if (editingItems) persistItems(items); setEditingItems(!editingItems) }} className="text-xs font-semibold flex items-center gap-1">{editingItems ? <><Check size={13} /> {t('done')}</> : <><Pencil size={12} /> {t('edit')}</>}</button>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-600 dark:text-zinc-400">{items.length} {t('items')}</p>
+              <button type="button" onClick={() => { if (editingItems) persistItems(items); setEditingItems(!editingItems) }} className="text-xs font-bold text-zinc-950 dark:text-white flex items-center gap-1">{editingItems ? <><Check size={13} /> {t('done')}</> : <><Pencil size={12} /> {t('edit')}</>}</button>
             </div>
             <Card className="overflow-hidden">
-              <div className="grid grid-cols-[1fr_auto] px-4 py-2 label-upper border-b border-border/40"><span>{t('item')}</span><span>{t('price')}</span></div>
+              <div className="grid grid-cols-[1fr_auto] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-600 dark:text-zinc-400 border-b border-zinc-200/60 dark:border-white/5"><span>{t('item')}</span><span>{t('price')}</span></div>
               {items.map((it, i) => (
-                <div key={i} className="flex items-center gap-2 px-4 py-2.5 text-sm border-b border-border/30 last:border-0">
+                <div key={i} className="flex items-center gap-2 px-4 py-2.5 text-sm border-b border-zinc-200/40 dark:border-white/5 last:border-0 text-zinc-950 dark:text-white">
                   {editingItems ? (
                     <>
-                      <input value={it.name} onChange={(e) => setItem(i, { name: e.target.value })} placeholder={t('item_name')} className="flex-1 bg-transparent outline-none min-w-0" />
-                      <input type="number" inputMode="decimal" value={it.price} onChange={(e) => setItem(i, { price: Number(e.target.value) || 0 })} className="w-20 bg-muted rounded-lg px-2 py-1 text-right outline-none tabular-nums" />
-                      <button type="button" onClick={() => delItem(i)} className="p-1 text-muted-foreground"><X size={15} /></button>
+                      <input value={it.name} onChange={(e) => setItem(i, { name: e.target.value })} placeholder={t('item_name')} className="flex-1 bg-transparent outline-none min-w-0 text-zinc-950 dark:text-white" />
+                      <input type="number" inputMode="decimal" value={it.price} onChange={(e) => setItem(i, { price: Number(e.target.value) || 0 })} className="w-20 bg-zinc-100 dark:bg-zinc-800 text-zinc-950 dark:text-white rounded-lg px-2 py-1 text-right outline-none tabular-nums font-semibold" />
+                      <button type="button" onClick={() => delItem(i)} className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"><X size={15} /></button>
                     </>
                   ) : (
                     <>
-                      <span className="flex-1 truncate">{it.qty > 1 ? `${it.qty}× ` : ''}{it.name || t('item')}</span>
-                      <span className="tabular-nums font-semibold">{fmt(it.price, cur)}</span>
+                      <span className="flex-1 truncate font-medium">{it.qty > 1 ? `${it.qty}× ` : ''}{it.name || t('item')}</span>
+                      <span className="tabular-nums font-bold text-zinc-950 dark:text-white">{fmt(it.price, cur)}</span>
                     </>
                   )}
                 </div>
               ))}
-              {!items.length ? <p className="px-4 py-3 text-sm text-muted-foreground">—</p> : null}
-              {editingItems ? <button type="button" onClick={addItem} className="w-full px-4 py-3 text-sm font-semibold flex items-center gap-1.5 text-muted-foreground"><Plus size={15} /> {t('add_item')}</button> : null}
-              <div className="grid grid-cols-[1fr_auto] px-4 py-3 font-bold border-t border-border/40"><span>{t('total')}</span><span className="tabular-nums">{fmt(total, cur)}</span></div>
+              {!items.length ? <p className="px-4 py-3 text-sm text-zinc-400 dark:text-zinc-500">—</p> : null}
+              {editingItems ? <button type="button" onClick={addItem} className="w-full px-4 py-3 text-sm font-bold flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white"><Plus size={15} /> {t('add_item')}</button> : null}
+              <div className="grid grid-cols-[1fr_auto] px-4 py-3 font-bold border-t border-zinc-200/60 dark:border-white/5 text-zinc-950 dark:text-white"><span>{t('total')}</span><span className="tabular-nums">{fmt(total, cur)}</span></div>
             </Card>
           </div>
         ) : (
           <div className="mt-3 space-y-4">
             {/* Participants */}
             <div>
-              <p className="label-upper mb-2">{t('participants')}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-600 dark:text-zinc-400 mb-2">{t('participants')}</p>
               <div className="flex flex-wrap gap-2">
                 {(people || []).map((p) => (
-                  <button key={p.id} type="button" onClick={() => setActivePerson(p.id)} className={cn('inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium', activePerson === p.id ? 'bg-foreground text-background border-foreground' : 'bg-card border-border/60')}>
-                    <span className="h-5 w-5 rounded-full bg-muted-foreground/20 flex items-center justify-center text-[10px] font-bold">{(p.name[0] || '?').toUpperCase()}</span>
+                  <button key={p.id} type="button" onClick={() => setActivePerson(p.id)} className={cn('inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-semibold transition-all', activePerson === p.id ? 'bg-zinc-950 text-white border-zinc-950 dark:bg-white dark:text-zinc-950 dark:border-white font-bold' : 'bg-white dark:bg-[#1c1c1e] text-zinc-950 dark:text-white border-zinc-200 dark:border-white/10')}>
+                    <span className="h-5 w-5 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 flex items-center justify-center text-[10px] font-bold">{(p.name[0] || '?').toUpperCase()}</span>
                     {p.name}
                     <span className="tabular-nums opacity-80">{fmt(perPerson.totals[p.id] || 0, cur)}</span>
                     {p.id !== 'me' ? <X size={13} onClick={(e) => { e.stopPropagation(); removePerson(p.id) }} /> : null}
@@ -178,37 +178,37 @@ export default function TransactionDetailSheet({ open, onClose, tx, onEdit }) {
                 ))}
               </div>
               <div className="flex gap-2 mt-2">
-                <input value={newPerson} onChange={(e) => setNewPerson(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addPerson()} placeholder={t('add_participant')} className="flex-1 rounded-xl bg-card border border-border/60 px-3 py-2 text-sm outline-none" data-testid="split-add-person" />
-                <button type="button" onClick={addPerson} className="h-9 w-9 rounded-xl bg-foreground text-background flex items-center justify-center"><UserPlus size={16} /></button>
+                <input value={newPerson} onChange={(e) => setNewPerson(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addPerson()} placeholder={t('add_participant')} className="flex-1 rounded-xl bg-white dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 px-3 py-2 text-sm text-zinc-950 dark:text-white placeholder:text-zinc-400 outline-none" data-testid="split-add-person" />
+                <button type="button" onClick={addPerson} className="h-9 w-9 rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 flex items-center justify-center font-bold"><UserPlus size={16} /></button>
               </div>
             </div>
 
             {/* Assign items */}
             {items.length ? (
               <div>
-                <p className="label-upper mb-1">{t('assign_items')}</p>
-                <p className="text-xs text-muted-foreground mb-2">{t('tap_to_assign')}: <span className="font-semibold text-foreground">{people.find((p) => p.id === activePerson)?.name || '—'}</span></p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-600 dark:text-zinc-400 mb-1">{t('assign_items')}</p>
+                <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-2">{t('tap_to_assign')}: <span className="font-bold text-zinc-950 dark:text-white">{people.find((p) => p.id === activePerson)?.name || '—'}</span></p>
                 <Card className="overflow-hidden">
                   {items.map((it, i) => {
                     const assignees = assign[i] || []
                     const mine = activePerson && assignees.includes(activePerson)
                     return (
-                      <button key={i} type="button" onClick={() => toggleAssign(i)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm border-b border-border/30 last:border-0 text-left">
-                        <span className={cn('h-5 w-5 rounded-md border flex items-center justify-center shrink-0', mine ? 'bg-foreground border-foreground text-background' : 'border-border')}>{mine ? <Check size={13} strokeWidth={3} /> : null}</span>
-                        <span className="flex-1 truncate">{it.name || t('item')}</span>
-                        <span className="tabular-nums font-semibold">{fmt(it.price, cur)}</span>
-                        {assignees.length ? <span className="text-[10px] text-muted-foreground">/{assignees.length}</span> : null}
+                      <button key={i} type="button" onClick={() => toggleAssign(i)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm border-b border-zinc-200/40 dark:border-white/5 last:border-0 text-left">
+                        <span className={cn('h-5 w-5 rounded-md border flex items-center justify-center shrink-0 transition-colors', mine ? 'bg-zinc-950 border-zinc-950 text-white dark:bg-white dark:border-white dark:text-zinc-950' : 'border-zinc-300 dark:border-zinc-700')}>{mine ? <Check size={13} strokeWidth={3} /> : null}</span>
+                        <span className="flex-1 truncate font-medium text-zinc-950 dark:text-white">{it.name || t('item')}</span>
+                        <span className="tabular-nums font-bold text-zinc-950 dark:text-white">{fmt(it.price, cur)}</span>
+                        {assignees.length ? <span className="text-[10px] text-zinc-500 dark:text-zinc-400">/{assignees.length}</span> : null}
                       </button>
                     )
                   })}
-                  <div className="flex items-center justify-between px-4 py-2.5 text-sm bg-muted/50">
-                    <span className="text-muted-foreground">{t('unassigned_items')}</span>
-                    <span className="tabular-nums font-semibold">{fmt(perPerson.unassigned, cur)}</span>
+                  <div className="flex items-center justify-between px-4 py-2.5 text-sm bg-zinc-50 dark:bg-zinc-900 border-t border-zinc-200/40 dark:border-white/5">
+                    <span className="text-zinc-600 dark:text-zinc-400 font-medium">{t('unassigned_items')}</span>
+                    <span className="tabular-nums font-bold text-zinc-950 dark:text-white">{fmt(perPerson.unassigned, cur)}</span>
                   </div>
                 </Card>
               </div>
             ) : (
-              <div className="rounded-2xl border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
+              <div className="rounded-2xl border border-dashed border-zinc-200 dark:border-white/10 p-4 text-center text-sm text-zinc-600 dark:text-zinc-400">
                 {t('no_transactions_sub')}
               </div>
             )}
@@ -217,13 +217,13 @@ export default function TransactionDetailSheet({ open, onClose, tx, onEdit }) {
             <Card className="p-4 space-y-2">
               {(people || []).map((p) => (
                 <div key={p.id} className="flex items-center justify-between text-sm">
-                  <span className="font-medium">{p.name}</span>
-                  <span className="tabular-nums font-bold">{fmt(perPerson.totals[p.id] || 0, cur)}</span>
+                  <span className="font-semibold text-zinc-950 dark:text-white">{p.name}</span>
+                  <span className="tabular-nums font-bold text-zinc-950 dark:text-white">{fmt(perPerson.totals[p.id] || 0, cur)}</span>
                 </div>
               ))}
             </Card>
 
-            <button type="button" onClick={saveSplit} className="w-full rounded-xl bg-foreground text-background font-semibold py-3.5" data-testid="split-save">{t('save_split')}</button>
+            <button type="button" onClick={saveSplit} className="w-full rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold py-3.5 transition-colors" data-testid="split-save">{t('save_split')}</button>
           </div>
         )}
       </div>

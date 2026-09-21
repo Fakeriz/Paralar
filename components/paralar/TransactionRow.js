@@ -61,20 +61,20 @@ export default function TransactionRow({ tx, onClick, showDate = false }) {
   return (
     <button type="button" onClick={onClick} className="w-full flex items-center gap-3 py-3 text-left active:opacity-70 transition" data-testid="transaction-row">
       {isTransfer ? (
-        <div className="h-11 w-11 rounded-2xl bg-muted flex items-center justify-center shrink-0"><ArrowLeftRight size={18} /></div>
+        <div className="h-11 w-11 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white flex items-center justify-center shrink-0"><ArrowLeftRight size={18} /></div>
       ) : (
-        <CategoryBadge id={tx?.category} className={cn(!isExpense && 'bg-muted text-foreground')} />
+        <CategoryBadge id={tx?.category} className={cn(!isExpense && 'bg-zinc-100 text-zinc-950 dark:bg-zinc-800 dark:text-white')} />
       )}
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-[15px] truncate">{title}</p>
-        <p className="text-xs text-muted-foreground truncate mt-0.5">{sub}</p>
+        <p className="font-semibold text-[15px] truncate text-zinc-950 dark:text-white">{title}</p>
+        <p className="text-xs text-zinc-600 dark:text-zinc-400 truncate mt-0.5">{sub}</p>
       </div>
       <div className="text-right shrink-0">
-        <p className={cn('font-bold text-[15px] tabular-nums', isExpense ? 'text-foreground' : isTransfer ? 'text-muted-foreground' : 'text-emerald-600 dark:text-emerald-400')}>
+        <p className={cn('font-bold text-[15px] tabular-nums', isExpense ? 'text-zinc-950 dark:text-white' : isTransfer ? 'text-zinc-600 dark:text-zinc-400' : 'text-emerald-600 dark:text-emerald-400')}>
           {isExpense ? '-' : isTransfer ? '' : '+'}{safeFmt(tx?.amount, tx?.currency)}
         </p>
         {showHomeApprox ? (
-          <span className="inline-block mt-0.5 text-[10px] font-semibold rounded-md bg-muted px-1.5 py-0.5 text-muted-foreground tabular-nums">
+          <span className="inline-block mt-0.5 text-[10px] font-semibold rounded-md bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 text-zinc-600 dark:text-zinc-400 tabular-nums">
             ≈ {safeFmt(homeAmount, home)} {getCurrency(tx?.currency)?.flag || ''}
           </span>
         ) : null}

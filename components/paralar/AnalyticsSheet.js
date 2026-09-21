@@ -23,8 +23,8 @@ export default function AnalyticsSheet({ open, onClose }) {
         <EmptyState icon={PieIcon} title={t('no_transactions')} subtitle={t('no_transactions_sub')} />
       ) : (
         <div className="pt-2">
-          <p className="label-upper text-center">{t('spending')} · {t('this_month')}</p>
-          <p className="text-center text-4xl font-bold mt-1 tabular-nums">{fmt(data.total, home)}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-600 dark:text-zinc-400 text-center">{t('spending')} · {t('this_month')}</p>
+          <p className="text-center text-4xl font-extrabold mt-1 tabular-nums text-zinc-950 dark:text-white">{fmt(data.total, home)}</p>
           <div className="mt-6 space-y-3">
             {data.rows.map(([cat, val]) => {
               const pct = Math.round((val / Math.max(1, data.total)) * 100)
@@ -32,11 +32,11 @@ export default function AnalyticsSheet({ open, onClose }) {
                 <div key={cat}>
                   <div className="flex items-center gap-3">
                     <CategoryBadge id={cat} size="sm" />
-                    <span className="flex-1 font-medium text-sm">{t(`cat_${cat}`)}</span>
-                    <span className="text-sm font-bold tabular-nums">{fmt(val, home)}</span>
-                    <span className="text-xs text-muted-foreground w-9 text-right">{pct}%</span>
+                    <span className="flex-1 font-semibold text-sm text-zinc-950 dark:text-white">{t(`cat_${cat}`)}</span>
+                    <span className="text-sm font-bold tabular-nums text-zinc-950 dark:text-white">{fmt(val, home)}</span>
+                    <span className="text-xs text-zinc-600 dark:text-zinc-400 font-medium w-9 text-right">{pct}%</span>
                   </div>
-                  <div className="h-2 rounded-full bg-muted mt-1.5 ml-12 overflow-hidden"><div className="h-full bg-foreground rounded-full" style={{ width: `${pct}%` }} /></div>
+                  <div className="h-2 rounded-full bg-zinc-200 dark:bg-zinc-800 mt-1.5 ml-12 overflow-hidden"><div className="h-full bg-zinc-950 dark:bg-white rounded-full transition-all" style={{ width: `${pct}%` }} /></div>
                 </div>
               )
             })}

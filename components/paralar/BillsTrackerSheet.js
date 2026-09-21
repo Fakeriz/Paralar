@@ -101,31 +101,31 @@ export default function BillsTrackerSheet({ open, onClose }) {
         full
         title={(
           <div className="leading-tight">
-            <div className="text-base font-bold">Bills</div>
-            <div className="text-[11px] font-normal text-muted-foreground">Monthly paid / unpaid checklist</div>
+            <div className="text-base font-bold text-zinc-950 dark:text-white">Bills</div>
+            <div className="text-[11px] font-medium text-zinc-600 dark:text-zinc-400">Monthly paid / unpaid checklist</div>
           </div>
         )}
-        right={<button type="button" onClick={openAdd} className="text-[15px] font-bold py-1 px-1" data-testid="bills-add">Add</button>}
+        right={<button type="button" onClick={openAdd} className="text-[15px] font-bold py-1 px-1 text-zinc-950 dark:text-white" data-testid="bills-add">Add</button>}
       >
         {/* Month navigation */}
         <div className="flex items-center justify-between mt-2">
-          <button type="button" onClick={() => shiftMonth(-1)} className="h-10 w-10 rounded-full bg-muted flex items-center justify-center" aria-label="prev month" data-testid="bills-prev"><ChevronLeft size={18} /></button>
-          <p className="font-bold text-[15px] tabular-nums" data-testid="bills-month">{monthLabel}</p>
-          <button type="button" onClick={() => shiftMonth(1)} className="h-10 w-10 rounded-full bg-muted flex items-center justify-center" aria-label="next month" data-testid="bills-next"><ChevronRight size={18} /></button>
+          <button type="button" onClick={() => shiftMonth(-1)} className="h-10 w-10 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white flex items-center justify-center transition-colors" aria-label="prev month" data-testid="bills-prev"><ChevronLeft size={18} /></button>
+          <p className="font-bold text-[15px] tabular-nums text-zinc-950 dark:text-white" data-testid="bills-month">{monthLabel}</p>
+          <button type="button" onClick={() => shiftMonth(1)} className="h-10 w-10 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white flex items-center justify-center transition-colors" aria-label="next month" data-testid="bills-next"><ChevronRight size={18} /></button>
         </div>
 
         {/* Summary card */}
-        <div className="mt-4 rounded-2xl bg-foreground text-background p-5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] opacity-60">Remaining this month</p>
-          <p className="text-3xl font-extrabold tabular-nums mt-1" data-testid="bills-remaining">{fmt(summary.remaining, home)}</p>
+        <div className="mt-4 rounded-2xl bg-[#0A0A0B] text-white p-5 border border-white/10 shadow-lg">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/60">Remaining this month</p>
+          <p className="text-3xl font-extrabold tabular-nums mt-1 text-white" data-testid="bills-remaining">{fmt(summary.remaining, home)}</p>
           <div className="grid grid-cols-2 gap-3 mt-4">
-            <div className="rounded-xl bg-background/10 px-3 py-2.5">
-              <p className="text-[11px] uppercase tracking-wide opacity-60">Paid</p>
-              <p className="font-bold tabular-nums mt-0.5" data-testid="bills-paid">{fmt(summary.paid, home)}</p>
+            <div className="rounded-xl bg-white/10 px-3 py-2.5">
+              <p className="text-[11px] uppercase tracking-wide text-white/60 font-semibold">Paid</p>
+              <p className="font-bold tabular-nums mt-0.5 text-white" data-testid="bills-paid">{fmt(summary.paid, home)}</p>
             </div>
-            <div className="rounded-xl bg-background/10 px-3 py-2.5">
-              <p className="text-[11px] uppercase tracking-wide opacity-60">Total</p>
-              <p className="font-bold tabular-nums mt-0.5" data-testid="bills-total">{fmt(summary.total, home)}</p>
+            <div className="rounded-xl bg-white/10 px-3 py-2.5">
+              <p className="text-[11px] uppercase tracking-wide text-white/60 font-semibold">Total</p>
+              <p className="font-bold tabular-nums mt-0.5 text-white" data-testid="bills-total">{fmt(summary.total, home)}</p>
             </div>
           </div>
         </div>
@@ -133,33 +133,33 @@ export default function BillsTrackerSheet({ open, onClose }) {
         {/* List / empty state */}
         {rows.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-14 text-center">
-            <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-4"><Receipt size={26} className="text-muted-foreground" /></div>
-            <p className="font-semibold">No bills to track</p>
-            <p className="text-sm text-muted-foreground mt-1 max-w-[240px]">Add your recurring monthly bills and tick them off as you pay.</p>
-            <button type="button" onClick={openAdd} className="mt-5 rounded-xl bg-foreground text-background font-semibold px-5 py-3 text-[15px] active:scale-[0.98] transition" data-testid="bills-add-first">Add first bill</button>
+            <div className="h-16 w-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-4"><Receipt size={26} className="text-zinc-400 dark:text-zinc-500" /></div>
+            <p className="font-bold text-zinc-950 dark:text-white">No bills to track</p>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1 max-w-[240px]">Add your recurring monthly bills and tick them off as you pay.</p>
+            <button type="button" onClick={openAdd} className="mt-5 rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold px-5 py-3 text-[15px] active:scale-[0.98] transition" data-testid="bills-add-first">Add first bill</button>
           </div>
         ) : (
           <div className="mt-5 space-y-2.5">
             {rows.map((b) => {
               const cur = getCurrency(b?.currency || home)
               return (
-                <div key={b.id} className={cn('flex items-center gap-3 rounded-2xl border px-4 py-3 transition-colors', b.paid ? 'bg-muted/50 border-border/40' : 'bg-card border-border/50')} data-testid="bill-row">
+                <div key={b.id} className={cn('flex items-center gap-3 rounded-2xl border px-4 py-3 transition-colors', b.paid ? 'bg-zinc-50 dark:bg-zinc-900/60 border-zinc-200/60 dark:border-white/5' : 'bg-white dark:bg-[#1c1c1e] border-zinc-200 dark:border-white/10')} data-testid="bill-row">
                   <button
                     type="button"
                     onClick={() => toggle(b)}
-                    className={cn('h-7 w-7 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors', b.paid ? 'bg-foreground border-foreground text-background' : 'border-muted-foreground/40 text-transparent')}
+                    className={cn('h-7 w-7 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors', b.paid ? 'bg-zinc-950 border-zinc-950 text-white dark:bg-white dark:border-white dark:text-zinc-950' : 'border-zinc-300 dark:border-zinc-700 text-transparent')}
                     aria-label="toggle paid"
                     data-testid="bill-toggle"
                   >
                     {b.paid ? <Check size={15} strokeWidth={3} /> : null}
                   </button>
                   <div className="flex-1 min-w-0">
-                    <p className={cn('font-semibold text-[15px] truncate', b.paid && 'line-through text-muted-foreground')}>{b?.title}</p>
-                    <p className="text-xs text-muted-foreground truncate">{t(`cat_${b?.category || 'bills'}`)} · Due day {b?.due_day || 1}</p>
+                    <p className={cn('font-semibold text-[15px] truncate', b.paid ? 'line-through text-zinc-400 dark:text-zinc-600' : 'text-zinc-950 dark:text-white')}>{b?.title}</p>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400 truncate">{t(`cat_${b?.category || 'bills'}`)} · Due day {b?.due_day || 1}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className={cn('font-bold text-[15px] tabular-nums', b.paid && 'text-muted-foreground')}>{cur.flag} {fmt(b?.amount, b?.currency || home)}</p>
-                    <button type="button" onClick={() => removeBill(b)} className="text-[11px] text-muted-foreground inline-flex items-center gap-1 mt-0.5" aria-label="delete bill"><Trash2 size={11} /> {t('delete')}</button>
+                    <p className={cn('font-bold text-[15px] tabular-nums', b.paid ? 'text-zinc-400 dark:text-zinc-600' : 'text-zinc-950 dark:text-white')}>{cur.flag} {fmt(b?.amount, b?.currency || home)}</p>
+                    <button type="button" onClick={() => removeBill(b)} className="text-[11px] text-zinc-500 hover:text-rose-500 dark:text-zinc-400 dark:hover:text-rose-400 inline-flex items-center gap-1 mt-0.5" aria-label="delete bill"><Trash2 size={11} /> {t('delete')}</button>
                   </div>
                 </div>
               )
@@ -171,8 +171,8 @@ export default function BillsTrackerSheet({ open, onClose }) {
 
       {/* Add bill form */}
       <Sheet open={adding} onClose={() => setAdding(false)} title="Add Bill" zIndex={70}
-        left={<button type="button" onClick={() => setAdding(false)} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">{t('cancel')}</button>}
-        right={<button type="button" onClick={saveBill} disabled={!title.trim() || !Number(amount) || saving} className={cn('text-[15px] font-bold py-1 px-1', (!title.trim() || !Number(amount) || saving) && 'opacity-40')} data-testid="bill-save">{saving ? '...' : t('save')}</button>}
+        left={<button type="button" onClick={() => setAdding(false)} className="text-sm font-semibold text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white transition-colors">{t('cancel')}</button>}
+        right={<button type="button" onClick={saveBill} disabled={!title.trim() || !Number(amount) || saving} className={cn('text-[15px] font-bold py-1 px-1 text-zinc-950 dark:text-white', (!title.trim() || !Number(amount) || saving) && 'opacity-40')} data-testid="bill-save">{saving ? '...' : t('save')}</button>}
       >
         <div className="space-y-5 pt-2">
           <Field label="Bill title"><TextInput value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Netflix, Rent, Internet" data-testid="bill-title" /></Field>
@@ -186,7 +186,7 @@ export default function BillsTrackerSheet({ open, onClose }) {
                   key={c.id}
                   type="button"
                   onClick={() => setCategory(c.id)}
-                  className={cn('shrink-0 rounded-xl border px-3.5 py-2 text-sm font-medium whitespace-nowrap transition-colors', category === c.id ? 'bg-foreground text-background border-foreground' : 'bg-card border-border/60 text-foreground')}
+                  className={cn('shrink-0 rounded-xl border px-3.5 py-2 text-sm font-semibold whitespace-nowrap transition-colors', category === c.id ? 'bg-zinc-950 text-white border-zinc-950 dark:bg-white dark:text-zinc-950 dark:border-white' : 'bg-white dark:bg-[#1c1c1e] border-zinc-200 dark:border-white/10 text-zinc-950 dark:text-white')}
                   data-testid={`bill-cat-${c.id}`}
                 >
                   {t(`cat_${c.id}`)}
@@ -197,9 +197,9 @@ export default function BillsTrackerSheet({ open, onClose }) {
 
           <Field label={t('source_account')}>
             <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-5 px-5">
-              <button type="button" onClick={() => setAccountId(null)} className={cn('shrink-0 rounded-xl border px-3.5 py-2 text-sm font-medium whitespace-nowrap', accountId === null ? 'bg-foreground text-background border-foreground' : 'bg-card border-border/60')}>{t('no_account_opt')}</button>
+              <button type="button" onClick={() => setAccountId(null)} className={cn('shrink-0 rounded-xl border px-3.5 py-2 text-sm font-semibold whitespace-nowrap', accountId === null ? 'bg-zinc-950 text-white border-zinc-950 dark:bg-white dark:text-zinc-950 dark:border-white' : 'bg-white dark:bg-[#1c1c1e] border-zinc-200 dark:border-white/10 text-zinc-950 dark:text-white')}>{t('no_account_opt')}</button>
               {(accounts || []).map((a) => (
-                <button key={a.id} type="button" onClick={() => setAccountId(a.id)} className={cn('shrink-0 rounded-xl border px-3.5 py-2 text-sm font-medium whitespace-nowrap', accountId === a.id ? 'bg-foreground text-background border-foreground' : 'bg-card border-border/60')}>{a.name}</button>
+                <button key={a.id} type="button" onClick={() => setAccountId(a.id)} className={cn('shrink-0 rounded-xl border px-3.5 py-2 text-sm font-semibold whitespace-nowrap', accountId === a.id ? 'bg-zinc-950 text-white border-zinc-950 dark:bg-white dark:text-zinc-950 dark:border-white' : 'bg-white dark:bg-[#1c1c1e] border-zinc-200 dark:border-white/10 text-zinc-950 dark:text-white')}>{a.name}</button>
               ))}
             </div>
           </Field>

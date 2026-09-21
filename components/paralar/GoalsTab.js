@@ -58,8 +58,8 @@ export default function GoalsTab() {
   return (
     <div className="px-5 pb-28">
       <div className="flex items-center justify-between pt-6">
-        <h1 className="text-2xl font-extrabold tracking-tight">{t('savings_goals')}</h1>
-        <button type="button" onClick={() => setCreating(true)} className="h-10 w-10 rounded-full bg-foreground text-background flex items-center justify-center" data-testid="new-goal"><Plus size={20} /></button>
+        <h1 className="text-2xl font-extrabold tracking-tight text-zinc-950 dark:text-white">{t('savings_goals')}</h1>
+        <button type="button" onClick={() => setCreating(true)} className="h-10 w-10 rounded-full bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 flex items-center justify-center transition-colors" data-testid="new-goal"><Plus size={20} /></button>
       </div>
 
       {goals.length === 0 ? (
@@ -72,19 +72,19 @@ export default function GoalsTab() {
             return (
               <Card key={g.id} className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-2xl bg-muted flex items-center justify-center shrink-0 text-foreground">
+                  <div className="h-12 w-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-950 dark:text-white">
                     <GIcon size={22} strokeWidth={1.75} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold truncate">{g?.name}</p>
-                    <p className="text-xs text-muted-foreground">{fmt(g?.saved_amount, g?.currency || home)} {t('of')} {fmt(g?.target_amount, g?.currency || home)}</p>
+                    <p className="font-bold truncate text-zinc-950 dark:text-white">{g?.name}</p>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400 font-medium">{fmt(g?.saved_amount, g?.currency || home)} {t('of')} {fmt(g?.target_amount, g?.currency || home)}</p>
                   </div>
-                  <p className="text-xl font-bold tabular-nums">{pct}%</p>
+                  <p className="text-xl font-bold tabular-nums text-zinc-950 dark:text-white">{pct}%</p>
                 </div>
-                <div className="h-2 rounded-full bg-muted mt-3 overflow-hidden"><div className="h-full bg-foreground rounded-full transition-all" style={{ width: `${pct}%` }} /></div>
+                <div className="h-2 rounded-full bg-zinc-200 dark:bg-zinc-800 mt-3 overflow-hidden"><div className="h-full bg-zinc-950 dark:bg-white rounded-full transition-all" style={{ width: `${pct}%` }} /></div>
                 <div className="flex gap-2 mt-3">
-                  <button type="button" onClick={() => setFunding(g)} className="flex-1 rounded-xl bg-foreground text-background text-sm font-semibold py-2.5">{t('add_funds')}</button>
-                  <button type="button" onClick={() => remove(g)} className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center" aria-label="delete"><Trash2 size={16} /></button>
+                  <button type="button" onClick={() => setFunding(g)} className="flex-1 rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 text-sm font-bold py-2.5 transition-colors">{t('add_funds')}</button>
+                  <button type="button" onClick={() => remove(g)} className="h-10 w-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center justify-center transition-colors" aria-label="delete"><Trash2 size={16} /></button>
                 </div>
               </Card>
             )
@@ -105,7 +105,7 @@ export default function GoalsTab() {
                   className={cn(
                     'w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-all',
                     active
-                      ? 'bg-black text-white shadow-md ring-2 ring-black ring-offset-2 ring-offset-white dark:bg-white dark:text-black dark:ring-white dark:ring-offset-zinc-950'
+                      ? 'bg-zinc-950 text-white shadow-md ring-2 ring-zinc-950 ring-offset-2 ring-offset-white dark:bg-white dark:text-zinc-950 dark:ring-white dark:ring-offset-zinc-900'
                       : 'bg-zinc-100 text-zinc-600 border border-zinc-200/60 dark:bg-zinc-900 dark:text-zinc-400 dark:border-white/10'
                   )}
                   data-testid={`goal-icon-${id}`}
@@ -124,9 +124,9 @@ export default function GoalsTab() {
       <Sheet open={!!funding} onClose={() => setFunding(null)} title={t('add_funds')}>
         <div className="space-y-5 pt-2">
           <div className="flex justify-center">
-            <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center text-foreground"><FundingIcon size={28} strokeWidth={1.75} /></div>
+            <div className="h-16 w-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-950 dark:text-white"><FundingIcon size={28} strokeWidth={1.75} /></div>
           </div>
-          <p className="text-center font-bold">{funding?.name}</p>
+          <p className="text-center font-bold text-zinc-950 dark:text-white text-lg">{funding?.name}</p>
           <Field label={`${t('amount')} (${getCurrency(funding?.currency || home).code})`}><TextInput type="number" inputMode="decimal" value={fund} onChange={(e) => setFund(e.target.value)} placeholder="0" autoFocus /></Field>
           <PrimaryButton onClick={addFunds} disabled={!Number(fund)}>{t('save')}</PrimaryButton>
         </div>

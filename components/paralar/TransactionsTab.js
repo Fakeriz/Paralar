@@ -95,22 +95,22 @@ function TransactionsContent() {
   return (
     <div className="px-5 pb-28">
       <div className="flex items-center justify-between pt-6">
-        <h1 className="text-2xl font-extrabold tracking-tight">{t('transactions')}</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight text-zinc-950 dark:text-white">{t('transactions')}</h1>
         <div className="relative">
-          <button type="button" onClick={() => setMenuOpen((v) => !v)} className="h-9 w-9 rounded-full flex items-center justify-center hover:bg-muted/60 active:bg-muted transition" aria-label="menu" data-testid="tx-menu"><MoreVertical size={20} /></button>
+          <button type="button" onClick={() => setMenuOpen((v) => !v)} className="h-9 w-9 rounded-full flex items-center justify-center text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 active:bg-zinc-200 transition" aria-label="menu" data-testid="tx-menu"><MoreVertical size={20} /></button>
           {menuOpen ? (
             <>
               <div className="fixed inset-0 z-[45]" onClick={() => setMenuOpen(false)} />
-              <div className="absolute right-0 top-11 z-[46] w-52 rounded-2xl bg-card border border-border/60 dark:border-white/10 shadow-xl overflow-hidden py-1">
-                <button type="button" onClick={() => { setMenuOpen(false); open?.('exportTx') }} className="w-full flex items-center gap-3 px-4 py-3 text-left text-[15px] font-medium hover:bg-muted/50" data-testid="tx-menu-export"><Download size={17} strokeWidth={1.75} /> {t('export_transactions')}</button>
-                <button type="button" onClick={() => { setMenuOpen(false); open?.('importTx') }} className="w-full flex items-center gap-3 px-4 py-3 text-left text-[15px] font-medium hover:bg-muted/50" data-testid="tx-menu-import"><Upload size={17} strokeWidth={1.75} /> {t('import_transactions')}</button>
+              <div className="absolute right-0 top-11 z-[46] w-52 rounded-2xl bg-white dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 shadow-xl overflow-hidden py-1">
+                <button type="button" onClick={() => { setMenuOpen(false); open?.('exportTx') }} className="w-full flex items-center gap-3 px-4 py-3 text-left text-[15px] font-semibold text-zinc-950 dark:text-white hover:bg-zinc-100 dark:hover:bg-white/5" data-testid="tx-menu-export"><Download size={17} strokeWidth={1.75} /> {t('export_transactions')}</button>
+                <button type="button" onClick={() => { setMenuOpen(false); open?.('importTx') }} className="w-full flex items-center gap-3 px-4 py-3 text-left text-[15px] font-semibold text-zinc-950 dark:text-white hover:bg-zinc-100 dark:hover:bg-white/5" data-testid="tx-menu-import"><Upload size={17} strokeWidth={1.75} /> {t('import_transactions')}</button>
               </div>
             </>
           ) : null}
         </div>
       </div>
       <div className="relative mt-4">
-        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500" />
         <TextInput value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('search')} className="pl-10" data-testid="tx-search" />
       </div>
       <Segmented
@@ -132,10 +132,10 @@ function TransactionsContent() {
           return (
             <div key={k} className="mt-5">
               <div className="flex items-center justify-between mb-1 px-1">
-                <p className="label-upper">{labelFor(k)}</p>
-                <p className="text-xs font-semibold tabular-nums text-muted-foreground">{net < 0 ? '-' : '+'}{safeFmt(Math.abs(net), home)}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-600 dark:text-zinc-400">{labelFor(k)}</p>
+                <p className="text-xs font-semibold tabular-nums text-zinc-600 dark:text-zinc-400">{net < 0 ? '-' : '+'}{safeFmt(Math.abs(net), home)}</p>
               </div>
-              <Card className="px-4 divide-y divide-border/40">
+              <Card className="px-4 divide-y divide-zinc-200/60 dark:divide-white/5">
                 {(dayList || []).map((tx) => (
                   <SwipeTransactionRow
                     key={tx?.id || Math.random()}

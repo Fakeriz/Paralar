@@ -15,7 +15,7 @@ export default function SwipeTransactionRow({ tx, isOpen, onOpenChange, onOpenDe
   return (
     <div className="relative">
       <div className="absolute inset-y-0 right-0 flex items-center gap-2 pr-0.5">
-        <button type="button" onClick={() => { onOpenChange?.(false); onEdit?.() }} className="h-11 w-11 rounded-2xl bg-zinc-200 dark:bg-zinc-800 text-foreground flex items-center justify-center active:scale-95 transition" aria-label="edit" data-testid="tx-swipe-edit"><Pencil size={17} strokeWidth={1.75} /></button>
+        <button type="button" onClick={() => { onOpenChange?.(false); onEdit?.() }} className="h-11 w-11 rounded-2xl bg-zinc-200 dark:bg-zinc-800 text-zinc-950 dark:text-white flex items-center justify-center active:scale-95 transition" aria-label="edit" data-testid="tx-swipe-edit"><Pencil size={17} strokeWidth={1.75} /></button>
         <button type="button" onClick={() => { onOpenChange?.(false); onDelete?.() }} className="h-11 w-11 rounded-2xl bg-rose-500 text-white flex items-center justify-center active:scale-95 transition" aria-label="delete" data-testid="tx-swipe-delete"><Trash2 size={17} strokeWidth={1.75} /></button>
       </div>
       <motion.div
@@ -26,7 +26,7 @@ export default function SwipeTransactionRow({ tx, isOpen, onOpenChange, onOpenDe
         animate={{ x: isOpen ? -140 : 0 }}
         transition={{ type: 'spring', damping: 34, stiffness: 340 }}
         onDragEnd={handleDragEnd}
-        className="relative bg-card"
+        className="relative bg-white dark:bg-[#121214]"
       >
         <TransactionRow tx={tx} onClick={() => { if (isOpen) onOpenChange?.(false); else onOpenDetail?.() }} />
       </motion.div>

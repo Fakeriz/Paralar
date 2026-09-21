@@ -80,21 +80,21 @@ export default function DebtTrackerSheet({ open, onClose }) {
   return (
     <>
       <Sheet open={open} onClose={onClose} full title={t('debt_tracker')}
-        right={<button type="button" onClick={openAdd} className="h-8 w-8 rounded-full bg-foreground text-background flex items-center justify-center" data-testid="debt-add"><Plus size={18} /></button>}>
+        right={<button type="button" onClick={openAdd} className="h-8 w-8 rounded-full bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 flex items-center justify-center font-bold" data-testid="debt-add"><Plus size={18} /></button>}>
         {/* Summary */}
-        <div className="mt-1 rounded-2xl bg-muted border border-border/50 p-4">
+        <div className="mt-1 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 p-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">I Am Owed</p>
+              <p className="text-[11px] uppercase tracking-wide text-zinc-600 dark:text-zinc-400 font-semibold">I Am Owed</p>
               <p className="text-lg font-extrabold tabular-nums text-emerald-600 dark:text-emerald-400 mt-0.5" data-testid="debt-owed">{fmt(summary.owed, home)}</p>
             </div>
             <div>
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">I Owe</p>
+              <p className="text-[11px] uppercase tracking-wide text-zinc-600 dark:text-zinc-400 font-semibold">I Owe</p>
               <p className="text-lg font-extrabold tabular-nums text-rose-600 dark:text-rose-400 mt-0.5" data-testid="debt-owe">{fmt(summary.owe, home)}</p>
             </div>
           </div>
-          <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-between">
-            <span className="text-sm font-medium text-muted-foreground">Net Position</span>
+          <div className="mt-3 pt-3 border-t border-zinc-200 dark:border-white/10 flex items-center justify-between">
+            <span className="text-sm font-semibold text-zinc-600 dark:text-zinc-400">Net Position</span>
             <span className={cn('text-sm font-bold tabular-nums', summary.net >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400')} data-testid="debt-net">
               {summary.net >= 0 ? '+' : '-'}{fmt(Math.abs(summary.net), home)}
             </span>
@@ -107,23 +107,23 @@ export default function DebtTrackerSheet({ open, onClose }) {
         <div className="mt-4 space-y-2.5">
           {list.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center mb-3"><HandCoins size={24} className="text-muted-foreground" strokeWidth={1.5} /></div>
-              <p className="font-semibold">Nothing here yet</p>
-              <p className="text-sm text-muted-foreground mt-1">Track money you lent or borrowed.</p>
+              <div className="h-14 w-14 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-3 text-zinc-400 dark:text-zinc-500"><HandCoins size={24} strokeWidth={1.5} /></div>
+              <p className="font-bold text-zinc-950 dark:text-white">Nothing here yet</p>
+              <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">Track money you lent or borrowed.</p>
             </div>
           ) : list.map((d) => (
-            <div key={d.id} className="rounded-2xl bg-card border border-border/50 p-4" data-testid="debt-row">
+            <div key={d.id} className="rounded-2xl bg-white dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 p-4" data-testid="debt-row">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="font-semibold text-[15px] truncate">{d?.person}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{d?.direction === 'lent' ? 'Lent' : 'Borrowed'}{d?.due_date ? ` · due ${safeDate(d.due_date)}` : ''}{d?.note ? ` · ${d.note}` : ''}</p>
+                  <p className="font-bold text-[15px] truncate text-zinc-950 dark:text-white">{d?.person}</p>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">{d?.direction === 'lent' ? 'Lent' : 'Borrowed'}{d?.due_date ? ` · due ${safeDate(d.due_date)}` : ''}{d?.note ? ` · ${d.note}` : ''}</p>
                 </div>
                 <p className={cn('font-bold tabular-nums text-[15px] shrink-0', d?.direction === 'lent' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400')}>{fmt(d?.amount, d?.currency || home)}</p>
               </div>
               {!d?.settled ? (
                 <div className="flex gap-2 mt-3">
-                  <button type="button" onClick={() => settle(d)} className="flex-1 rounded-xl bg-foreground text-background text-sm font-semibold py-2 flex items-center justify-center gap-1.5" data-testid="debt-settle"><Check size={15} /> Mark as Paid</button>
-                  <button type="button" onClick={() => remind(d)} className="rounded-xl bg-muted border border-border/60 text-sm font-semibold py-2 px-3 flex items-center justify-center gap-1.5" data-testid="debt-remind"><Share2 size={15} /> Remind</button>
+                  <button type="button" onClick={() => settle(d)} className="flex-1 rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 text-sm font-bold py-2 flex items-center justify-center gap-1.5 transition-colors" data-testid="debt-settle"><Check size={15} /> Mark as Paid</button>
+                  <button type="button" onClick={() => remind(d)} className="rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-white/10 text-zinc-950 dark:text-white text-sm font-bold py-2 px-3 flex items-center justify-center gap-1.5 transition-colors" data-testid="debt-remind"><Share2 size={15} /> Remind</button>
                 </div>
               ) : (
                 <p className="mt-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1"><Check size={13} /> Settled</p>
@@ -136,16 +136,16 @@ export default function DebtTrackerSheet({ open, onClose }) {
 
       {/* Add debt */}
       <Sheet open={adding} onClose={() => setAdding(false)} title="Add Debt / IOU" zIndex={70}
-        left={<button type="button" onClick={() => setAdding(false)} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">{t('cancel')}</button>}
-        right={<button type="button" onClick={save} disabled={!person.trim() || !(Number(amount) || 0)} className={cn('text-[15px] font-bold py-1 px-1', (!person.trim() || !(Number(amount) || 0)) && 'opacity-40')} data-testid="debt-save">{t('save')}</button>}>
+        left={<button type="button" onClick={() => setAdding(false)} className="text-sm font-semibold text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white transition-colors">{t('cancel')}</button>}
+        right={<button type="button" onClick={save} disabled={!person.trim() || !(Number(amount) || 0)} className={cn('text-[15px] font-bold py-1 px-1 text-zinc-950 dark:text-white', (!person.trim() || !(Number(amount) || 0)) && 'opacity-40')} data-testid="debt-save">{t('save')}</button>}>
         <div className="space-y-5 pt-2">
           <Segmented value={direction} onChange={setDirection} options={[{ id: 'lent', label: 'Lent' }, { id: 'borrowed', label: 'Borrowed' }]} />
           <Field label="Contact name"><TextInput value={person} onChange={(e) => setPerson(e.target.value)} placeholder="e.g. Budi" data-testid="debt-person" /></Field>
           <Field label="Amount">
             <div className="flex gap-2">
-              <button type="button" onClick={() => setPickCur(true)} className="shrink-0 rounded-xl bg-muted border border-border/60 px-3 py-3 flex items-center gap-1.5" data-testid="debt-currency">
+              <button type="button" onClick={() => setPickCur(true)} className="shrink-0 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-white/10 px-3 py-3 flex items-center gap-1.5 text-zinc-950 dark:text-white" data-testid="debt-currency">
                 <span className="font-bold text-sm">{getCurrency(currency).symbol} {currency}</span>
-                <ChevronRight size={15} className="text-muted-foreground" />
+                <ChevronRight size={15} className="text-zinc-500 dark:text-zinc-400" />
               </button>
               <TextInput type="number" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" className="flex-1 text-lg font-bold" data-testid="debt-amount" />
             </div>
@@ -154,9 +154,9 @@ export default function DebtTrackerSheet({ open, onClose }) {
           <Field label="Note"><TextInput value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" /></Field>
           <Field label={t('source_account')}>
             <div className="flex gap-2 overflow-x-auto no-scrollbar">
-              <button type="button" onClick={() => setAccountId(null)} className={cn('shrink-0 rounded-xl border px-3 py-2 text-sm font-medium', accountId === null ? 'bg-foreground text-background border-foreground' : 'bg-card border-border/60')}>{t('no_account_opt')}</button>
+              <button type="button" onClick={() => setAccountId(null)} className={cn('shrink-0 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors', accountId === null ? 'bg-zinc-950 text-white border-zinc-950 dark:bg-white dark:text-zinc-950 dark:border-white' : 'bg-white dark:bg-[#1c1c1e] border-zinc-200 dark:border-white/10 text-zinc-950 dark:text-white')}>{t('no_account_opt')}</button>
               {(accounts || []).map((a) => (
-                <button key={a.id} type="button" onClick={() => setAccountId(a.id)} className={cn('shrink-0 rounded-xl border px-3 py-2 text-sm font-medium whitespace-nowrap', accountId === a.id ? 'bg-foreground text-background border-foreground' : 'bg-card border-border/60')}>{a.name}</button>
+                <button key={a.id} type="button" onClick={() => setAccountId(a.id)} className={cn('shrink-0 rounded-xl border px-3 py-2 text-sm font-semibold whitespace-nowrap transition-colors', accountId === a.id ? 'bg-zinc-950 text-white border-zinc-950 dark:bg-white dark:text-zinc-950 dark:border-white' : 'bg-white dark:bg-[#1c1c1e] border-zinc-200 dark:border-white/10 text-zinc-950 dark:text-white')}>{a.name}</button>
               ))}
             </div>
           </Field>

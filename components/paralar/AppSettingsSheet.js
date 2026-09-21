@@ -10,15 +10,15 @@ import { cn } from '@/lib/utils'
 
 function Row({ icon: Icon, label, sub, onClick, testId }) {
   return (
-    <button type="button" onClick={onClick} className="w-full flex items-center justify-between p-4 hover:bg-muted/40 transition-colors text-left" data-testid={testId}>
+    <button type="button" onClick={onClick} className="w-full flex items-center justify-between p-4 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-colors text-left" data-testid={testId}>
       <div className="flex items-center gap-3 min-w-0">
-        <Icon className="w-5 h-5 shrink-0" strokeWidth={1.75} />
+        <Icon className="w-5 h-5 shrink-0 text-zinc-900 dark:text-white" strokeWidth={1.75} />
         <div className="min-w-0">
-          <p className="font-medium text-[15px]">{label}</p>
-          {sub ? <p className="text-xs text-muted-foreground mt-0.5 truncate">{sub}</p> : null}
+          <p className="font-semibold text-[15px] text-zinc-950 dark:text-white">{label}</p>
+          {sub ? <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5 truncate">{sub}</p> : null}
         </div>
       </div>
-      <ChevronRight className="w-4 h-4 text-muted-foreground/50 shrink-0" />
+      <ChevronRight className="w-4 h-4 text-zinc-400 dark:text-zinc-500 shrink-0" />
     </button>
   )
 }
@@ -30,7 +30,7 @@ export default function AppSettingsSheet({ open, onClose }) {
   const nav = (fn) => { onClose?.(); setTimeout(() => fn(), 140) }
   const soon = () => toast(t('coming_soon'))
   const langName = LANGUAGES.find((l) => l.code === lang)?.name || 'English'
-  const box = 'rounded-2xl divide-y divide-border/40 border border-border/40 bg-card overflow-hidden'
+  const box = 'rounded-2xl divide-y divide-zinc-200 dark:divide-white/10 border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1c1c1e] overflow-hidden'
 
   return (
     <Sheet open={open} onClose={onClose} full title={t('app_settings')}>
@@ -41,8 +41,8 @@ export default function AppSettingsSheet({ open, onClose }) {
           <Row icon={Coins} label={t('home_currency')} sub={`${home} · ${getCurrency(home).name}`} onClick={() => nav(() => openSheet('currency', { target: 'home' }))} testId="set-currency" />
           <div className="flex items-center justify-between p-4">
             <div className="flex items-center gap-3 min-w-0">
-              <Moon className="w-5 h-5 shrink-0" strokeWidth={1.75} />
-              <p className="font-medium text-[15px]">{t('appearance')}</p>
+              <Moon className="w-5 h-5 shrink-0 text-zinc-900 dark:text-white" strokeWidth={1.75} />
+              <p className="font-semibold text-[15px] text-zinc-950 dark:text-white">{t('appearance')}</p>
             </div>
             <Segmented size="sm" className={cn('w-40')} value={theme || 'system'} onChange={setTheme} options={[{ id: 'light', label: t('light') }, { id: 'dark', label: t('dark') }, { id: 'system', label: t('system') }]} />
           </div>
