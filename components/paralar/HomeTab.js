@@ -197,7 +197,7 @@ function BalanceCarousel() {
 function QuickGrid() {
   const { t, open } = useApp()
   const items = [
-    { id: 'bills', label: t('bills'), icon: FileText, onClick: () => toast(t('coming_soon')) },
+    { id: 'bills', label: t('bills'), icon: FileText, onClick: () => open('bills') },
     { id: 'receipts', label: t('receipts'), icon: Receipt, onClick: () => open('scan') },
     { id: 'split', label: t('bill_split'), icon: Users, onClick: () => open('split') },
     { id: 'analytics', label: t('analytics'), icon: PieChart, onClick: () => open('analytics') },

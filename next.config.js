@@ -1,5 +1,5 @@
 const nextConfig = {
-  output: 'standalone',
+  devIndicators: false,
   images: {
     unoptimized: true,
     remotePatterns: [

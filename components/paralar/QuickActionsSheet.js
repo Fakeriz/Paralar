@@ -1,5 +1,5 @@
 'use client'
-import { PlusCircle, ScanLine, PiggyBank, Mic, CreditCard } from 'lucide-react'
+import { PlusCircle, ScanLine, PiggyBank, Mic, CreditCard, FileText } from 'lucide-react'
 import { useApp } from './context'
 import { Sheet } from './ui'
 
@@ -22,7 +22,14 @@ export default function QuickActionsSheet({ open, onClose }) {
           </button>
         ))}
       </div>
-      <button type="button" onClick={() => go(() => openSheet('newAccount'))} className="w-full mt-3 rounded-2xl bg-white dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 p-4 flex items-center gap-3 active:scale-[0.98] transition" data-testid="qa-account">
+      <button type="button" onClick={() => go(() => openSheet('bills'))} className="w-full mt-3 rounded-2xl bg-white dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 p-4 flex items-center gap-3 active:scale-[0.98] transition" data-testid="qa-bills">
+        <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center"><FileText size={18} /></div>
+        <div className="flex-1 text-left">
+          <span className="font-bold text-zinc-950 dark:text-white text-sm block">{t('bills_tracker') || t('bills')}</span>
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">{t('bills_checklist_subtitle')}</span>
+        </div>
+      </button>
+      <button type="button" onClick={() => go(() => openSheet('newAccount'))} className="w-full mt-2 rounded-2xl bg-white dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 p-4 flex items-center gap-3 active:scale-[0.98] transition" data-testid="qa-account">
         <div className="h-10 w-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white flex items-center justify-center"><CreditCard size={18} /></div>
         <span className="font-bold text-zinc-950 dark:text-white text-sm">{t('new_account')}</span>
       </button>

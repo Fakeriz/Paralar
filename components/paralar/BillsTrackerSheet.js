@@ -1,11 +1,12 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Plus, Receipt, Check, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Receipt, Info, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
 import { Sheet, TextInput, Field, PrimaryButton } from './ui'
+import SwipeBillRow from './SwipeBillRow'
 import { CATEGORIES } from '@/lib/categories'
-import { getCurrency, roundMoney } from '@/lib/currencies'
+import { roundMoney } from '@/lib/currencies'
 import { cn } from '@/lib/utils'
 
 const LOCALE = { en: 'en-GB', tr: 'tr-TR', ms: 'ms-MY', id: 'id-ID' }
@@ -13,66 +14,143 @@ const monthKeyOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStar
 const EXPENSE_CATS = CATEGORIES.filter((c) => c.types?.includes('expense'))
 
 export default function BillsTrackerSheet({ open, onClose }) {
-  const { t, fmt, home, accounts = [], store, lang, convertToHome } = useApp()
+  const { t, fmt, home, accounts = [], store, lang, convertToHome, refresh } = useApp()
   const [bills, setBills] = useState([])
   const [month, setMonth] = useState(new Date())
   const [adding, setAdding] = useState(false)
+  const [editing, setEditing] = useState(null)
+  const [deleting, setDeleting] = useState(null)
+  const [syncedAlert, setSyncedAlert] = useState(null)
 
-  // add form
+  // Add bill form state
   const [title, setTitle] = useState('')
   const [amount, setAmount] = useState('')
   const [dueDay, setDueDay] = useState('1')
-  const [category, setCategory] = useState('bills')
+  const [category, setCategory] = useState('cat_bills')
   const [accountId, setAccountId] = useState(null)
+  const [autoLogExpense, setAutoLogExpense] = useState(false)
   const [saving, setSaving] = useState(false)
 
+  // Edit bill form state
+  const [editTitle, setEditTitle] = useState('')
+  const [editAmount, setEditAmount] = useState('')
+  const [editDueDay, setEditDueDay] = useState('1')
+  const [editCategory, setEditCategory] = useState('cat_bills')
+  const [editAccountId, setEditAccountId] = useState(null)
+  const [editAutoLog, setEditAutoLog] = useState(false)
+  const [savingEdit, setSavingEdit] = useState(false)
+
   const load = async () => {
-    try { const list = await store.listBills(); setBills(Array.isArray(list) ? list : []) } catch { setBills([]) }
+    try {
+      const list = await store.listBills()
+      setBills(Array.isArray(list) ? list : [])
+    } catch {
+      setBills([])
+    }
   }
 
   useEffect(() => {
     if (!open) return
-    setMonth(new Date()); setAdding(false)
+    setMonth(new Date())
+    setAdding(false)
+    setEditing(null)
+    setDeleting(null)
+    setSyncedAlert(null)
     load()
   }, [open]) // eslint-disable-line
 
   const mKey = monthKeyOf(month)
   const monthLabel = useMemo(() => {
-    try { return month.toLocaleDateString(LOCALE[lang] || 'en-GB', { month: 'long', year: 'numeric' }) } catch { return '' }
+    try {
+      return month.toLocaleDateString(LOCALE[lang] || 'en-GB', { month: 'long', year: 'numeric' })
+    } catch {
+      return ''
+    }
   }, [month, lang])
 
   const rows = useMemo(() => {
-    return (bills || []).map((b) => ({ ...b, paid: !!(b?.paid_months || {})[mKey] }))
+    return (bills || [])
+      .map((b) => ({ ...b, paid: !!(b?.paid_months || {})[mKey] }))
       .sort((a, b) => (Number(a?.due_day) || 0) - (Number(b?.due_day) || 0))
   }, [bills, mKey])
 
   const toHome = (b) => {
     const raw = Number(b?.amount) || 0
-    try { const v = convertToHome ? convertToHome(raw, b?.currency || home) : raw; return typeof v === 'number' && !isNaN(v) ? v : raw } catch { return raw }
+    try {
+      const v = convertToHome ? convertToHome(raw, b?.currency || home) : raw
+      return typeof v === 'number' && !isNaN(v) ? v : raw
+    } catch {
+      return raw
+    }
   }
+
   const summary = useMemo(() => {
-    let total = 0, paid = 0
-    ;(rows || []).forEach((b) => { const v = toHome(b); total += v; if (b.paid) paid += v })
-    return { total, paid, remaining: Math.max(0, total - paid) }
+    let total = 0
+    let paid = 0
+    let paidCount = 0
+    const totalCount = rows.length
+    ;(rows || []).forEach((b) => {
+      const v = toHome(b)
+      total += v
+      if (b.paid) {
+        paid += v
+        paidCount += 1
+      }
+    })
+    const percent = totalCount > 0 ? Math.round((paidCount / totalCount) * 100) : 0
+    return { total, paid, remaining: Math.max(0, total - paid), paidCount, totalCount, percent }
   }, [rows]) // eslint-disable-line
 
   const shiftMonth = (delta) => setMonth((d) => new Date(d.getFullYear(), d.getMonth() + delta, 1))
 
   const toggle = async (b) => {
+    const isNowPaid = !b.paid
     const pm = { ...(b?.paid_months || {}) }
-    if (pm[mKey]) delete pm[mKey]; else pm[mKey] = true
-    // optimistic
-    setBills((list) => (list || []).map((x) => (x.id === b.id ? { ...x, paid_months: pm } : x)))
-    try { await store.updateBill(b.id, { paid_months: pm }); await load() } catch (e) { toast.error(e?.message || t('error')); load() }
-  }
+    if (isNowPaid) {
+      pm[mKey] = true
+    } else {
+      delete pm[mKey]
+    }
 
-  const removeBill = async (b) => {
-    setBills((list) => (list || []).filter((x) => x.id !== b.id))
-    try { await store.deleteBill(b.id) } catch (e) { toast.error(e?.message || t('error')); load() }
+    // Optimistic UI update
+    setBills((list) => (list || []).map((x) => (x.id === b.id ? { ...x, paid_months: pm } : x)))
+
+    try {
+      await store.updateBill(b.id, { paid_months: pm })
+      if (isNowPaid && b.auto_log_expense) {
+        try {
+          if (store?.createTransaction) {
+            await store.createTransaction({
+              amount: Number(b.amount) || 0,
+              currency: b.currency || home,
+              type: 'expense',
+              category: b.category || 'cat_bills',
+              account_id: b.account_id || accounts[0]?.id || null,
+              note: `[Bill] ${b.title} (${monthLabel})`,
+              date: new Date().toISOString().slice(0, 10),
+            })
+            toast.success(t('bill_paid_logged'))
+            if (typeof refresh === 'function') await refresh()
+          }
+        } catch (txErr) {
+          console.warn('Auto log expense error:', txErr)
+        }
+      }
+      await load()
+    } catch (e) {
+      toast.error(e?.message || t('error'))
+      load()
+    }
   }
 
   const openAdd = () => {
-    setTitle(''); setAmount(''); setDueDay('1'); setCategory('bills'); setAccountId(accounts[0]?.id || null); setAdding(true)
+    setTitle('')
+    setAmount('')
+    setDueDay('1')
+    setCategory('cat_bills')
+    setAccountId(accounts[0]?.id || null)
+    setAutoLogExpense(false)
+    setAdding(true)
   }
 
   const saveBill = async () => {
@@ -86,11 +164,71 @@ export default function BillsTrackerSheet({ open, onClose }) {
         due_day: Math.min(31, Math.max(1, Number(dueDay) || 1)),
         category,
         account_id: accountId,
+        auto_log_expense: autoLogExpense,
       })
       await load()
       setAdding(false)
       toast.success(t('saved_msg'))
-    } catch (e) { toast.error(e?.message || t('error')) } finally { setSaving(false) }
+    } catch (e) {
+      toast.error(e?.message || t('error'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const openEdit = (b) => {
+    setEditing(b)
+    setEditTitle(b.title || '')
+    setEditAmount(String(b.amount || ''))
+    setEditDueDay(String(b.due_day || '1'))
+    setEditCategory(b.category || 'cat_bills')
+    setEditAccountId(b.account_id || null)
+    setEditAutoLog(!!b.auto_log_expense)
+  }
+
+  const saveEditBill = async () => {
+    if (!editTitle.trim() || !Number(editAmount) || savingEdit || !editing) return
+    setSavingEdit(true)
+    try {
+      await store.updateBill(editing.id, {
+        title: editTitle.trim(),
+        amount: roundMoney(Number(editAmount), home),
+        currency: editing.currency || home,
+        due_day: Math.min(31, Math.max(1, Number(editDueDay) || 1)),
+        category: editCategory,
+        account_id: editAccountId,
+        auto_log_expense: editAutoLog,
+      })
+      await load()
+      setEditing(null)
+      toast.success(t('saved_msg'))
+    } catch (e) {
+      toast.error(e?.message || t('error'))
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
+  const requestDelete = (b) => {
+    if (b.is_subscription_mirror) {
+      setSyncedAlert(b)
+      return
+    }
+    setDeleting(b)
+  }
+
+  const executeDelete = async () => {
+    if (!deleting) return
+    const id = deleting.id
+    setBills((list) => (list || []).filter((x) => x.id !== id))
+    setDeleting(null)
+    try {
+      await store.deleteBill(id)
+      toast.success(t('deleted'))
+    } catch (e) {
+      toast.error(e?.message || t('error'))
+      load()
+    }
   }
 
   return (
@@ -99,85 +237,286 @@ export default function BillsTrackerSheet({ open, onClose }) {
         open={open}
         onClose={onClose}
         full
-        title={(
-          <div className="leading-tight">
-            <div className="text-base font-bold text-zinc-950 dark:text-white">Bills</div>
-            <div className="text-[11px] font-medium text-zinc-600 dark:text-zinc-400">Monthly paid / unpaid checklist</div>
+        left={
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-[15px] font-semibold text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white transition-colors cursor-pointer"
+          >
+            {t('done')}
+          </button>
+        }
+        title={
+          <div className="leading-tight text-center">
+            <div className="text-base font-bold text-zinc-950 dark:text-white">{t('bills')}</div>
+            <div className="text-xs text-zinc-500 dark:text-zinc-400 font-normal">
+              {t('bills_checklist_subtitle')}
+            </div>
           </div>
-        )}
-        right={<button type="button" onClick={openAdd} className="text-[15px] font-bold py-1 px-1 text-zinc-950 dark:text-white" data-testid="bills-add">Add</button>}
+        }
+        right={
+          <button
+            type="button"
+            onClick={openAdd}
+            className="text-[15px] font-bold py-1 px-1 text-emerald-600 dark:text-emerald-400 hover:opacity-80 transition-colors cursor-pointer"
+            data-testid="bills-add"
+          >
+            {t('add_bill') || 'Add'}
+          </button>
+        }
       >
-        {/* Month navigation */}
-        <div className="flex items-center justify-between mt-2">
-          <button type="button" onClick={() => shiftMonth(-1)} className="h-10 w-10 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white flex items-center justify-center transition-colors" aria-label="prev month" data-testid="bills-prev"><ChevronLeft size={18} /></button>
-          <p className="font-bold text-[15px] tabular-nums text-zinc-950 dark:text-white" data-testid="bills-month">{monthLabel}</p>
-          <button type="button" onClick={() => shiftMonth(1)} className="h-10 w-10 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white flex items-center justify-center transition-colors" aria-label="next month" data-testid="bills-next"><ChevronRight size={18} /></button>
+        {/* Month Selector */}
+        <div className="rounded-2xl bg-zinc-100/90 dark:bg-zinc-800/60 p-3 px-4 flex items-center justify-between mt-2 border border-zinc-200/50 dark:border-white/5">
+          <button
+            type="button"
+            onClick={() => shiftMonth(-1)}
+            className="h-9 w-9 rounded-full bg-white dark:bg-zinc-700/80 text-zinc-700 dark:text-zinc-200 shadow-sm flex items-center justify-center transition-all active:scale-95 hover:bg-zinc-50 cursor-pointer"
+            aria-label="previous month"
+            data-testid="bills-prev"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <span
+            className="text-emerald-500 dark:text-emerald-400 font-bold text-base tracking-tight capitalize select-none"
+            data-testid="bills-month"
+          >
+            {monthLabel}
+          </span>
+          <button
+            type="button"
+            onClick={() => shiftMonth(1)}
+            className="h-9 w-9 rounded-full bg-white dark:bg-zinc-700/80 text-zinc-700 dark:text-zinc-200 shadow-sm flex items-center justify-center transition-all active:scale-95 hover:bg-zinc-50 cursor-pointer"
+            aria-label="next month"
+            data-testid="bills-next"
+          >
+            <ChevronRight size={18} />
+          </button>
         </div>
 
-        {/* Summary card */}
-        <div className="mt-4 rounded-2xl bg-[#0A0A0B] text-white p-5 border border-white/10 shadow-lg">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/60">Remaining this month</p>
-          <p className="text-3xl font-extrabold tabular-nums mt-1 text-white" data-testid="bills-remaining">{fmt(summary.remaining, home)}</p>
-          <div className="grid grid-cols-2 gap-3 mt-4">
-            <div className="rounded-xl bg-white/10 px-3 py-2.5">
-              <p className="text-[11px] uppercase tracking-wide text-white/60 font-semibold">Paid</p>
-              <p className="font-bold tabular-nums mt-0.5 text-white" data-testid="bills-paid">{fmt(summary.paid, home)}</p>
+        {/* Monthly Summary Card */}
+        <div className="mt-4 rounded-3xl bg-zinc-950 text-white p-5 border border-white/10 shadow-xl relative overflow-hidden dark:bg-[#141416]">
+          <div className="absolute top-0 right-0 w-36 h-36 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+
+          <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+            {t('remaining_this_month')}
+          </p>
+          <p
+            className="text-2xl sm:text-3xl font-extrabold tabular-nums mt-0.5 text-white tracking-tight"
+            data-testid="bills-remaining"
+          >
+            {fmt(summary.remaining, home)}
+          </p>
+
+          {/* Progress Indicator */}
+          <div className="mt-3">
+            <div className="flex items-center justify-between text-[11px] font-medium text-zinc-400">
+              <span>{t('bills_count_of', { paid: summary.paidCount, total: summary.totalCount })}</span>
+              <span className="tabular-nums font-semibold text-emerald-400">{summary.percent}%</span>
             </div>
-            <div className="rounded-xl bg-white/10 px-3 py-2.5">
-              <p className="text-[11px] uppercase tracking-wide text-white/60 font-semibold">Total</p>
-              <p className="font-bold tabular-nums mt-0.5 text-white" data-testid="bills-total">{fmt(summary.total, home)}</p>
+            <div className="h-1.5 sm:h-2 rounded-full bg-white/10 mt-1.5 overflow-hidden">
+              <div
+                className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                style={{ width: `${summary.percent}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Bottom 2-column breakdown */}
+          <div className="grid grid-cols-2 gap-3 mt-4 pt-3 border-t border-white/10">
+            <div className="rounded-2xl bg-white/[0.06] p-3 border border-white/5">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                {t('paid_upper')}
+              </p>
+              <p
+                className="text-emerald-400 font-bold text-sm sm:text-base tabular-nums mt-0.5 truncate"
+                data-testid="bills-paid"
+              >
+                {fmt(summary.paid, home)}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-white/[0.06] p-3 border border-white/5">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                {t('total_upper')}
+              </p>
+              <p
+                className="text-white font-bold text-sm sm:text-base tabular-nums mt-0.5 truncate"
+                data-testid="bills-total"
+              >
+                {fmt(summary.total, home)}
+              </p>
             </div>
           </div>
         </div>
 
-        {/* List / empty state */}
+        {/* Bills List / Empty State */}
         {rows.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-14 text-center">
-            <div className="h-16 w-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-4"><Receipt size={26} className="text-zinc-400 dark:text-zinc-500" /></div>
-            <p className="font-bold text-zinc-950 dark:text-white">No bills to track</p>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1 max-w-[240px]">Add your recurring monthly bills and tick them off as you pay.</p>
-            <button type="button" onClick={openAdd} className="mt-5 rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold px-5 py-3 text-[15px] active:scale-[0.98] transition" data-testid="bills-add-first">Add first bill</button>
+            <div className="h-16 w-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-3 text-zinc-400 dark:text-zinc-500">
+              <Receipt size={28} />
+            </div>
+            <p className="font-bold text-zinc-950 dark:text-white text-base">
+              {t('no_bills_title')}
+            </p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 max-w-[260px] leading-relaxed">
+              {t('no_bills_sub')}
+            </p>
+            <button
+              type="button"
+              onClick={openAdd}
+              className="mt-4 rounded-xl bg-emerald-600 text-white font-bold px-5 py-2.5 text-sm active:scale-95 transition-all shadow-sm flex items-center gap-2 hover:bg-emerald-700 cursor-pointer"
+              data-testid="bills-add-first"
+            >
+              <Plus size={16} />
+              {t('add_bill')}
+            </button>
           </div>
         ) : (
-          <div className="mt-5 space-y-2.5">
-            {rows.map((b) => {
-              const cur = getCurrency(b?.currency || home)
-              return (
-                <div key={b.id} className={cn('flex items-center gap-3 rounded-2xl border px-4 py-3 transition-colors', b.paid ? 'bg-zinc-50 dark:bg-zinc-900/60 border-zinc-200/60 dark:border-white/5' : 'bg-white dark:bg-[#1c1c1e] border-zinc-200 dark:border-white/10')} data-testid="bill-row">
-                  <button
-                    type="button"
-                    onClick={() => toggle(b)}
-                    className={cn('h-7 w-7 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors', b.paid ? 'bg-zinc-950 border-zinc-950 text-white dark:bg-white dark:border-white dark:text-zinc-950' : 'border-zinc-300 dark:border-zinc-700 text-transparent')}
-                    aria-label="toggle paid"
-                    data-testid="bill-toggle"
-                  >
-                    {b.paid ? <Check size={15} strokeWidth={3} /> : null}
-                  </button>
-                  <div className="flex-1 min-w-0">
-                    <p className={cn('font-semibold text-[15px] truncate', b.paid ? 'line-through text-zinc-400 dark:text-zinc-600' : 'text-zinc-950 dark:text-white')}>{b?.title}</p>
-                    <p className="text-xs text-zinc-600 dark:text-zinc-400 truncate">{t(`cat_${b?.category || 'bills'}`)} · Due day {b?.due_day || 1}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className={cn('font-bold text-[15px] tabular-nums', b.paid ? 'text-zinc-400 dark:text-zinc-600' : 'text-zinc-950 dark:text-white')}>{cur.flag} {fmt(b?.amount, b?.currency || home)}</p>
-                    <button type="button" onClick={() => removeBill(b)} className="text-[11px] text-zinc-500 hover:text-rose-500 dark:text-zinc-400 dark:hover:text-rose-400 inline-flex items-center gap-1 mt-0.5" aria-label="delete bill"><Trash2 size={11} /> {t('delete')}</button>
-                  </div>
-                </div>
-              )
-            })}
+          <div className="mt-4 space-y-1">
+            {rows.map((b) => (
+              <SwipeBillRow
+                key={b.id}
+                bill={b}
+                isPaid={!!b.paid}
+                isMirror={!!b.is_subscription_mirror}
+                home={home}
+                fmt={fmt}
+                t={t}
+                onToggle={toggle}
+                onEdit={openEdit}
+                onDelete={requestDelete}
+                onShowSyncedAlert={setSyncedAlert}
+              />
+            ))}
           </div>
         )}
         <div className="h-6" />
       </Sheet>
 
-      {/* Add bill form */}
-      <Sheet open={adding} onClose={() => setAdding(false)} title="Add Bill" zIndex={70}
-        left={<button type="button" onClick={() => setAdding(false)} className="text-sm font-semibold text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white transition-colors">{t('cancel')}</button>}
-        right={<button type="button" onClick={saveBill} disabled={!title.trim() || !Number(amount) || saving} className={cn('text-[15px] font-bold py-1 px-1 text-zinc-950 dark:text-white', (!title.trim() || !Number(amount) || saving) && 'opacity-40')} data-testid="bill-save">{saving ? '...' : t('save')}</button>}
+      {/* Synced Subscription Alert Modal */}
+      {syncedAlert && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-3xl bg-white dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 p-6 shadow-2xl text-center space-y-4">
+            <div className="h-14 w-14 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 mx-auto flex items-center justify-center">
+              <Info size={28} />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-zinc-950 dark:text-white">
+                {t('synced_subscription_title')}
+              </h3>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-2 leading-relaxed">
+                {t('synced_subscription_desc')}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSyncedAlert(null)}
+              className="w-full rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold py-2.5 text-sm transition-all active:scale-95 cursor-pointer"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {deleting && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-3xl bg-white dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 p-6 shadow-2xl text-center space-y-4">
+            <div className="h-14 w-14 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 mx-auto flex items-center justify-center">
+              <Trash2 size={28} />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-zinc-950 dark:text-white">
+                {t('clear_confirm_title')}
+              </h3>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-2 leading-relaxed">
+                {deleting?.title ? `"${deleting.title}" - ` : ''}{t('clear_confirm_body')}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setDeleting(null)}
+                className="w-full rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-bold py-2.5 text-sm transition-all active:scale-95 cursor-pointer"
+              >
+                {t('cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={executeDelete}
+                className="w-full rounded-xl bg-rose-600 text-white font-bold py-2.5 text-sm transition-all active:scale-95 cursor-pointer hover:bg-rose-700"
+              >
+                {t('delete')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Bill Form Sheet */}
+      <Sheet
+        open={adding}
+        onClose={() => setAdding(false)}
+        title={t('new_bill')}
+        zIndex={70}
+        left={
+          <button
+            type="button"
+            onClick={() => setAdding(false)}
+            className="text-sm font-semibold text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white transition-colors cursor-pointer"
+          >
+            {t('cancel')}
+          </button>
+        }
+        right={
+          <button
+            type="button"
+            onClick={saveBill}
+            disabled={!title.trim() || !Number(amount) || saving}
+            className={cn(
+              'text-[15px] font-bold py-1 px-1 text-emerald-600 dark:text-emerald-400 cursor-pointer',
+              (!title.trim() || !Number(amount) || saving) && 'opacity-40 cursor-not-allowed'
+            )}
+            data-testid="bill-save"
+          >
+            {saving ? '...' : t('save')}
+          </button>
+        }
       >
         <div className="space-y-5 pt-2">
-          <Field label="Bill title"><TextInput value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Netflix, Rent, Internet" data-testid="bill-title" /></Field>
-          <Field label={`Amount (${home})`}><TextInput type="number" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" className="text-lg font-bold" data-testid="bill-amount" /></Field>
-          <Field label="Due date (day of month)"><TextInput type="number" inputMode="numeric" min="1" max="31" value={dueDay} onChange={(e) => setDueDay(e.target.value)} placeholder="1" data-testid="bill-due" /></Field>
+          <Field label={t('bill_title')}>
+            <TextInput
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder={t('bill_title_ph')}
+              data-testid="bill-title"
+            />
+          </Field>
+
+          <Field label={`${t('amount')} (${home})`}>
+            <TextInput
+              type="number"
+              inputMode="decimal"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="0"
+              className="text-lg font-bold"
+              data-testid="bill-amount"
+            />
+          </Field>
+
+          <Field label={t('due_day_of_month')}>
+            <TextInput
+              type="number"
+              inputMode="numeric"
+              min="1"
+              max="31"
+              value={dueDay}
+              onChange={(e) => setDueDay(e.target.value)}
+              placeholder="1"
+              data-testid="bill-due"
+            />
+          </Field>
 
           <Field label={t('category')}>
             <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-5 px-5">
@@ -186,7 +525,12 @@ export default function BillsTrackerSheet({ open, onClose }) {
                   key={c.id}
                   type="button"
                   onClick={() => setCategory(c.id)}
-                  className={cn('shrink-0 rounded-xl border px-3.5 py-2 text-sm font-semibold whitespace-nowrap transition-colors', category === c.id ? 'bg-zinc-950 text-white border-zinc-950 dark:bg-white dark:text-zinc-950 dark:border-white' : 'bg-white dark:bg-[#1c1c1e] border-zinc-200 dark:border-white/10 text-zinc-950 dark:text-white')}
+                  className={cn(
+                    'shrink-0 rounded-xl border px-3.5 py-2 text-sm font-semibold whitespace-nowrap transition-colors cursor-pointer',
+                    category === c.id
+                      ? 'bg-zinc-950 text-white border-zinc-950 dark:bg-white dark:text-zinc-950 dark:border-white'
+                      : 'bg-white dark:bg-[#1c1c1e] border-zinc-200 dark:border-white/10 text-zinc-950 dark:text-white'
+                  )}
                   data-testid={`bill-cat-${c.id}`}
                 >
                   {t(`cat_${c.id}`)}
@@ -197,14 +541,224 @@ export default function BillsTrackerSheet({ open, onClose }) {
 
           <Field label={t('source_account')}>
             <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-5 px-5">
-              <button type="button" onClick={() => setAccountId(null)} className={cn('shrink-0 rounded-xl border px-3.5 py-2 text-sm font-semibold whitespace-nowrap', accountId === null ? 'bg-zinc-950 text-white border-zinc-950 dark:bg-white dark:text-zinc-950 dark:border-white' : 'bg-white dark:bg-[#1c1c1e] border-zinc-200 dark:border-white/10 text-zinc-950 dark:text-white')}>{t('no_account_opt')}</button>
+              <button
+                type="button"
+                onClick={() => setAccountId(null)}
+                className={cn(
+                  'shrink-0 rounded-xl border px-3.5 py-2 text-sm font-semibold whitespace-nowrap cursor-pointer',
+                  accountId === null
+                    ? 'bg-zinc-950 text-white border-zinc-950 dark:bg-white dark:text-zinc-950 dark:border-white'
+                    : 'bg-white dark:bg-[#1c1c1e] border-zinc-200 dark:border-white/10 text-zinc-950 dark:text-white'
+                )}
+              >
+                {t('no_account_opt')}
+              </button>
               {(accounts || []).map((a) => (
-                <button key={a.id} type="button" onClick={() => setAccountId(a.id)} className={cn('shrink-0 rounded-xl border px-3.5 py-2 text-sm font-semibold whitespace-nowrap', accountId === a.id ? 'bg-zinc-950 text-white border-zinc-950 dark:bg-white dark:text-zinc-950 dark:border-white' : 'bg-white dark:bg-[#1c1c1e] border-zinc-200 dark:border-white/10 text-zinc-950 dark:text-white')}>{a.name}</button>
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => setAccountId(a.id)}
+                  className={cn(
+                    'shrink-0 rounded-xl border px-3.5 py-2 text-sm font-semibold whitespace-nowrap cursor-pointer',
+                    accountId === a.id
+                      ? 'bg-zinc-950 text-white border-zinc-950 dark:bg-white dark:text-zinc-950 dark:border-white'
+                      : 'bg-white dark:bg-[#1c1c1e] border-zinc-200 dark:border-white/10 text-zinc-950 dark:text-white'
+                  )}
+                >
+                  {a.name}
+                </button>
               ))}
             </div>
           </Field>
 
-          <PrimaryButton onClick={saveBill} disabled={!title.trim() || !Number(amount) || saving}>{saving ? '...' : t('save')}</PrimaryButton>
+          {/* Auto-log expense toggle switch */}
+          <div className="rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold text-zinc-950 dark:text-white">
+                  {t('auto_log_expense')}
+                </p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                  {t('auto_log_expense_sub')}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAutoLogExpense(!autoLogExpense)}
+                className={cn(
+                  'w-12 h-6 rounded-full transition-colors relative shrink-0 cursor-pointer',
+                  autoLogExpense ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-700'
+                )}
+                role="switch"
+                aria-checked={autoLogExpense}
+              >
+                <div
+                  className={cn(
+                    'w-5 h-5 rounded-full bg-white shadow-md transform transition-transform absolute top-0.5',
+                    autoLogExpense ? 'translate-x-6' : 'translate-x-0.5'
+                  )}
+                />
+              </button>
+            </div>
+          </div>
+
+          <PrimaryButton onClick={saveBill} disabled={!title.trim() || !Number(amount) || saving}>
+            {saving ? '...' : t('save')}
+          </PrimaryButton>
+        </div>
+      </Sheet>
+
+      {/* Edit Bill Form Sheet */}
+      <Sheet
+        open={!!editing}
+        onClose={() => setEditing(null)}
+        title={t('edit') || 'Edit Bill'}
+        zIndex={70}
+        left={
+          <button
+            type="button"
+            onClick={() => setEditing(null)}
+            className="text-sm font-semibold text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white transition-colors cursor-pointer"
+          >
+            {t('cancel')}
+          </button>
+        }
+        right={
+          <button
+            type="button"
+            onClick={saveEditBill}
+            disabled={!editTitle.trim() || !Number(editAmount) || savingEdit}
+            className={cn(
+              'text-[15px] font-bold py-1 px-1 text-emerald-600 dark:text-emerald-400 cursor-pointer',
+              (!editTitle.trim() || !Number(editAmount) || savingEdit) && 'opacity-40 cursor-not-allowed'
+            )}
+            data-testid="bill-edit-save"
+          >
+            {savingEdit ? '...' : t('save')}
+          </button>
+        }
+      >
+        <div className="space-y-5 pt-2">
+          <Field label={t('bill_title')}>
+            <TextInput
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              placeholder={t('bill_title_ph')}
+              data-testid="edit-bill-title"
+            />
+          </Field>
+
+          <Field label={`${t('amount')} (${home})`}>
+            <TextInput
+              type="number"
+              inputMode="decimal"
+              value={editAmount}
+              onChange={(e) => setEditAmount(e.target.value)}
+              placeholder="0"
+              className="text-lg font-bold"
+              data-testid="edit-bill-amount"
+            />
+          </Field>
+
+          <Field label={t('due_day_of_month')}>
+            <TextInput
+              type="number"
+              inputMode="numeric"
+              min="1"
+              max="31"
+              value={editDueDay}
+              onChange={(e) => setEditDueDay(e.target.value)}
+              placeholder="1"
+              data-testid="edit-bill-due"
+            />
+          </Field>
+
+          <Field label={t('category')}>
+            <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-5 px-5">
+              {EXPENSE_CATS.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setEditCategory(c.id)}
+                  className={cn(
+                    'shrink-0 rounded-xl border px-3.5 py-2 text-sm font-semibold whitespace-nowrap transition-colors cursor-pointer',
+                    editCategory === c.id
+                      ? 'bg-zinc-950 text-white border-zinc-950 dark:bg-white dark:text-zinc-950 dark:border-white'
+                      : 'bg-white dark:bg-[#1c1c1e] border-zinc-200 dark:border-white/10 text-zinc-950 dark:text-white'
+                  )}
+                >
+                  {t(`cat_${c.id}`)}
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          <Field label={t('source_account')}>
+            <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-5 px-5">
+              <button
+                type="button"
+                onClick={() => setEditAccountId(null)}
+                className={cn(
+                  'shrink-0 rounded-xl border px-3.5 py-2 text-sm font-semibold whitespace-nowrap cursor-pointer',
+                  editAccountId === null
+                    ? 'bg-zinc-950 text-white border-zinc-950 dark:bg-white dark:text-zinc-950 dark:border-white'
+                    : 'bg-white dark:bg-[#1c1c1e] border-zinc-200 dark:border-white/10 text-zinc-950 dark:text-white'
+                )}
+              >
+                {t('no_account_opt')}
+              </button>
+              {(accounts || []).map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => setEditAccountId(a.id)}
+                  className={cn(
+                    'shrink-0 rounded-xl border px-3.5 py-2 text-sm font-semibold whitespace-nowrap cursor-pointer',
+                    editAccountId === a.id
+                      ? 'bg-zinc-950 text-white border-zinc-950 dark:bg-white dark:text-zinc-950 dark:border-white'
+                      : 'bg-white dark:bg-[#1c1c1e] border-zinc-200 dark:border-white/10 text-zinc-950 dark:text-white'
+                  )}
+                >
+                  {a.name}
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          {/* Auto-log expense toggle switch */}
+          <div className="rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold text-zinc-950 dark:text-white">
+                  {t('auto_log_expense')}
+                </p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                  {t('auto_log_expense_sub')}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditAutoLog(!editAutoLog)}
+                className={cn(
+                  'w-12 h-6 rounded-full transition-colors relative shrink-0 cursor-pointer',
+                  editAutoLog ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-700'
+                )}
+                role="switch"
+                aria-checked={editAutoLog}
+              >
+                <div
+                  className={cn(
+                    'w-5 h-5 rounded-full bg-white shadow-md transform transition-transform absolute top-0.5',
+                    editAutoLog ? 'translate-x-6' : 'translate-x-0.5'
+                  )}
+                />
+              </button>
+            </div>
+          </div>
+
+          <PrimaryButton onClick={saveEditBill} disabled={!editTitle.trim() || !Number(editAmount) || savingEdit}>
+            {savingEdit ? '...' : t('save')}
+          </PrimaryButton>
         </div>
       </Sheet>
     </>
