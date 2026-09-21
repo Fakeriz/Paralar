@@ -463,14 +463,14 @@ export default function GoalsTab() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-28">
+    <div className="px-5 pb-28 pt-[env(safe-area-inset-top,1rem)] min-h-screen bg-background text-foreground">
       {/* 1. STICKY TOP HEADER */}
-      <div className="sticky top-0 z-20 bg-background/85 dark:bg-[#0c0c0e]/85 backdrop-blur-md px-5 pt-4 pb-3 border-b border-border/30">
-        <h1 className="text-2xl font-bold text-foreground">Goals</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">Plan, save, and clear debt</p>
+      <div className="sticky top-0 z-20 bg-background/90 backdrop-blur-md -mx-5 px-5 pt-3 pb-3 border-b border-border/40">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t('goals') || 'Goals'}</h1>
+        <p className="text-xs text-muted-foreground mt-0.5">{t('goals_subtitle') || 'Plan, save, and clear debt'}</p>
       </div>
 
-      <div className="px-5 space-y-6 pt-3">
+      <div className="space-y-6 pt-4">
         {/* ======================================================== */}
         {/* 2A. SECTION: SUBSCRIPTIONS                               */}
         {/* ======================================================== */}
@@ -478,7 +478,7 @@ export default function GoalsTab() {
           {/* Section Header */}
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-              Subscriptions
+              {t('subscriptions') || 'Subscriptions'}
             </span>
             <div className="flex items-center">
               {subscriptions.length > 0 && (
@@ -493,7 +493,7 @@ export default function GoalsTab() {
                   setSheetSub(true)
                 }}
                 className="h-7 w-7 rounded-full bg-muted/80 hover:bg-muted text-foreground flex items-center justify-center transition-all active:scale-95"
-                aria-label="Add Subscription"
+                aria-label={t('add_subscription') || 'Add Subscription'}
               >
                 <Plus size={15} strokeWidth={2.2} />
               </button>
@@ -503,9 +503,11 @@ export default function GoalsTab() {
           {/* Conditional State: Empty vs Filled */}
           {subscriptions.length === 0 ? (
             <div className="rounded-2xl border border-border/40 bg-card p-6 text-center shadow-xs">
-              <p className="text-sm font-semibold text-foreground">No subscriptions</p>
+              <p className="text-sm font-semibold text-foreground">
+                {t('no_subscriptions') || 'No subscriptions'}
+              </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Track recurring payments and see your monthly burn.
+                {t('no_subscriptions_sub') || 'Track recurring payments and see your monthly burn.'}
               </p>
             </div>
           ) : (
@@ -560,7 +562,7 @@ export default function GoalsTab() {
           {/* Section Header */}
           <div className="flex items-center justify-between mb-2 mt-4">
             <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-              Monthly Budgets
+              {t('budgets') || 'Monthly Budgets'}
             </span>
             <div className="flex items-center">
               {budgets.length > 0 && (
@@ -572,7 +574,7 @@ export default function GoalsTab() {
                 type="button"
                 onClick={() => setSheetBudget(true)}
                 className="h-7 w-7 rounded-full bg-muted/80 hover:bg-muted text-foreground flex items-center justify-center transition-all active:scale-95"
-                aria-label="Add Budget"
+                aria-label={t('add_budget') || 'Add Budget'}
               >
                 <Plus size={15} strokeWidth={2.2} />
               </button>
@@ -582,9 +584,11 @@ export default function GoalsTab() {
           {/* Conditional State: Empty vs Filled */}
           {budgets.length === 0 ? (
             <div className="rounded-2xl border border-border/40 bg-card p-6 text-center shadow-xs">
-              <p className="text-sm font-semibold text-foreground">Plan this month</p>
+              <p className="text-sm font-semibold text-foreground">
+                {t('no_budgets') || 'Plan this month'}
+              </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Set a category limit to see how your spending compares with the plan.
+                {t('no_budgets_sub') || 'Set a category limit to see how your spending compares with the plan.'}
               </p>
             </div>
           ) : (
@@ -650,7 +654,7 @@ export default function GoalsTab() {
           {/* Section Header */}
           <div className="flex items-center justify-between mb-2 mt-4">
             <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-              Savings Goals
+              {t('savings_goals') || 'Savings Goals'}
             </span>
             <div className="flex items-center">
               {allGoals.length > 0 && (
@@ -665,7 +669,7 @@ export default function GoalsTab() {
                   setSheetGoal(true)
                 }}
                 className="h-7 w-7 rounded-full bg-muted/80 hover:bg-muted text-foreground flex items-center justify-center transition-all active:scale-95"
-                aria-label="Add Goal"
+                aria-label={t('add_savings_goal') || 'Add Goal'}
               >
                 <Plus size={15} strokeWidth={2.2} />
               </button>
@@ -675,9 +679,11 @@ export default function GoalsTab() {
           {/* Conditional State: Empty vs Filled */}
           {allGoals.length === 0 ? (
             <div className="rounded-2xl border border-border/40 bg-card p-6 text-center shadow-xs">
-              <p className="text-sm font-semibold text-foreground">Choose something to save for</p>
+              <p className="text-sm font-semibold text-foreground">
+                {t('no_goals') || 'Choose something to save for'}
+              </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Set a target amount and deadline, then record progress whenever you add money.
+                {t('no_goals_sub') || 'Set a target amount and deadline, then record progress whenever you add money.'}
               </p>
             </div>
           ) : (
@@ -718,7 +724,7 @@ export default function GoalsTab() {
                       </div>
 
                       <p className="text-xs text-muted-foreground truncate">
-                        {fmt(saved, g.currency || home)} of {fmt(target, g.currency || home)}
+                        {fmt(saved, g.currency || home)} {t('of') || 'of'} {fmt(target, g.currency || home)}
                       </p>
                     </div>
                   </div>
@@ -735,7 +741,7 @@ export default function GoalsTab() {
           {/* Section Header */}
           <div className="flex items-center justify-between mb-2 mt-4">
             <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-              Loans & BNPL
+              {t('loans_and_bnpl') || 'Loans & BNPL'}
             </span>
             <div className="flex items-center">
               {loans.length > 0 && (
@@ -750,7 +756,7 @@ export default function GoalsTab() {
                   setSheetLoan(true)
                 }}
                 className="h-7 w-7 rounded-full bg-muted/80 hover:bg-muted text-foreground flex items-center justify-center transition-all active:scale-95"
-                aria-label="Add Loan or BNPL"
+                aria-label={t('add_loan') || 'Add Loan or BNPL'}
               >
                 <Plus size={15} strokeWidth={2.2} />
               </button>
@@ -760,8 +766,12 @@ export default function GoalsTab() {
           {/* Conditional State: Empty vs Filled */}
           {loans.length === 0 ? (
             <div className="rounded-2xl border border-border/40 bg-card p-6 text-center shadow-xs">
-              <p className="text-sm font-semibold text-foreground">No loans or BNPL</p>
-              <p className="text-xs text-muted-foreground mt-1">{loanConfig.emptySubtitle}</p>
+              <p className="text-sm font-semibold text-foreground">
+                {t('no_loans') || 'No loans or BNPL'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {t('no_loans_sub') || loanConfig.emptySubtitle}
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -830,14 +840,14 @@ export default function GoalsTab() {
       <Sheet
         open={sheetSub}
         onClose={() => setSheetSub(false)}
-        title="Add Subscription"
+        title={t('add_subscription') || 'Add Subscription'}
         left={
           <button
             type="button"
             onClick={() => setSheetSub(false)}
             className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
           >
-            Cancel
+            {t('cancel') || 'Cancel'}
           </button>
         }
         right={
@@ -846,7 +856,7 @@ export default function GoalsTab() {
             onClick={saveSubscription}
             className="text-sm font-bold text-foreground hover:opacity-80 transition-opacity"
           >
-            Save
+            {t('save') || 'Save'}
           </button>
         }
       >
@@ -899,7 +909,7 @@ export default function GoalsTab() {
               <select
                 value={subCycle}
                 onChange={(e) => setSubCycle(e.target.value)}
-                className="w-full rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-950 dark:bg-[#1c1c1e] dark:border-white/10 dark:text-white px-3.5 py-3 text-sm outline-none"
+                className="w-full rounded-xl bg-muted/40 border border-border/60 text-foreground px-3.5 py-3 text-sm outline-none focus:border-foreground transition-colors"
               >
                 <option value="Monthly">Monthly</option>
                 <option value="Yearly">Yearly</option>
@@ -925,7 +935,7 @@ export default function GoalsTab() {
           </Field>
 
           <PrimaryButton onClick={saveSubscription} disabled={!subName || !Number(subAmount)}>
-            Save Subscription
+            {t('save') || 'Save Subscription'}
           </PrimaryButton>
         </div>
       </Sheet>
@@ -934,14 +944,14 @@ export default function GoalsTab() {
       <Sheet
         open={sheetBudget}
         onClose={() => setSheetBudget(false)}
-        title="Add Monthly Budget"
+        title={t('add_budget') || 'Add Monthly Budget'}
         left={
           <button
             type="button"
             onClick={() => setSheetBudget(false)}
             className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
           >
-            Cancel
+            {t('cancel') || 'Cancel'}
           </button>
         }
         right={
@@ -950,7 +960,7 @@ export default function GoalsTab() {
             onClick={saveBudget}
             className="text-sm font-bold text-foreground hover:opacity-80 transition-opacity"
           >
-            Save
+            {t('save') || 'Save'}
           </button>
         }
       >
@@ -994,7 +1004,7 @@ export default function GoalsTab() {
             <select
               value={budgetPeriod}
               onChange={(e) => setBudgetPeriod(e.target.value)}
-              className="w-full rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-950 dark:bg-[#1c1c1e] dark:border-white/10 dark:text-white px-3.5 py-3 text-sm outline-none"
+              className="w-full rounded-xl bg-muted/40 border border-border/60 text-foreground px-3.5 py-3 text-sm outline-none focus:border-foreground transition-colors"
             >
               <option value="Monthly">Monthly</option>
               <option value="Weekly">Weekly</option>
@@ -1002,7 +1012,7 @@ export default function GoalsTab() {
           </Field>
 
           <PrimaryButton onClick={saveBudget} disabled={!Number(budgetLimit)}>
-            Save Budget
+            {t('save') || 'Save Budget'}
           </PrimaryButton>
         </div>
       </Sheet>
@@ -1011,14 +1021,14 @@ export default function GoalsTab() {
       <Sheet
         open={sheetGoal}
         onClose={() => setSheetGoal(false)}
-        title="Add Savings Goal"
+        title={t('add_savings_goal') || 'Add Savings Goal'}
         left={
           <button
             type="button"
             onClick={() => setSheetGoal(false)}
             className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
           >
-            Cancel
+            {t('cancel') || 'Cancel'}
           </button>
         }
         right={
@@ -1027,7 +1037,7 @@ export default function GoalsTab() {
             onClick={saveGoal}
             className="text-sm font-bold text-foreground hover:opacity-80 transition-opacity"
           >
-            Save
+            {t('save') || 'Save'}
           </button>
         }
       >
@@ -1104,7 +1114,7 @@ export default function GoalsTab() {
           </div>
 
           <PrimaryButton onClick={saveGoal} disabled={!goalName || !Number(goalTarget)}>
-            Create Goal
+            {t('create') || 'Create Goal'}
           </PrimaryButton>
         </div>
       </Sheet>
@@ -1113,14 +1123,14 @@ export default function GoalsTab() {
       <Sheet
         open={sheetLoan}
         onClose={() => setSheetLoan(false)}
-        title="Add Loan / BNPL"
+        title={t('add_loan') || 'Add Loan / BNPL'}
         left={
           <button
             type="button"
             onClick={() => setSheetLoan(false)}
             className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
           >
-            Cancel
+            {t('cancel') || 'Cancel'}
           </button>
         }
         right={
@@ -1129,7 +1139,7 @@ export default function GoalsTab() {
             onClick={saveLoan}
             className="text-sm font-bold text-foreground hover:opacity-80 transition-opacity"
           >
-            Save
+            {t('save') || 'Save'}
           </button>
         }
       >
@@ -1215,7 +1225,7 @@ export default function GoalsTab() {
           </Field>
 
           <PrimaryButton onClick={saveLoan} disabled={!loanProvider || !Number(loanRemaining)}>
-            Save Loan / BNPL
+            {t('save') || 'Save Loan / BNPL'}
           </PrimaryButton>
         </div>
       </Sheet>
@@ -1224,14 +1234,14 @@ export default function GoalsTab() {
       <Sheet
         open={!!fundingGoal}
         onClose={() => setFundingGoal(null)}
-        title="Add Funds"
+        title={t('deposit_add_funds') || 'Deposit / Add Funds'}
         left={
           <button
             type="button"
             onClick={() => setFundingGoal(null)}
             className="text-sm font-semibold text-muted-foreground hover:text-foreground"
           >
-            Cancel
+            {t('cancel') || 'Cancel'}
           </button>
         }
         right={
@@ -1241,7 +1251,7 @@ export default function GoalsTab() {
             disabled={!Number(fundAmount)}
             className="text-sm font-bold text-foreground disabled:opacity-40"
           >
-            Save
+            {t('save') || 'Save'}
           </button>
         }
       >
@@ -1259,7 +1269,7 @@ export default function GoalsTab() {
           <div>
             <p className="font-bold text-base text-foreground">{fundingGoal?.name}</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Current: {fmt(fundingGoal?.saved_amount || 0, fundingGoal?.currency || home)} of{' '}
+              Current: {fmt(fundingGoal?.saved_amount || 0, fundingGoal?.currency || home)} {t('of') || 'of'}{' '}
               {fmt(fundingGoal?.target_amount || 0, fundingGoal?.currency || home)}
             </p>
           </div>
@@ -1276,7 +1286,7 @@ export default function GoalsTab() {
           </Field>
 
           <PrimaryButton onClick={handleAddFunds} disabled={!Number(fundAmount)}>
-            Confirm Deposit
+            {t('confirm_deposit') || 'Confirm Deposit'}
           </PrimaryButton>
         </div>
       </Sheet>
@@ -1285,14 +1295,14 @@ export default function GoalsTab() {
       <Sheet
         open={!!activeDetailItem}
         onClose={() => setActiveDetailItem(null)}
-        title="Item Details"
+        title={t('item_details') || 'Item Details'}
         left={
           <button
             type="button"
             onClick={() => setActiveDetailItem(null)}
             className="text-sm font-semibold text-muted-foreground hover:text-foreground"
           >
-            Close
+            {t('close') || 'Close'}
           </button>
         }
       >
@@ -1347,7 +1357,7 @@ export default function GoalsTab() {
                 }}
                 className="w-full py-3 rounded-xl bg-foreground text-background font-bold text-sm transition-all active:scale-[0.98]"
               >
-                Deposit / Add Funds
+                {t('deposit_add_funds') || 'Deposit / Add Funds'}
               </button>
             )}
 
@@ -1364,7 +1374,7 @@ export default function GoalsTab() {
               className="w-full py-3 rounded-xl border border-rose-500/30 text-rose-600 dark:text-rose-400 font-semibold text-sm hover:bg-rose-500/10 flex items-center justify-center gap-2 transition-colors"
             >
               <Trash2 size={16} />
-              <span>Delete {activeDetailItem.type.toUpperCase()}</span>
+              <span>{t('delete') || 'Delete'}</span>
             </button>
           </div>
         )}
