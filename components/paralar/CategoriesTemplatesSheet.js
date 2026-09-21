@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { Utensils, ShoppingBasket, Car, Receipt, ShoppingBag, Clapperboard, HeartPulse, GraduationCap, CircleDashed, Wallet, Laptop, TrendingUp, Briefcase, Gift, Home, Plane, Coffee, Zap, Heart, Smartphone, Plus, Trash2, Pencil } from 'lucide-react'
+import { Utensils, ShoppingBasket, Car, Receipt, ShoppingBag, Clapperboard, HeartPulse, GraduationCap, CircleDashed, Wallet, Laptop, TrendingUp, Briefcase, Gift, Home, Plane, Coffee, Zap, Heart, Smartphone, Plus, Trash2, Pencil, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
 import { Sheet, Segmented, TextInput, Field, PrimaryButton } from './ui'
@@ -34,6 +34,7 @@ export default function CategoriesTemplatesSheet({ open, onClose }) {
   const { t, home, fmt, accounts = [], store, open: openSheet, close } = useApp()
   const [tab, setTab] = useState('categories')
   const [sub, setSub] = useState('expense')
+  const [searchQuery, setSearchQuery] = useState('')
   const [cats, setCats] = useState([])
   const [templates, setTemplates] = useState([])
 
@@ -68,7 +69,16 @@ export default function CategoriesTemplatesSheet({ open, onClose }) {
     })()
   }, [open]) // eslint-disable-line
 
-  const filteredCats = (cats || []).filter((c) => (c?.type || 'expense') === sub)
+  const filteredCats = (cats || []).filter((c) => {
+    if ((c?.type || 'expense') !== sub) return false
+    if (!searchQuery.trim()) return true
+    return (c?.name || '').toLowerCase().includes(searchQuery.trim().toLowerCase())
+  })
+  const filteredTpls = (templates || []).filter((tp) => {
+    if (!searchQuery.trim()) return true
+    const term = searchQuery.trim().toLowerCase()
+    return (tp?.title || '').toLowerCase().includes(term) || (tp?.category || '').toLowerCase().includes(term)
+  })
   const expenseCats = CATEGORIES.filter((c) => c.types?.includes('expense'))
 
   const saveCat = async () => {
@@ -95,6 +105,19 @@ export default function CategoriesTemplatesSheet({ open, onClose }) {
   return (
     <Sheet open={open} onClose={onClose} full title={t('categories_templates')}>
       <Segmented className="mt-1" value={tab} onChange={setTab} options={[{ id: 'categories', label: 'Categories' }, { id: 'templates', label: 'Quick Templates' }]} />
+
+      <div className="w-full py-2 box-border">
+        <div className="relative flex items-center w-full">
+          <Search className="absolute left-3.5 text-muted-foreground pointer-events-none shrink-0" size={16} />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t('search')}
+            className="w-full pl-10 pr-4 py-2.5 rounded-2xl text-sm bg-muted/40 border border-border/40 text-foreground placeholder-muted-foreground outline-none focus:border-border transition-colors"
+          />
+        </div>
+      </div>
 
       {tab === 'categories' ? (
         <div className="pt-4">
@@ -143,7 +166,7 @@ export default function CategoriesTemplatesSheet({ open, onClose }) {
       ) : (
         <div className="pt-4">
           <div className="space-y-2">
-            {templates.map((tp) => (
+            {filteredTpls.map((tp) => (
               <div key={tp.id} className="flex items-center gap-3 rounded-xl bg-white dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 px-4 py-3.5" data-testid="tpl-row">
                 <button type="button" onClick={() => useTpl(tp)} className="flex-1 text-left min-w-0">
                   <p className="font-bold text-[15px] truncate text-zinc-950 dark:text-white">{tp?.title}</p>
@@ -153,7 +176,7 @@ export default function CategoriesTemplatesSheet({ open, onClose }) {
                 <button type="button" onClick={() => delTpl(tp)} className="h-8 w-8 rounded-lg flex items-center justify-center text-zinc-400 hover:text-rose-500 dark:text-zinc-500 dark:hover:text-rose-400 transition-colors" aria-label="delete"><Trash2 size={15} /></button>
               </div>
             ))}
-            {templates.length === 0 ? <p className="text-center text-sm text-zinc-500 dark:text-zinc-400 py-6">No templates yet</p> : null}
+            {filteredTpls.length === 0 ? <p className="text-center text-sm text-zinc-500 dark:text-zinc-400 py-6">No templates yet</p> : null}
           </div>
 
           {addingTpl ? (

@@ -109,9 +109,18 @@ function TransactionsContent() {
           ) : null}
         </div>
       </div>
-      <div className="relative mt-4">
-        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500" />
-        <TextInput value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('search')} className="pl-10" data-testid="tx-search" />
+      <div className="w-full py-2 box-border">
+        <div className="relative flex items-center w-full">
+          <Search className="absolute left-3.5 text-muted-foreground pointer-events-none shrink-0" size={16} />
+          <input
+            type="text"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder={t('search')}
+            className="w-full pl-10 pr-4 py-2.5 rounded-2xl text-sm bg-muted/40 border border-border/40 text-foreground placeholder-muted-foreground outline-none focus:border-border transition-colors"
+            data-testid="tx-search"
+          />
+        </div>
       </div>
       <Segmented
         className="mt-3"

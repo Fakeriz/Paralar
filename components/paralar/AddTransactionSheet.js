@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronRight, Calculator, Camera, Delete, Check, X, FileText } from 'lucide-react'
+import { ChevronRight, Calculator, Camera, Delete, Check, X, FileText, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
 import { Sheet, SheetTextButton, Segmented, Pill, Field, TextInput, CategoryBadge, CategoryIcon, Card } from './ui'
@@ -35,6 +35,7 @@ export default function AddTransactionSheet({ open, onClose, initial }) {
   const [showCalc, setShowCalc] = useState(false)
   const [pickCurrency, setPickCurrency] = useState(false)
   const [pickCategory, setPickCategory] = useState(false)
+  const [catSearch, setCatSearch] = useState('')
   const [saving, setSaving] = useState(false)
   const fileRef = useRef(null)
   const editId = initial?.editId || null
@@ -155,10 +156,27 @@ export default function AddTransactionSheet({ open, onClose, initial }) {
         {/* Amount */}
         <div className="mt-6 text-center">
           <div className="flex items-center justify-center gap-2">
-            <button type="button" onClick={() => setPickCurrency(true)} className="rounded-xl bg-white dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 px-3 py-1.5 text-sm font-bold text-zinc-950 dark:text-white flex items-center gap-1.5 shadow-sm" data-testid="currency-pill">
-              <span>{cur.flag}</span> {currency} <ChevronRight size={14} className="text-zinc-400 dark:text-zinc-500" />
+            <button
+              type="button"
+              onClick={() => setPickCurrency(true)}
+              className="rounded-xl bg-white dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 px-3.5 py-1.5 text-sm font-bold text-zinc-950 dark:text-white flex items-center gap-1.5 shadow-sm active:scale-95 transition-transform"
+              data-testid="currency-pill"
+            >
+              <span>{currency}</span>
+              <ChevronRight size={14} className="text-zinc-400 dark:text-zinc-500" />
             </button>
-            <button type="button" onClick={() => setShowCalc(!showCalc)} className={cn('h-9 w-9 rounded-xl border flex items-center justify-center transition-colors', showCalc ? 'bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 border-transparent' : 'bg-white dark:bg-[#1c1c1e] text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-white/10')} aria-label="calculator" data-testid="calc-toggle">
+            <button
+              type="button"
+              onClick={() => setShowCalc(!showCalc)}
+              className={cn(
+                'h-9 w-9 rounded-xl border flex items-center justify-center transition-colors',
+                showCalc
+                  ? 'bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 border-transparent'
+                  : 'bg-white dark:bg-[#1c1c1e] text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-white/10'
+              )}
+              aria-label="calculator"
+              data-testid="calc-toggle"
+            >
               <Calculator size={16} />
             </button>
           </div>
@@ -179,7 +197,7 @@ export default function AddTransactionSheet({ open, onClose, initial }) {
               ≈ {fmt(converted, home)} {home} <span className="mx-1.5 opacity-40">|</span> {t('rate')}: 1 {currency} = {formatRate(rate)} {home}
             </div>
           ) : null}
-        </div>
+          </div>
 
         {showCalc ? (
           <div className="grid grid-cols-4 gap-2 mt-4">
@@ -280,10 +298,29 @@ export default function AddTransactionSheet({ open, onClose, initial }) {
 
       <CurrencySheet open={pickCurrency} onClose={() => setPickCurrency(false)} value={currency} onSelect={setCurrency} zIndex={70} />
 
-      <Sheet open={pickCategory} onClose={() => setPickCategory(false)} title={t('select_category')} zIndex={70}>
-        <div className="grid grid-cols-4 gap-3 pt-2 pb-4">
-          {CATEGORIES.filter((c) => c.types.includes(type)).map((c) => (
-            <button key={c.id} type="button" onClick={() => { setCategory(c.id); setPickCategory(false) }} className="flex flex-col items-center gap-2" data-testid={`cat-${c.id}`}>
+      <Sheet open={pickCategory} onClose={() => { setPickCategory(false); setCatSearch('') }} title={t('select_category')} zIndex={70} noPadding>
+        <div className="w-full px-4 py-2 box-border">
+          <div className="relative flex items-center w-full">
+            <Search className="absolute left-3.5 text-muted-foreground pointer-events-none shrink-0" size={16} />
+            <input
+              type="text"
+              value={catSearch}
+              onChange={(e) => setCatSearch(e.target.value)}
+              placeholder={t('search')}
+              className="w-full pl-10 pr-4 py-2.5 rounded-2xl text-sm bg-muted/40 border border-border/40 text-foreground placeholder-muted-foreground outline-none focus:border-border transition-colors"
+              data-testid="category-search"
+            />
+          </div>
+        </div>
+        <div className="px-4 pb-6 grid grid-cols-4 gap-3 pt-2">
+          {CATEGORIES.filter((c) => {
+            if (!c.types.includes(type)) return false
+            if (!catSearch.trim()) return true
+            const term = catSearch.trim().toLowerCase()
+            const label = (t(`cat_${c.id}`) || c.id).toLowerCase()
+            return label.includes(term) || c.id.toLowerCase().includes(term)
+          }).map((c) => (
+            <button key={c.id} type="button" onClick={() => { setCategory(c.id); setPickCategory(false); setCatSearch('') }} className="flex flex-col items-center gap-2" data-testid={`cat-${c.id}`}>
               <div className={cn('h-14 w-14 rounded-2xl flex items-center justify-center border transition-all', category === c.id ? 'bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 border-zinc-950 dark:border-white shadow-md' : 'bg-white dark:bg-[#1c1c1e] text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-white/10')}>
                 <CategoryIcon id={c.id} size={22} />
               </div>

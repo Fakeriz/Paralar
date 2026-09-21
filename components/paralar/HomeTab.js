@@ -228,9 +228,16 @@ export default function HomeTab() {
       <BalanceCarousel />
       <QuickGrid />
 
-      <div className="flex items-center justify-between mt-8 mb-1">
+      {/* Jarak atas antar section mt-6, jarak bawah ke card mb-2.5 (persis seperti Target Tabungan) */}
+      <div className="flex items-center justify-between mt-6 mb-2.5">
         <SectionLabel>{t('recent_transactions')}</SectionLabel>
-        <button type="button" onClick={() => setTab('transactions')} className="text-xs font-semibold flex items-center gap-0.5 text-zinc-950 dark:text-white">{t('see_all')} <ChevronRight size={14} /></button>
+        <button 
+          type="button" 
+          onClick={() => setTab('transactions')} 
+          className="text-xs font-semibold flex items-center gap-0.5 text-zinc-950 dark:text-white hover:opacity-80 transition-opacity"
+        >
+          {t('see_all')} <ChevronRight size={14} />
+        </button>
       </div>
       <Card className="px-4 divide-y divide-zinc-200/60 dark:divide-white/5">
         {recent.length === 0 ? (

@@ -317,15 +317,18 @@ export default function NewAccountSheet({ open, onClose }) {
           {/* Section 5 — BANK / E-WALLET (OPTIONAL) */}
           <section>
             <Label>{t('bank_ewallet_opt')}</Label>
-            <div className="relative">
-              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={t('search_bank_ph')}
-                className={cn(INPUT_CLS, 'pl-10 pr-4 py-3 rounded-xl text-[15px]')}
-                data-testid="logo-search"
-              />
+            <div className="w-full py-2 box-border">
+              <div className="relative flex items-center w-full">
+                <Search className="absolute left-3.5 text-muted-foreground pointer-events-none shrink-0" size={16} />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={t('search_bank_ph')}
+                  className="w-full pl-10 pr-4 py-2.5 rounded-2xl text-sm bg-muted/40 border border-border/40 text-foreground placeholder-muted-foreground outline-none focus:border-border transition-colors"
+                  data-testid="logo-search"
+                />
+              </div>
             </div>
             
             {/* Country tabs */}

@@ -23,10 +23,18 @@ export default function CurrencySheet({ open, onClose, value, onSelect, zIndex =
 
   return (
     <Sheet open={open} onClose={onClose} title={title || t('select_currency')} full zIndex={zIndex} noPadding>
-      <div className="px-5 pb-3 sticky top-0 bg-background z-10">
-        <div className="relative">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500 dark:text-zinc-400" />
-          <TextInput value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('search_currency')} className="pl-10" autoFocus data-testid="currency-search" />
+      <div className="w-full px-4 py-2 sticky top-0 bg-background z-10 box-border">
+        <div className="relative flex items-center w-full">
+          <Search className="absolute left-3.5 text-muted-foreground pointer-events-none shrink-0" size={16} />
+          <input
+            type="text"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder={t('search_currency')}
+            autoFocus
+            className="w-full pl-10 pr-4 py-2.5 rounded-2xl text-sm bg-muted/40 border border-border/40 text-foreground placeholder-muted-foreground outline-none focus:border-border transition-colors"
+            data-testid="currency-search"
+          />
         </div>
       </div>
       <div className="px-3 pb-10">
