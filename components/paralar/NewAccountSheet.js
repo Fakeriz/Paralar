@@ -62,9 +62,8 @@ export function PreviewCard({ name, balance, currency, theme, logo, icon = 'card
   )
 }
 
-export default function NewAccountSheet({ open, onClose, initial = null, zIndex = 50 }) {
+export default function NewAccountSheet({ open, onClose }) {
   const { t, home, accounts = [], store, refresh, fmt, rates } = useApp()
-  const isEdit = !!initial
   const [name, setName] = useState('')
   const [type, setType] = useState('bank')
   const [icon, setIcon] = useState('card')
@@ -81,32 +80,18 @@ export default function NewAccountSheet({ open, onClose, initial = null, zIndex 
 
   useEffect(() => {
     if (!open) return
-    if (initial) {
-      setName(initial.name || '')
-      setType(initial.type || 'bank')
-      setIcon(initial.icon || 'card')
-      setCurrency(initial.currency || home)
-      setTheme(initial.theme || 'parang')
-      setLogo(initial.logo || null)
-      setTab(initial.country || 'all')
-      setQuery('')
-      setSource('new')
-      setFromId(null)
-      setBalance(initial.balance != null ? String(initial.balance) : '')
-    } else {
-      setName('')
-      setType('bank')
-      setIcon('card')
-      setCurrency(home)
-      setTheme('parang')
-      setLogo(null)
-      setTab('all')
-      setQuery('')
-      setSource('new')
-      setFromId(accounts[0]?.id || null)
-      setBalance('')
-    }
-  }, [open, initial]) // eslint-disable-line
+    setName('')
+    setType('bank')
+    setIcon('card')
+    setCurrency(home)
+    setTheme('parang')
+    setLogo(null)
+    setTab('all')
+    setQuery('')
+    setSource('new')
+    setFromId(accounts[0]?.id || null)
+    setBalance('')
+  }, [open]) // eslint-disable-line
 
   const logos = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -117,29 +102,12 @@ export default function NewAccountSheet({ open, onClose, initial = null, zIndex 
 
   const activeTheme = getTheme(theme)
   const num = Number(balance) || 0
-  const canSave = name.trim().length > 0 && (isEdit || source === 'new' || fromId)
+  const canSave = name.trim().length > 0 && (source === 'new' || fromId)
 
-  const save = async () => {
+  const create = async () => {
     if (!canSave || saving) return
     setSaving(true)
     try {
-      if (isEdit) {
-        await store.updateAccount(initial.id, {
-          name: name.trim(),
-          type,
-          icon,
-          currency,
-          balance: roundMoney(num, currency),
-          theme,
-          logo,
-          country: tab === 'all' ? null : tab,
-        })
-        await refresh()
-        toast.success(t('saved_msg') || 'Perubahan disimpan')
-        onClose?.()
-        return
-      }
-
       const acc = await store.createAccount({
         name: name.trim(),
         type,
@@ -198,9 +166,8 @@ export default function NewAccountSheet({ open, onClose, initial = null, zIndex 
         onClose={onClose}
         full
         noPadding
-        zIndex={zIndex}
         className="bg-white dark:bg-[#121214] text-zinc-950 dark:text-white"
-        title={isEdit ? (t('edit_account') || 'Edit Akun') : (t('new_account') || 'Akun Baru')}
+        title={t('new_account')}
         left={
           <button
             type="button"
@@ -213,12 +180,12 @@ export default function NewAccountSheet({ open, onClose, initial = null, zIndex 
         right={
           <button
             type="button"
-            onClick={save}
+            onClick={create}
             disabled={!canSave || saving}
             className={cn('text-[15px] font-bold py-1 px-1 text-zinc-950 dark:text-white', (!canSave || saving) && 'opacity-40')}
             data-testid="account-save"
           >
-            {saving ? '...' : isEdit ? (t('save') || 'Simpan') : (t('create_btn') || t('create'))}
+            {saving ? '...' : (t('create_btn') || t('create'))}
           </button>
         }
       >
@@ -438,31 +405,29 @@ export default function NewAccountSheet({ open, onClose, initial = null, zIndex 
             </div>
           </section>
 
-          {/* Section 6 — OPENING BALANCE / CURRENT BALANCE */}
+          {/* Section 6 — OPENING BALANCE */}
           <section>
-            <Label>{isEdit ? (t('balance') || 'Saldo Akun') : t('opening_balance')}</Label>
-            {!isEdit && (
-              <div className="flex bg-zinc-100 dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 rounded-xl p-1 gap-1 mb-2.5">
-                {[{ id: 'split', label: t('split_from') }, { id: 'new', label: t('new_money') }].map((o) => (
-                  <button
-                    key={o.id}
-                    type="button"
-                    onClick={() => setSource(o.id)}
-                    className={cn(
-                      'flex-1 rounded-lg py-2 text-sm transition-colors',
-                      source === o.id
-                        ? 'bg-white text-zinc-950 font-bold dark:bg-zinc-800 dark:text-white shadow-sm'
-                        : 'text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white font-medium'
-                    )}
-                    data-testid={`source-${o.id}`}
-                  >
-                    {o.label}
-                  </button>
-                ))}
-              </div>
-            )}
-            {!isEdit && source === 'split' ? (
-              <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 pb-2.5">
+            <Label>{t('opening_balance')}</Label>
+            <div className="flex bg-zinc-100 dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 rounded-xl p-1 gap-1">
+              {[{ id: 'split', label: t('split_from') }, { id: 'new', label: t('new_money') }].map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  onClick={() => setSource(o.id)}
+                  className={cn(
+                    'flex-1 rounded-lg py-2 text-sm transition-colors',
+                    source === o.id
+                      ? 'bg-white text-zinc-950 font-bold dark:bg-zinc-800 dark:text-white shadow-sm'
+                      : 'text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white font-medium'
+                  )}
+                  data-testid={`source-${o.id}`}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+            {source === 'split' ? (
+              <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 pt-2.5">
                 {accounts.map((a) => (
                   <button
                     key={a.id}
@@ -480,7 +445,7 @@ export default function NewAccountSheet({ open, onClose, initial = null, zIndex 
                 ))}
               </div>
             ) : null}
-            <div className="flex gap-2">
+            <div className="flex gap-2 mt-2.5">
               <button
                 type="button"
                 onClick={() => setPickCur(true)}
@@ -504,7 +469,7 @@ export default function NewAccountSheet({ open, onClose, initial = null, zIndex 
 
           <button
             type="button"
-            onClick={save}
+            onClick={create}
             disabled={!canSave || saving}
             className={cn(
               'w-full rounded-xl bg-zinc-950 text-white hover:bg-zinc-900 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100 font-bold py-3.5 text-[15px] transition-all active:scale-[0.98]',
@@ -512,7 +477,7 @@ export default function NewAccountSheet({ open, onClose, initial = null, zIndex 
             )}
             data-testid="account-create-btn"
           >
-            {saving ? '...' : isEdit ? (t('save') || 'Simpan') : (t('create_btn') || t('create'))}
+            {saving ? '...' : (t('create_btn') || t('create'))}
           </button>
           <div className="h-2" />
         </div>
