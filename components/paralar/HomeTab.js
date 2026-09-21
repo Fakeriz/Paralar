@@ -68,7 +68,7 @@ function BalanceCarousel() {
       {/* Elastic spring-paging horizontal container */}
       <div
         ref={ref}
-        className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar -mx-5 px-5 gap-3.5 scroll-px-5 touch-pan-x"
+        className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar -mx-5 px-5 gap-3.5 scroll-px-5 touch-pan-x py-3 -my-3"
         style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}
       >
         {/* Slide 1: Total Balance Card — standardized aspect-[1.58/1] min-h-[185px] */}

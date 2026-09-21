@@ -204,7 +204,7 @@ export default function App() {
         <QuickActionsSheet open={!!sheets.quick} onClose={() => close('quick')} />
         <AddTransactionSheet open={!!sheets.addTx} onClose={() => close('addTx')} initial={sheets.addTx && typeof sheets.addTx === 'object' ? sheets.addTx : {}} />
         <ProfileSheet open={!!sheets.profile} onClose={() => close('profile')} />
-        <NewAccountSheet open={!!sheets.newAccount} onClose={() => close('newAccount')} />
+        <NewAccountSheet open={!!sheets.newAccount} onClose={() => close('newAccount')} initial={sheets.newAccount && typeof sheets.newAccount === 'object' ? sheets.newAccount : null} />
         <VoiceLogSheet open={!!sheets.voice} onClose={() => close('voice')} onResult={(data) => { close('voice'); setTimeout(() => open('addTx', data), 150) }} />
         <ScanReceiptSheet open={!!sheets.scan} onClose={() => close('scan')} onUse={(data) => { close('scan'); setTimeout(() => open('addTx', data), 150) }} />
         <TransactionDetailSheet open={!!sheets.txDetail} onClose={() => close('txDetail')} tx={sheets.txDetail && typeof sheets.txDetail === 'object' ? sheets.txDetail : null} onEdit={editTx} />
