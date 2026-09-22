@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { useApp } from './context'
 import { Card, EmptyState, Sheet, SheetTextButton, Field, TextInput, PrimaryButton, CategoryIcon } from './ui'
 import SubscriptionSheet from './SubscriptionSheet'
+import SetBudgetModal from '@/components/goals/SetBudgetModal'
 import { CATEGORIES } from '@/lib/categories'
 import { getCurrency } from '@/lib/currencies'
 import { convert } from '@/lib/rates'
@@ -45,7 +46,7 @@ function formatCycle(cycle) {
 }
 
 export default function GoalsTab() {
-  const { t, goals = [], transactions = [], fmt, home, rates, store, refresh } = useApp()
+  const { t, goals = [], transactions = [], fmt, home, rates, store, refresh, open: openSheet } = useApp()
 
   // 1. Subscriptions State
   const [subscriptions, setSubscriptions] = useState([])
@@ -56,9 +57,7 @@ export default function GoalsTab() {
   const [budgets, setBudgets] = useState([])
   const [budgetModalOpen, setBudgetModalOpen] = useState(false)
   const [editingBudget, setEditingBudget] = useState(null)
-  const [budgetCategory, setBudgetCategory] = useState(EXPENSE_CATEGORIES[0]?.id || 'food')
-  const [budgetLimit, setBudgetLimit] = useState('')
-  const [budgetHelpOpen, setBudgetHelpOpen] = useState(false)
+  const [showBudgetHelp, setShowBudgetHelp] = useState(false)
 
   // 3. Savings Goals State
   const [creatingGoal, setCreatingGoal] = useState(false)
@@ -139,17 +138,25 @@ export default function GoalsTab() {
   const daysLeft = Math.max(1, daysInMonth - now.getDate() + 1)
 
   const budgetsWithSpending = useMemo(() => {
-    const currentMonthExpenses = (transactions || []).filter((tx) => {
-      if (tx?.type !== 'expense') return false
-      const d = (tx?.date || tx?.transaction_date || '').slice(0, 7)
-      return d === currentMonthKey
-    })
-
     return (budgets || []).map((b) => {
       const catId = b?.category
-      const spent = currentMonthExpenses
-        .filter((tx) => tx?.category === catId)
+      const dStart = b?.from_date ? new Date(b.from_date) : null
+      const dEnd = b?.to_date ? new Date(b.to_date + 'T23:59:59.999') : null
+
+      const spent = (transactions || [])
+        .filter((tx) => {
+          if (tx?.type !== 'expense') return false
+          if (tx?.category !== catId) return false
+          if (dStart && dEnd) {
+            const txDate = new Date(tx?.date || tx?.transaction_date || tx?.created_at || 0)
+            if (isNaN(txDate.getTime())) return false
+            return txDate >= dStart && txDate <= dEnd
+          }
+          const d = (tx?.date || tx?.transaction_date || '').slice(0, 7)
+          return d === currentMonthKey
+        })
         .reduce((sum, tx) => sum + convert(tx?.amount || 0, tx?.currency || home, home, rates), 0)
+
       const limit = Number(b?.limit_amount) || 0
       const remaining = Math.max(0, limit - spent)
       const pct = limit > 0 ? Math.min(100, Math.round((spent / limit) * 100)) : 0
@@ -200,57 +207,12 @@ export default function GoalsTab() {
   // Handlers for Budgets
   const openNewBudget = () => {
     setEditingBudget(null)
-    setBudgetCategory(EXPENSE_CATEGORIES[0]?.id || 'food')
-    setBudgetLimit('')
     setBudgetModalOpen(true)
   }
 
   const openEditBudget = (b) => {
     setEditingBudget(b)
-    setBudgetCategory(b.category)
-    setBudgetLimit(String(b.limit_amount || ''))
     setBudgetModalOpen(true)
-  }
-
-  const handleSaveBudget = async () => {
-    const num = Number(budgetLimit)
-    if (!num || num <= 0) {
-      toast.error('Masukkan pagu anggaran yang valid')
-      return
-    }
-    try {
-      if (editingBudget?.id) {
-        await store.updateBudget(editingBudget.id, {
-          category: budgetCategory,
-          limit_amount: num,
-          currency: home,
-        })
-      } else {
-        await store.createBudget({
-          category: budgetCategory,
-          limit_amount: num,
-          currency: home,
-          period: 'monthly',
-        })
-      }
-      await loadData()
-      setBudgetModalOpen(false)
-      toast.success(t('saved_msg') || 'Disimpan')
-    } catch (e) {
-      toast.error(e?.message || t('error'))
-    }
-  }
-
-  const handleDeleteBudget = async () => {
-    if (!editingBudget?.id) return
-    try {
-      await store.deleteBudget(editingBudget.id)
-      await loadData()
-      setBudgetModalOpen(false)
-      toast.success(t('deleted') || 'Dihapus')
-    } catch (e) {
-      toast.error(e?.message || t('error'))
-    }
   }
 
   // Handlers for Savings Goals
@@ -506,11 +468,14 @@ export default function GoalsTab() {
             </span>
             <button
               type="button"
-              onClick={() => setBudgetHelpOpen(true)}
-              className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
+              onClick={(e) => {
+                e.stopPropagation()
+                setShowBudgetHelp(true)
+              }}
+              className="text-muted-foreground hover:text-foreground p-0.5 rounded-full transition-colors"
               aria-label="How budgets work"
             >
-              <HelpCircle size={14} />
+              <HelpCircle className="cursor-pointer" size={15} />
             </button>
           </div>
           <div className="flex items-center">
@@ -554,7 +519,10 @@ export default function GoalsTab() {
                         <CategoryIcon id={b.category} size={18} />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-foreground truncate">{catName}</p>
+                        <p className="text-sm font-semibold text-foreground truncate">
+                          {catName}
+                          {b.subcategory && !b.subcategory.startsWith('All of') ? ` · ${b.subcategory}` : ''}
+                        </p>
                         <p className="text-xs text-muted-foreground truncate mt-0.5">
                           {fmt(b.remaining, home)} left of {fmt(b.limit, home)} · ≈ {fmt(b.dailyRemaining, home)}/day
                         </p>
@@ -771,97 +739,68 @@ export default function GoalsTab() {
         }}
       />
 
-      {/* 2. Budget Modal (Set / Edit) */}
-      <Sheet
+      {/* 2. Set / Edit Budget Modal */}
+      <SetBudgetModal
         open={budgetModalOpen}
         onClose={() => setBudgetModalOpen(false)}
-        title={editingBudget ? 'Edit Monthly Budget' : 'Set Monthly Budget'}
-        left={
-          <SheetTextButton muted onClick={() => setBudgetModalOpen(false)}>
-            {t('cancel')}
-          </SheetTextButton>
-        }
-        right={
-          <SheetTextButton bold onClick={handleSaveBudget}>
-            {t('save')}
-          </SheetTextButton>
-        }
-      >
-        <div className="space-y-4 pt-2 pb-6">
-          <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase block mb-1.5">
-              CATEGORY
-            </label>
-            <div className="grid grid-cols-4 gap-2 max-h-52 overflow-y-auto no-scrollbar p-1">
-              {EXPENSE_CATEGORIES.map((c) => {
-                const active = budgetCategory === c.id
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => setBudgetCategory(c.id)}
-                    className={cn(
-                      'p-2.5 rounded-xl border flex flex-col items-center gap-1.5 transition-all text-center cursor-pointer',
-                      active
-                        ? 'bg-foreground text-background border-foreground font-bold shadow-xs'
-                        : 'bg-muted/30 border-border/40 text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    <CategoryIcon id={c.id} size={18} />
-                    <span className="text-[10px] truncate max-w-full">{t(`cat_${c.id}`) || c.name}</span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
+        budget={editingBudget}
+        onSaved={async () => {
+          await loadData()
+          await refresh?.()
+        }}
+        onDeleted={async () => {
+          await loadData()
+          await refresh?.()
+        }}
+        onManageCategories={() => {
+          if (typeof openSheet === 'function') {
+            openSheet('catman')
+          }
+        }}
+        transactions={transactions}
+        existingBudgets={budgets}
+        home={home}
+        fmt={fmt}
+        rates={rates}
+        store={store}
+        t={t}
+      />
 
-          <Field label={`Monthly Limit (${home})`}>
-            <TextInput
-              type="number"
-              inputMode="decimal"
-              value={budgetLimit}
-              onChange={(e) => setBudgetLimit(e.target.value)}
-              placeholder="e.g. 2000000"
-            />
-          </Field>
-
-          <PrimaryButton onClick={handleSaveBudget} disabled={!Number(budgetLimit)}>
-            {editingBudget ? 'Save Changes' : 'Create Budget'}
-          </PrimaryButton>
-
-          {editingBudget && (
-            <button
-              type="button"
-              onClick={handleDeleteBudget}
-              className="w-full text-center text-sm font-semibold text-rose-500 hover:opacity-80 py-2 cursor-pointer transition-opacity"
-            >
-              Delete Budget
-            </button>
-          )}
-        </div>
-      </Sheet>
-
-      {/* Budget Help Dialog */}
-      {budgetHelpOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-3xl bg-card border border-border/40 p-6 shadow-2xl text-center space-y-4">
-            <div className="h-12 w-12 rounded-2xl bg-muted text-foreground mx-auto flex items-center justify-center">
-              <Info size={24} />
+      {/* How Budgets Work Dialog */}
+      {showBudgetHelp && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in"
+          onClick={() => setShowBudgetHelp(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-3xl bg-card border border-border/40 p-6 shadow-2xl space-y-4 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-12 rounded-2xl bg-muted text-foreground mx-auto flex items-center justify-center">
+              <HelpCircle size={24} />
             </div>
             <div>
               <h3 className="text-base font-bold text-foreground">
-                How Paralar Budgets Work
+                How Budgets Work
               </h3>
-              <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-                Paralar helps you set spending limits per category each month. As you record expenses, the progress bar updates automatically and calculates your remaining daily quota so you stay on track.
-              </p>
+              <div className="text-xs text-muted-foreground mt-3 space-y-2.5 leading-relaxed text-left">
+                <p>
+                  Set a spending limit for any date range. Pick a start and end date to track spending for a specific period — weekly, fortnightly, or monthly.
+                </p>
+                <p>
+                  With Repeat on, the budget rolls into the next period by itself and spending starts back at zero. Turn it off for a one-off budget that simply ends.
+                </p>
+                <p>
+                  Paralar will notify you if you go over budget.
+                </p>
+              </div>
             </div>
             <button
               type="button"
-              onClick={() => setBudgetHelpOpen(false)}
-              className="w-full rounded-xl bg-foreground text-background font-bold py-3 text-sm transition-all active:scale-95 cursor-pointer"
+              onClick={() => setShowBudgetHelp(false)}
+              className="w-full rounded-xl bg-foreground text-background font-semibold py-3 text-sm transition-all active:scale-95 cursor-pointer hover:opacity-90"
             >
-              Understood
+              Got it
             </button>
           </div>
         </div>
