@@ -11,6 +11,7 @@ import { Card, EmptyState, Sheet, SheetTextButton, Field, TextInput, PrimaryButt
 import SubscriptionSheet from './SubscriptionSheet'
 import SetBudgetModal from '@/components/goals/SetBudgetModal'
 import NewSavingsGoalModal, { resolveSavingsGoalIcon } from '@/components/goals/NewSavingsGoalModal'
+import LoansSection from '@/components/goals/LoansSection'
 import { CATEGORIES } from '@/lib/categories'
 import { getCurrency } from '@/lib/currencies'
 import { convert } from '@/lib/rates'
@@ -31,7 +32,7 @@ function formatCycle(cycle) {
 }
 
 export default function GoalsTab() {
-  const { t, goals = [], transactions = [], fmt, home, rates, store, refresh, open: openSheet } = useApp()
+  const { t, goals = [], transactions = [], accounts = [], fmt, home, rates, store, refresh, open: openSheet } = useApp()
 
   // 1. Subscriptions State
   const [subscriptions, setSubscriptions] = useState([])
@@ -51,13 +52,6 @@ export default function GoalsTab() {
 
   // 4. Loans & BNPL State
   const [loans, setLoans] = useState([])
-  const [loanModalOpen, setLoanModalOpen] = useState(false)
-  const [editingLoan, setEditingLoan] = useState(null)
-  const [creditorName, setCreditorName] = useState('')
-  const [loanTotalAmount, setLoanTotalAmount] = useState('')
-  const [loanInstallment, setLoanInstallment] = useState('')
-  const [loanTenorMonths, setLoanTenorMonths] = useState('')
-  const [loanDueDay, setLoanDueDay] = useState('25')
 
   // Load all data
   const loadData = async () => {
@@ -217,67 +211,6 @@ export default function GoalsTab() {
       await store.deleteGoal(g.id)
       await refresh()
       toast.success(t('deleted') || 'Target dihapus')
-    } catch (e) {
-      toast.error(e?.message || t('error'))
-    }
-  }
-
-  // Handlers for Loans & BNPL
-  const openNewLoanModal = () => {
-    setEditingLoan(null)
-    setCreditorName('')
-    setLoanTotalAmount('')
-    setLoanInstallment('')
-    setLoanTenorMonths('')
-    setLoanDueDay('25')
-    setLoanModalOpen(true)
-  }
-
-  const openEditLoanModal = (l) => {
-    setEditingLoan(l)
-    setCreditorName(l.name || l.title || '')
-    setLoanTotalAmount(String(l.total_amount || l.amount || ''))
-    setLoanInstallment(String(l.installment_amount || l.monthly_payment || ''))
-    setLoanTenorMonths(String(l.remaining_tenor || l.tenor_months || ''))
-    setLoanDueDay(String(l.due_day || '25'))
-    setLoanModalOpen(true)
-  }
-
-  const handleSaveLoan = async () => {
-    if (!creditorName.trim() || !Number(loanInstallment)) {
-      toast.error('Masukkan nama penyedia cicilan dan nominal angsuran')
-      return
-    }
-    try {
-      const payload = {
-        name: creditorName.trim(),
-        total_amount: Number(loanTotalAmount) || 0,
-        installment_amount: Number(loanInstallment),
-        remaining_tenor: Number(loanTenorMonths) || 1,
-        due_day: Math.min(31, Math.max(1, Number(loanDueDay) || 1)),
-        currency: home,
-        type: 'bnpl',
-      }
-      if (editingLoan?.id) {
-        await store.updateDebt(editingLoan.id, payload)
-      } else {
-        await store.createDebt(payload)
-      }
-      await loadData()
-      setLoanModalOpen(false)
-      toast.success(t('saved_msg') || 'Cicilan disimpan')
-    } catch (e) {
-      toast.error(e?.message || t('error'))
-    }
-  }
-
-  const handleDeleteLoan = async () => {
-    if (!editingLoan?.id) return
-    try {
-      await store.deleteDebt(editingLoan.id)
-      await loadData()
-      setLoanModalOpen(false)
-      toast.success(t('deleted') || 'Cicilan dihapus')
     } catch (e) {
       toast.error(e?.message || t('error'))
     }
@@ -572,71 +505,19 @@ export default function GoalsTab() {
       {/* 4. SECTION: LOANS & BNPL */}
       {/* ============================================================ */}
       <div className="mt-8">
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-            LOANS & BNPL
-          </span>
-          <div className="flex items-center">
-            <span className="text-xs text-muted-foreground mr-3 font-medium">
-              {fmt(totalLoanInstallment, home)}/mo
-            </span>
-            <button
-              type="button"
-              onClick={openNewLoanModal}
-              className="w-7 h-7 rounded-full bg-foreground text-background flex items-center justify-center hover:opacity-90 active:scale-95 transition-all shadow-xs cursor-pointer"
-              aria-label="Add loan or BNPL"
-              data-testid="new-loan"
-            >
-              <Plus size={15} strokeWidth={2.5} />
-            </button>
-          </div>
-        </div>
-        <p className="text-[11px] text-muted-foreground/80 mb-3 font-normal">
-          {bnplSubtitle}
-        </p>
-
-        {loans.length === 0 ? (
-          <button
-            type="button"
-            onClick={openNewLoanModal}
-            className="w-full rounded-2xl border border-dashed border-border/60 p-4 text-center text-xs text-muted-foreground hover:border-foreground/30 hover:bg-muted/10 transition-all cursor-pointer block"
-          >
-            + Add loan or BNPL installment
-          </button>
-        ) : (
-          <div className="space-y-2.5">
-            {loans.map((loan) => {
-              const installmentAmt = Number(loan.installment_amount || loan.monthly_payment || loan.amount) || 0
-              const tenor = Number(loan.remaining_tenor || loan.tenor_months) || 1
-              return (
-                <div
-                  key={loan.id}
-                  onClick={() => openEditLoanModal(loan)}
-                  className="rounded-2xl border border-border/40 bg-card p-4 flex items-center justify-between hover:bg-muted/20 transition-all cursor-pointer shadow-xs"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-11 h-11 rounded-xl bg-muted/60 text-foreground flex items-center justify-center shrink-0 border border-border/20">
-                      <CreditCard size={18} strokeWidth={1.75} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-foreground truncate">
-                        {loan.name || loan.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                        {tenor} months remaining · Due day {loan.due_day || 25}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0 ml-3">
-                    <p className="text-sm font-bold text-foreground">
-                      {fmt(installmentAmt, loan.currency || home)}/mo
-                    </p>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
+        <LoansSection
+          loans={loans}
+          home={home}
+          accounts={accounts}
+          rates={rates}
+          store={store}
+          fmt={fmt}
+          t={t}
+          onRefresh={async () => {
+            await loadData()
+            await refresh?.()
+          }}
+        />
       </div>
 
       {/* ============================================================ */}
@@ -760,88 +641,6 @@ export default function GoalsTab() {
           <PrimaryButton onClick={addFunds} disabled={!Number(fund)}>
             {t('save')}
           </PrimaryButton>
-        </div>
-      </Sheet>
-
-      {/* 4. Loans & BNPL Modal */}
-      <Sheet
-        open={loanModalOpen}
-        onClose={() => setLoanModalOpen(false)}
-        title={editingLoan ? 'Edit Loan & BNPL' : 'Add Loan & BNPL'}
-        left={
-          <SheetTextButton muted onClick={() => setLoanModalOpen(false)}>
-            {t('cancel')}
-          </SheetTextButton>
-        }
-        right={
-          <SheetTextButton bold onClick={handleSaveLoan}>
-            {t('save')}
-          </SheetTextButton>
-        }
-      >
-        <div className="space-y-4 pt-2 pb-6">
-          <Field label="Creditor / Service Name">
-            <TextInput
-              value={creditorName}
-              onChange={(e) => setCreditorName(e.target.value)}
-              placeholder="e.g. SPayLater, Kredivo, Atome, Bank"
-            />
-          </Field>
-
-          <Field label={`Monthly Installment (${home})`}>
-            <TextInput
-              type="number"
-              inputMode="decimal"
-              value={loanInstallment}
-              onChange={(e) => setLoanInstallment(e.target.value)}
-              placeholder="e.g. 450000"
-            />
-          </Field>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Remaining Tenor (Months)">
-              <TextInput
-                type="number"
-                inputMode="numeric"
-                value={loanTenorMonths}
-                onChange={(e) => setLoanTenorMonths(e.target.value)}
-                placeholder="e.g. 6"
-              />
-            </Field>
-            <Field label="Due Day of Month (1-31)">
-              <TextInput
-                type="number"
-                inputMode="numeric"
-                value={loanDueDay}
-                onChange={(e) => setLoanDueDay(e.target.value)}
-                placeholder="25"
-              />
-            </Field>
-          </div>
-
-          <Field label={`Total Loan / Original Balance (${home}) - Optional`}>
-            <TextInput
-              type="number"
-              inputMode="decimal"
-              value={loanTotalAmount}
-              onChange={(e) => setLoanTotalAmount(e.target.value)}
-              placeholder="0"
-            />
-          </Field>
-
-          <PrimaryButton onClick={handleSaveLoan} disabled={!creditorName.trim() || !Number(loanInstallment)}>
-            {editingLoan ? 'Save Changes' : 'Add Loan'}
-          </PrimaryButton>
-
-          {editingLoan && (
-            <button
-              type="button"
-              onClick={handleDeleteLoan}
-              className="w-full text-center text-sm font-semibold text-rose-500 hover:opacity-80 py-2 cursor-pointer transition-opacity"
-            >
-              Delete Loan
-            </button>
-          )}
         </div>
       </Sheet>
     </div>
