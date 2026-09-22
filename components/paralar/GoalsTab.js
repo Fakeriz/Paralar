@@ -74,17 +74,20 @@ export default function GoalsTab() {
     }
 
     try {
-      let d = []
-      if (store?.listDebts) {
-        d = await store.listDebts()
+      // 1. Cek langsung dari data goals Supabase yang bertipe pinjaman/paylater
+      const goalsFromSupabase = (goals || []).filter(
+        (g) => g?.type === 'loan' || g?.type === 'bnpl' || g?.type === 'postpaid' || g?.debt_type != null
+      )
+
+      if (goalsFromSupabase.length > 0) {
+        setLoans(goalsFromSupabase)
+      } else if (store?.listDebts) {
+        // 2. Jika di goals kosong, baru coba ambil dari store debts
+        const d = await store.listDebts()
+        setLoans(Array.isArray(d) ? d : [])
+      } else {
+        setLoans([])
       }
-      // Jika d kosong, ambil langsung dari goals yang tipenya pinjaman / bnpl / postpaid
-      if (!Array.isArray(d) || d.length === 0) {
-        d = (goals || []).filter(
-          (g) => g?.type === 'loan' || g?.type === 'bnpl' || g?.type === 'postpaid' || g?.debt_type
-        )
-      }
-      setLoans(Array.isArray(d) ? d : [])
     } catch {
       setLoans([])
     }
@@ -92,7 +95,7 @@ export default function GoalsTab() {
 
   useEffect(() => {
     loadData()
-  }, []) // eslint-disable-line
+  }, [goals]) // <-- Masukkan 'goals' agar otomatis me-refresh saat ada data baru tersimpan
 
   // 1. Subscriptions Accumulation
   const monthlySubTotal = useMemo(() => {

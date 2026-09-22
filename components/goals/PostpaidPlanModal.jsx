@@ -104,75 +104,47 @@ export default function PostpaidPlanModal({
     try {
       const payload = {
         name: packageName.trim(),
+        title: packageName.trim(), // Tambahkan title untuk Supabase
         total_amount: Number(creditLimit) || 0,
+        target_amount: Number(creditLimit) || 0,
         credit_limit: Number(creditLimit) || 0,
         installment_amount: Number(currentBillAmount) || 0,
+        monthly_installment: Number(currentBillAmount) || 0,
         monthly_payment: Number(currentBillAmount) || 0,
-        remaining_tenor: null, // no fixed tenor
-        tenor_months: null,
         due_day: dueDayNum,
+        due_day_of_month: dueDayNum,
         currency: home,
-        type: 'bnpl',
-        debt_mode: 'postpaid',
-        provider_id: selectedProvider,
-        enable_reminder: enableReminder,
-        note: note.trim() || null,
+        type: 'postpaid',
+        debt_type: 'postpaid',
+        provider_name: selectedProvider,
+        track_in_bills: enableReminder,
+        notes: note.trim() || null,
       }
 
-      // 1. Save to hybrid debts table
-      let saved
-      if (plan?.id) {
-        if (store?.updateDebt) {
-          saved = await store.updateDebt(plan.id, payload)
-        }
-      } else {
-        if (store?.createDebt) {
-          saved = await store.createDebt(payload)
-        }
+      // 1. Simpan langsung via store createGoal atau createDebt
+      if (store?.createGoal) {
+        await store.createGoal(payload)
+      } else if (store?.createDebt) {
+        await store.createDebt(payload)
       }
 
-      // 2. Sync to Supabase goals table
-      try {
-        if (store?.createGoal) {
-          const goalPayload = {
-            name: payload.name,
-            target_amount: payload.credit_limit || 0,
-            saved_amount: 0,
-            currency: home,
-            type: 'bnpl',
-            icon: 'shopping_cart',
-          }
-          if (plan?.goal_id) {
-            await store.updateGoal?.(plan.goal_id, goalPayload).catch(() => {})
-          } else {
-            await store.createGoal?.(goalPayload).catch(() => {})
-          }
-        }
-      } catch (err) {
-        console.warn('Goals sync fallback:', err?.message)
-      }
-
-      // 3. Sync to Bills if reminder is enabled or bill amount is specified
+      // 2. Hubungkan ke checklist Bills jika pengingat aktif
       if (store?.createBill && (enableReminder || Number(currentBillAmount) > 0)) {
         try {
           await store.createBill({
-            title: payload.name,
+            title: payload.title,
             amount: Number(currentBillAmount) || 0,
             currency: home,
-            due_day: payload.due_day,
-            cycle: 'monthly',
-            category: 'cat_bills',
-            auto_log_expense: false,
-            source: 'postpaid_plan',
-            debt_id: saved?.id || plan?.id,
+            due_day: dueDayNum,
+            category: 'Bills & Utilities',
           })
         } catch (err) {
           console.warn('Bills sync notice:', err?.message)
         }
       }
 
-      toast.success(plan ? 'Paket PayLater diperbarui' : 'Paket PayLater berhasil ditambahkan')
-      onSaved?.()
+      toast.success('Paket PayLater berhasil ditambahkan')
+      if (typeof onSaved === 'function') await onSaved()
       onClose?.()
     } catch (err) {
       toast.error(err?.message || 'Gagal menyimpan paket PayLater')

@@ -232,75 +232,45 @@ export default function LoanModal({
         ? Math.round(runningCalculations.remaining / Math.max(1, tenorMonths || 1))
         : calculations.monthlyInstallment
 
+      const planTitle = (planName || (isRunning ? `Utang ${runningType.toUpperCase()}` : 'Pinjaman')).trim()
+
       const payload = {
-        name: (planName || (isRunning ? `Utang ${runningType.toUpperCase()}` : 'Pinjaman')).trim(),
+        name: planTitle,
+        title: planTitle, // Pastikan title terisi
         total_amount: Number(principalAmount) || 0,
+        target_amount: Number(principalAmount) || 0,
+        total_loan_amount: Number(principalAmount) || 0,
         installment_amount: monthlyAmt,
+        monthly_installment: monthlyAmt,
         monthly_payment: monthlyAmt,
         remaining_tenor: Number(tenorMonths) || 12,
         tenor_months: Number(tenorMonths) || 12,
         due_day: Math.min(31, Math.max(1, Number(dueDay) || 25)),
+        due_day_of_month: Math.min(31, Math.max(1, Number(dueDay) || 25)),
         currency: home,
-        type: 'bnpl',
-        debt_mode: isRunning ? 'running' : 'instalment',
-        provider_id: selectedProvider,
+        type: 'loan',
+        debt_type: isRunning ? 'running_balance' : 'instalment',
+        provider_name: selectedProvider,
         interest_rate: isZeroPercent ? 0 : Number(interestRate) || 0,
         track_in_bills: trackInBills,
-        running_type: isRunning ? runningType : null,
-        paid_from: isRunning ? paidFrom : null,
-        balance_mode: isRunning ? balanceMode : null,
-        partial_paid_amount: isRunning && balanceMode === 'partial' ? Number(partialPaidAmount) || 0 : 0,
-        first_payment_date: isRunning ? firstPaymentDate : null,
-        cover_url: coverPhoto || null,
       }
 
-      // 1. Save to debts store (hybrid: Supabase or localStorage fallback)
-      let savedDebt
-      if (loan?.id) {
-        if (store?.updateDebt) {
-          savedDebt = await store.updateDebt(loan.id, payload)
-        }
-      } else {
-        if (store?.createDebt) {
-          savedDebt = await store.createDebt(payload)
-        }
+      // Simpan langsung ke Supabase goals
+      if (store?.createGoal) {
+        await store.createGoal(payload)
+      } else if (store?.createDebt) {
+        await store.createDebt(payload)
       }
 
-      // 2. Also sync to Supabase goals table (type = 'loan' or 'bnpl')
-      try {
-        if (store?.createGoal) {
-          const goalPayload = {
-            name: payload.name,
-            target_amount: payload.total_amount,
-            saved_amount: isRunning && balanceMode === 'partial' ? Number(partialPaidAmount) || 0 : 0,
-            currency: home,
-            type: 'loan',
-            deadline: firstPaymentDate || null,
-            icon: 'credit_card',
-          }
-          if (loan?.goal_id) {
-            await store.updateGoal?.(loan.goal_id, goalPayload).catch(() => {})
-          } else {
-            await store.createGoal?.(goalPayload).catch(() => {})
-          }
-        }
-      } catch (err) {
-        console.warn('Goals sync fallback:', err?.message)
-      }
-
-      // 3. If track in bills is active, create / sync bill
+      // Sync ke Bills jika diaktifkan
       if (trackInBills && store?.createBill) {
         try {
           await store.createBill({
-            title: payload.name,
+            title: payload.title,
             amount: monthlyAmt,
             currency: home,
             due_day: payload.due_day,
-            cycle: 'monthly',
-            category: 'cat_bills',
-            auto_log_expense: false,
-            source: 'loan_installment',
-            debt_id: savedDebt?.id || loan?.id,
+            category: 'Bills & Utilities',
           })
         } catch (err) {
           console.warn('Bills sync notice:', err?.message)
@@ -308,7 +278,7 @@ export default function LoanModal({
       }
 
       toast.success(loan ? 'Pinjaman berhasil diperbarui' : 'Pinjaman berhasil ditambahkan')
-      onSaved?.()
+      if (typeof onSaved === 'function') await onSaved()
       onClose?.()
     } catch (err) {
       toast.error(err?.message || 'Gagal menyimpan pinjaman')
