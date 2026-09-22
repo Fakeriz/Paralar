@@ -117,19 +117,29 @@ export default function LoansSection({
       ) : (
         <div className="space-y-2.5">
           {loans.map((loan) => {
-            const installmentAmt = Number(loan.installment_amount || loan.monthly_payment || loan.amount) || 0
-            const isPostpaid = loan.debt_mode === 'postpaid'
-            const tenor = Number(loan.remaining_tenor || loan.tenor_months) || 0
+            // Pemetaan properti yang aman dan kompatibel dengan skema Supabase & modal
+            const installmentAmt = Number(
+              loan.monthly_installment || 
+              loan.installment_amount || 
+              loan.monthly_payment || 
+              loan.target_amount || 
+              loan.amount
+            ) || 0
+
+            const isPostpaid = loan.debt_type === 'postpaid' || loan.debt_mode === 'postpaid'
+            const tenor = Number(loan.tenure_months || loan.remaining_tenor || loan.tenor_months) || 0
+            const totalPrincipal = Number(loan.total_loan_amount || loan.total_amount || loan.target_amount) || 0
+            const dueDay = loan.due_day_of_month || loan.due_day || 10
             const Icon = getProviderIcon(loan)
 
-            // Subtitle text
+            // Teks Subjudul yang adaptif
             let subtitleText = ''
             if (isPostpaid) {
-              subtitleText = `Tagihan Bulanan · Tempo tgl ${loan.due_day || 10}`
+              subtitleText = `Tagihan Bulanan · Tempo tgl ${dueDay}`
             } else if (tenor > 0) {
-              subtitleText = `${tenor} bulan tersisa · Tempo tgl ${loan.due_day || 25}`
+              subtitleText = `${tenor} bulan tersisa · Tempo tgl ${dueDay}`
             } else {
-              subtitleText = `Tempo tgl ${loan.due_day || 25}`
+              subtitleText = `Tempo tgl ${dueDay}`
             }
 
             return (
@@ -144,7 +154,7 @@ export default function LoansSection({
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-foreground truncate group-hover:text-foreground/90">
-                      {loan.name || loan.title}
+                      {loan.title || loan.name || loan.provider_name || 'Pinjaman'}
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5 truncate">
                       {subtitleText}
@@ -153,17 +163,17 @@ export default function LoansSection({
                 </div>
 
                 <div className="text-right shrink-0 ml-3">
-                  <p className="text-sm font-bold text-foreground">
+                  <p className="text-sm font-bold text-foreground tabular-nums">
                     {fmt(installmentAmt, loan.currency || home)}
                     <span className="text-[11px] font-normal text-muted-foreground">/mo</span>
                   </p>
-                  {Number(loan.total_amount) > 0 && !isPostpaid && (
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
-                      Pokok: {fmt(Number(loan.total_amount), loan.currency || home)}
+                  {totalPrincipal > 0 && !isPostpaid && (
+                    <p className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">
+                      Pokok: {fmt(totalPrincipal, loan.currency || home)}
                     </p>
                   )}
                   {isPostpaid && Number(loan.credit_limit) > 0 && (
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                    <p className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">
                       Limit: {fmt(Number(loan.credit_limit), loan.currency || home)}
                     </p>
                   )}

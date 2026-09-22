@@ -74,10 +74,17 @@ export default function GoalsTab() {
     }
 
     try {
+      let d = []
       if (store?.listDebts) {
-        const d = await store.listDebts()
-        setLoans(Array.isArray(d) ? d : [])
+        d = await store.listDebts()
       }
+      // Jika d kosong, ambil langsung dari goals yang tipenya pinjaman / bnpl / postpaid
+      if (!Array.isArray(d) || d.length === 0) {
+        d = (goals || []).filter(
+          (g) => g?.type === 'loan' || g?.type === 'bnpl' || g?.type === 'postpaid' || g?.debt_type
+        )
+      }
+      setLoans(Array.isArray(d) ? d : [])
     } catch {
       setLoans([])
     }
@@ -141,12 +148,25 @@ export default function GoalsTab() {
   }, [budgets])
 
   // 3. Savings Goals Total Saved
+  // 1. Deklarasikan savingsGoals LEBIH DULU
+  const savingsGoals = useMemo(() => {
+    return (goals || []).filter(
+      (g) =>
+        (!g?.type || g?.type === 'savings' || g?.type === 'saving' || g?.type === 'goal') &&
+        g?.type !== 'loan' &&
+        g?.type !== 'bnpl' &&
+        g?.type !== 'postpaid' &&
+        !g?.debt_type
+    )
+  }, [goals])
+
+  // 2. Baru kemudian hitung totalSaved menggunakan savingsGoals di bawahnya
   const totalSaved = useMemo(() => {
-    return (goals || []).reduce((sum, g) => {
+    return savingsGoals.reduce((sum, g) => {
       const amt = Number(g?.saved_amount) || 0
       return sum + convert(amt, g?.currency || home, home, rates)
     }, 0)
-  }, [goals, home, rates])
+  }, [savingsGoals, home, rates])
 
   // 4. Loans Total Installments
   const totalLoanInstallment = useMemo(() => {
@@ -428,7 +448,7 @@ export default function GoalsTab() {
           </div>
         </div>
 
-        {goals.length === 0 ? (
+        {savingsGoals.length === 0 ? (
           <button
             type="button"
             onClick={openNewGoalModal}
@@ -438,7 +458,7 @@ export default function GoalsTab() {
           </button>
         ) : (
           <div className="space-y-3">
-            {(goals || []).map((g) => {
+            {savingsGoals.map((g) => {
               const targetVal = Number(g?.target_amount) || 1
               const savedVal = Number(g?.saved_amount) || 0
               const pct = Math.min(100, Math.round((savedVal / targetVal) * 100))
@@ -519,7 +539,6 @@ export default function GoalsTab() {
           }}
         />
       </div>
-
       {/* ============================================================ */}
       {/* MODALS & SHEETS */}
       {/* ============================================================ */}
