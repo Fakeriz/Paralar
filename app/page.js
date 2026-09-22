@@ -55,6 +55,8 @@ export default function App() {
   const [accounts, setAccounts] = useState([])
   const [transactions, setTransactions] = useState([])
   const [goals, setGoals] = useState([])
+  const [bills, setBills] = useState([])
+  const [budgets, setBudgets] = useState([])
   const [rates, setRates] = useState(FALLBACK_RATES)
 
   const [tab, setTab] = useState('home')
@@ -103,13 +105,20 @@ export default function App() {
   const refresh = useCallback(async () => {
     if (!authed) return
     try {
-      const [p, a, tx, g] = await Promise.all([
-        store.getProfile(), store.listAccounts(), store.listTransactions(), store.listGoals(),
+      const [p, a, tx, g, b, bg] = await Promise.all([
+        store.getProfile(),
+        store.listAccounts(),
+        store.listTransactions(),
+        store.listGoals(),
+        store.listBills ? store.listBills() : Promise.resolve([]),
+        store.listBudgets ? store.listBudgets() : Promise.resolve([]),
       ])
       setProfile({ ...DEFAULT_PROFILE, ...(p || {}) })
       setAccounts(Array.isArray(a) ? a : [])
       setTransactions(Array.isArray(tx) ? tx : [])
       setGoals(Array.isArray(g) ? g : [])
+      setBills(Array.isArray(b) ? b : [])
+      setBudgets(Array.isArray(bg) ? bg : [])
       const savedLang = (() => { try { return localStorage.getItem(LANG_KEY) } catch { return null } })()
       if (!savedLang && p?.language) setLangState(p.language)
     } catch (e) {
@@ -137,7 +146,7 @@ export default function App() {
     try { await supabase.auth.signOut() } catch {}
     try { localStorage.removeItem(GUEST_KEY) } catch {}
     setIsGuest(false); setSession(null)
-    setProfile({ ...DEFAULT_PROFILE }); setAccounts([]); setTransactions([]); setGoals([])
+    setProfile({ ...DEFAULT_PROFILE }); setAccounts([]); setTransactions([]); setGoals([]); setBills([]); setBudgets([])
     setTab('home'); setSheets({})
   }, [])
 
@@ -168,7 +177,7 @@ export default function App() {
   const ctx = {
     t, lang, setLang, fmt, home, rates, convertToHome,
     session, user: session?.user || null, isGuest, profile, updateProfile, signOut,
-    accounts, transactions, goals, stats, store, refresh, addTransaction,
+    accounts, transactions, goals, bills, budgets, stats, store, refresh, addTransaction,
     tab, setTab, sheets, open, close,
     hideBalance, setHideBalance,
   }

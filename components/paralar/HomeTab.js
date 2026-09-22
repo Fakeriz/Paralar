@@ -1,5 +1,5 @@
 'use client'
-import { useRef, useState, useCallback, useEffect } from 'react'
+import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
 import { Bell, Eye, EyeOff, ArrowDownLeft, ArrowUpRight, Receipt, Users, PieChart, FileText, Plus, ChevronRight, Sparkles, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
@@ -8,10 +8,37 @@ import SwipeTransactionRow from './SwipeTransactionRow'
 import { BankCard, EmvChip, ContactlessWave } from './BankCard'
 import { cn } from '@/lib/utils'
 import { applyTxToBalances } from '@/lib/ledger'
+import { deriveNotifications } from '@/lib/notifications'
 
 function Header() {
-  const { t, profile, open, isGuest } = useApp()
+  const {
+    t,
+    profile,
+    open,
+    isGuest,
+    bills = [],
+    budgets = [],
+    goals = [],
+    transactions = [],
+    home = 'USD',
+    rates = {},
+    fmt,
+  } = useApp()
   const first = (profile?.full_name || '').trim().split(' ')[0]
+
+  const { hasUrgent } = useMemo(() => {
+    return deriveNotifications({
+      bills,
+      budgets,
+      goals,
+      transactions,
+      home,
+      rates,
+      fmt,
+      t,
+    })
+  }, [bills, budgets, goals, transactions, home, rates, fmt, t])
+
   return (
     <div className="flex items-center justify-between pt-4">
       <div className="flex items-center gap-3">
@@ -21,8 +48,19 @@ function Header() {
           {isGuest ? <p className="text-[11px] font-medium text-zinc-600 dark:text-zinc-400">{t('guest_mode')}</p> : null}
         </div>
       </div>
-      <button type="button" onClick={() => open('notifications')} className="h-10 w-10 rounded-full bg-zinc-100 border border-zinc-200 text-zinc-900 dark:bg-[#1c1c1e] dark:border-white/10 dark:text-white flex items-center justify-center transition-colors" aria-label="notifications">
+      <button
+        type="button"
+        onClick={() => open('notifications')}
+        className="h-10 w-10 rounded-full bg-zinc-100 border border-zinc-200 text-zinc-900 dark:bg-[#1c1c1e] dark:border-white/10 dark:text-white flex items-center justify-center transition-colors relative"
+        aria-label="notifications"
+      >
         <Bell size={18} />
+        {hasUrgent && (
+          <span
+            className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-[#1c1c1e]"
+            data-testid="notification-dot"
+          />
+        )}
       </button>
     </div>
   )

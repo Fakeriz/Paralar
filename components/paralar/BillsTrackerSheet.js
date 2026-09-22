@@ -62,6 +62,9 @@ export default function BillsTrackerSheet({ open, onClose }) {
     } catch {
       setBills([])
     }
+    try {
+      if (typeof refresh === 'function') await refresh()
+    } catch {}
   }
 
   useEffect(() => {
@@ -308,6 +311,7 @@ export default function BillsTrackerSheet({ open, onClose }) {
     try {
       await store.deleteBill(id)
       toast.success(t('deleted'))
+      try { if (typeof refresh === 'function') await refresh() } catch {}
     } catch (e) {
       toast.error(e?.message || t('error'))
       load()
