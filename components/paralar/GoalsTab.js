@@ -10,28 +10,13 @@ import { useApp } from './context'
 import { Card, EmptyState, Sheet, SheetTextButton, Field, TextInput, PrimaryButton, CategoryIcon } from './ui'
 import SubscriptionSheet from './SubscriptionSheet'
 import SetBudgetModal from '@/components/goals/SetBudgetModal'
+import NewSavingsGoalModal, { resolveSavingsGoalIcon } from '@/components/goals/NewSavingsGoalModal'
 import { CATEGORIES } from '@/lib/categories'
 import { getCurrency } from '@/lib/currencies'
 import { convert } from '@/lib/rates'
 import { cn } from '@/lib/utils'
 
-// 12 squircle icons for Savings Goals (Default: Flag)
-const GOAL_ICONS = [
-  { id: 'flag', Icon: Flag, label: 'Flag' },
-  { id: 'target', Icon: Target, label: 'Target' },
-  { id: 'travel', Icon: Plane, label: 'Travel' },
-  { id: 'home', Icon: HomeIcon, label: 'Home' },
-  { id: 'car', Icon: Car, label: 'Car' },
-  { id: 'wedding', Icon: Gem, label: 'Special' },
-  { id: 'education', Icon: GraduationCap, label: 'Education' },
-  { id: 'gadget', Icon: ShieldCheck, label: 'Security' },
-  { id: 'invest', Icon: TrendingUp, label: 'Invest' },
-  { id: 'love', Icon: Heart, label: 'Love' },
-  { id: 'gift', Icon: Gift, label: 'Gift' },
-  { id: 'sparkles', Icon: Sparkles, label: 'Dream' },
-]
-
-const goalIcon = (id) => GOAL_ICONS.find((g) => g.id === id)?.Icon || Flag
+const goalIcon = (id) => resolveSavingsGoalIcon(id) || Flag
 
 const EXPENSE_CATEGORIES = CATEGORIES.filter((c) => c.types?.includes('expense'))
 
@@ -63,14 +48,6 @@ export default function GoalsTab() {
   const [creatingGoal, setCreatingGoal] = useState(false)
   const [funding, setFunding] = useState(null)
   const [fund, setFund] = useState('')
-  const [goalName, setGoalName] = useState('')
-  const [goalTarget, setGoalTarget] = useState('')
-  const [goalStarting, setGoalStarting] = useState('')
-  const [goalIconId, setGoalIconId] = useState('flag')
-  const [goalDeadline, setGoalDeadline] = useState('')
-  const [goalMonthlyTarget, setGoalMonthlyTarget] = useState('')
-  const [goalCoverUrl, setGoalCoverUrl] = useState('')
-  const goalFileInputRef = useRef(null)
 
   // 4. Loans & BNPL State
   const [loans, setLoans] = useState([])
@@ -217,65 +194,7 @@ export default function GoalsTab() {
 
   // Handlers for Savings Goals
   const openNewGoalModal = () => {
-    setGoalName('')
-    setGoalTarget('')
-    setGoalStarting('')
-    setGoalIconId('flag')
-    setGoalDeadline('')
-    setGoalMonthlyTarget('')
-    setGoalCoverUrl('')
     setCreatingGoal(true)
-  }
-
-  const handleGoalImageUpload = (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('Maksimal foto 2MB')
-      return
-    }
-    const reader = new FileReader()
-    reader.onload = (ev) => {
-      setGoalCoverUrl(ev.target?.result || '')
-    }
-    reader.readAsDataURL(file)
-  }
-
-  // Auto-calculate monthly savings target if deadline changes
-  const handleDeadlineToMonthly = (deadlineVal, targetVal, startingVal) => {
-    setGoalDeadline(deadlineVal)
-    if (!deadlineVal || !targetVal) return
-    const targetNum = Number(targetVal) || 0
-    const startNum = Number(startingVal) || 0
-    const needed = Math.max(0, targetNum - startNum)
-    const deadDate = new Date(deadlineVal)
-    const curDate = new Date()
-    const months = Math.max(1, (deadDate.getFullYear() - curDate.getFullYear()) * 12 + (deadDate.getMonth() - curDate.getMonth()))
-    setGoalMonthlyTarget(String(Math.round(needed / months)))
-  }
-
-  const handleCreateGoal = async () => {
-    if (!goalName.trim() || !Number(goalTarget)) {
-      toast.error('Isi nama target dan nominal sasaran')
-      return
-    }
-    try {
-      await store.createGoal({
-        name: goalName.trim(),
-        icon: goalIconId,
-        target_amount: Number(goalTarget),
-        saved_amount: Number(goalStarting) || 0,
-        currency: home,
-        deadline: goalDeadline || null,
-        monthly_target: Number(goalMonthlyTarget) || null,
-        cover_url: goalCoverUrl || null,
-      })
-      setCreatingGoal(false)
-      await refresh()
-      toast.success(t('saved_msg') || 'Target tersimpan')
-    } catch (e) {
-      toast.error(e?.message || t('error'))
-    }
   }
 
   const addFunds = async () => {
@@ -807,152 +726,17 @@ export default function GoalsTab() {
       )}
 
       {/* 3. New Savings Goal Modal */}
-      <Sheet
+      <NewSavingsGoalModal
         open={creatingGoal}
         onClose={() => setCreatingGoal(false)}
-        title={t('new_goal') || 'New Savings Goal'}
-        left={
-          <SheetTextButton muted onClick={() => setCreatingGoal(false)}>
-            {t('cancel')}
-          </SheetTextButton>
-        }
-        right={
-          <SheetTextButton bold onClick={handleCreateGoal}>
-            {t('save')}
-          </SheetTextButton>
-        }
-      >
-        <div className="space-y-4 pt-2 pb-6 max-h-[80vh] overflow-y-auto no-scrollbar">
-          {/* Cover Photo Upload */}
-          <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase block mb-1.5">
-              COVER PHOTO (OPTIONAL)
-            </label>
-            <input
-              ref={goalFileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleGoalImageUpload}
-            />
-            {goalCoverUrl ? (
-              <div className="relative aspect-[2.3/1] w-full rounded-2xl overflow-hidden bg-muted border border-border/40">
-                <img src={goalCoverUrl} alt="Cover" className="w-full h-full object-cover" />
-                <button
-                  type="button"
-                  onClick={() => setGoalCoverUrl('')}
-                  className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            ) : (
-              <div
-                onClick={() => goalFileInputRef.current?.click()}
-                className="w-full aspect-[2.3/1] rounded-2xl border border-dashed border-border/60 bg-muted/20 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-muted/40 transition-colors text-center p-3"
-              >
-                <Camera size={20} className="text-muted-foreground" />
-                <span className="text-xs text-muted-foreground font-medium">Upload goal cover photo</span>
-              </div>
-            )}
-          </div>
-
-          {/* 12 Squircle Icons Selector */}
-          <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase block mb-1.5">
-              ICON (FLAG DEFAULT)
-            </label>
-            <div className="grid grid-cols-6 gap-2">
-              {GOAL_ICONS.map(({ id, Icon }) => {
-                const active = goalIconId === id
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => setGoalIconId(id)}
-                    className={cn(
-                      'w-11 h-11 rounded-xl flex items-center justify-center transition-all cursor-pointer mx-auto',
-                      active
-                        ? 'bg-foreground text-background shadow-xs ring-2 ring-foreground ring-offset-2 ring-offset-background'
-                        : 'bg-muted/40 border border-border/30 text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    <Icon size={18} strokeWidth={active ? 2 : 1.5} />
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          <Field label={t('goal_name') || 'Goal Name'}>
-            <TextInput
-              value={goalName}
-              onChange={(e) => setGoalName(e.target.value)}
-              placeholder="e.g. Emergency Fund, New Laptop"
-            />
-          </Field>
-
-          <Field label={`${t('target_amount')} (${home})`}>
-            <TextInput
-              type="number"
-              inputMode="decimal"
-              value={goalTarget}
-              onChange={(e) => {
-                setGoalTarget(e.target.value)
-                handleDeadlineToMonthly(goalDeadline, e.target.value, goalStarting)
-              }}
-              placeholder="0"
-            />
-          </Field>
-
-          <Field label={`Starting Saved Balance (${home})`}>
-            <TextInput
-              type="number"
-              inputMode="decimal"
-              value={goalStarting}
-              onChange={(e) => {
-                setGoalStarting(e.target.value)
-                handleDeadlineToMonthly(goalDeadline, goalTarget, e.target.value)
-              }}
-              placeholder="0"
-            />
-          </Field>
-
-          <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase block mb-1.5">
-              DEADLINE (OPTIONAL)
-            </label>
-            <div className="relative">
-              <input
-                type="date"
-                value={goalDeadline}
-                onChange={(e) => handleDeadlineToMonthly(e.target.value, goalTarget, goalStarting)}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-              />
-              <div className="bg-muted/40 rounded-2xl p-3.5 flex items-center gap-3 border border-border/30">
-                <Calendar size={18} className="text-muted-foreground shrink-0" />
-                <span className="text-sm font-semibold text-foreground">
-                  {goalDeadline || 'Select deadline date'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <Field label={`Monthly Savings Target (${home})`}>
-            <TextInput
-              type="number"
-              inputMode="decimal"
-              value={goalMonthlyTarget}
-              onChange={(e) => setGoalMonthlyTarget(e.target.value)}
-              placeholder="Auto-calculated or custom"
-            />
-          </Field>
-
-          <PrimaryButton onClick={handleCreateGoal} disabled={!goalName.trim() || !Number(goalTarget)}>
-            {t('create') || 'Create Goal'}
-          </PrimaryButton>
-        </div>
-      </Sheet>
+        onSaved={async () => {
+          await loadData()
+          await refresh?.()
+        }}
+        home={home}
+        store={store}
+        t={t}
+      />
 
       {/* Add Funds to Goal Modal */}
       <Sheet open={!!funding} onClose={() => setFunding(null)} title={t('add_funds') || 'Add Funds'}>
