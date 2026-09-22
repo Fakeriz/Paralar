@@ -478,7 +478,7 @@ export default function LoanModal({
                   onChange={(e) => handleAmountChange(e, setPrincipalAmount)}
                   placeholder="0"
                   className="w-full text-2xl font-extrabold text-foreground bg-transparent outline-none placeholder:text-muted-foreground/30 tabular-nums"
-                  autoFocus={!loan}
+                  autoFocus={false}
                 />
               </div>
             </div>
