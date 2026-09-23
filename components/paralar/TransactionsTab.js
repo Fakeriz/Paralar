@@ -22,7 +22,8 @@ function dayKey(d) {
 }
 
 function TransactionsContent() {
-  const { t, transactions, open, fmt, home, convertToHome, lang, store, refresh, accounts = [], rates } = useApp()
+  // UBAH MENJADI (tambahkan hideBalance):
+  const { t, transactions, open, fmt, home, convertToHome, lang, store, refresh, accounts = [], rates, hideBalance } = useApp()
   const [filter, setFilter] = useState('all')
   const [q, setQ] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -157,7 +158,9 @@ function TransactionsContent() {
             <div key={k} className="mt-5">
               <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex justify-between items-center mb-2 px-1">
                 <span>{labelFor(k)}</span>
-                <span className="tabular-nums">{net < 0 ? '-' : '+'}{safeFmt(Math.abs(net), home)}</span>
+                <span className="tabular-nums">
+                  {hideBalance ? '••••••' : `${net < 0 ? '-' : '+'}${safeFmt(Math.abs(net), home)}`}
+                </span>
               </div>
               <div className="rounded-2xl border border-border/40 bg-card overflow-hidden divide-y divide-border/30 mb-4 touch-pan-y shadow-xs">
                 {(dayList || []).map((tx) => (

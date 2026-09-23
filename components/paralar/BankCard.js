@@ -301,7 +301,7 @@ export function BankCard({
         </p>
         {approxHome ? (
           <p className={cn('text-[11px] font-medium mt-0.5 truncate', subCls)}>
-            ≈ {approxHome}
+            {hideBalance ? '≈ ••••••' : `≈ ${approxHome}`}
           </p>
         ) : null}
       </div>
