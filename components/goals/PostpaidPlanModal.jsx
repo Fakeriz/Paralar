@@ -157,11 +157,23 @@ export default function PostpaidPlanModal({
     if (!plan?.id) return
     setIsSubmitting(true)
     try {
-      if (store?.deleteDebt) {
-        await store.deleteDebt(plan.id)
+      // 1. Hapus dari tabel goals Supabase (sumber utama)
+      if (store?.deleteGoal) {
+        await store.deleteGoal(plan.id)
       }
-      toast.success('Paket PayLater berhasil dihapus')
-      onDeleted?.()
+      // 2. Fallback jika ada di tabel debt terpisah
+      if (store?.deleteDebt) {
+        await store.deleteDebt(plan.id).catch(() => {})
+      }
+      
+      const providerName = POSTPAID_PROVIDERS.find(p => p.id === selectedProvider)?.name || 'PayLater'
+      toast.success(
+        plan 
+          ? `Tagihan ${providerName} diperbarui` 
+          : `Tagihan ${providerName} bulanan ditambahkan`
+      )
+      if (typeof onDeleted === 'function') await onDeleted()
+      if (typeof onSaved === 'function') await onSaved()
       onClose?.()
     } catch (err) {
       toast.error(err?.message || 'Gagal menghapus paket')

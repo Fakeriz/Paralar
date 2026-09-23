@@ -277,7 +277,17 @@ export default function LoanModal({
         }
       }
 
-      toast.success(loan ? 'Pinjaman berhasil diperbarui' : 'Pinjaman berhasil ditambahkan')
+      const labelType = activeTab === 'running' 
+        ? 'Saldo berjalan' 
+        : isZeroPercent 
+          ? 'Cicilan 0%' 
+          : 'Pinjaman cicilan'
+
+      toast.success(
+        loan 
+          ? `${labelType} berhasil diperbarui` 
+          : `${labelType} berhasil ditambahkan`
+      )
       if (typeof onSaved === 'function') await onSaved()
       onClose?.()
     } catch (err) {
@@ -292,11 +302,22 @@ export default function LoanModal({
     if (!loan?.id) return
     setIsSubmitting(true)
     try {
-      if (store?.deleteDebt) {
-        await store.deleteDebt(loan.id)
+      // 1. Hapus dari tabel goals Supabase
+      if (store?.deleteGoal) {
+        await store.deleteGoal(loan.id)
       }
-      toast.success('Pinjaman berhasil dihapus')
-      onDeleted?.()
+      // 2. Fallback store debts
+      if (store?.deleteDebt) {
+        await store.deleteDebt(loan.id).catch(() => {})
+      }
+
+      toast.success(
+        activeTab === 'running' 
+          ? 'Catatan utang saldo berjalan dihapus' 
+          : 'Pinjaman cicilan berhasil dihapus'
+      )
+      if (typeof onDeleted === 'function') await onDeleted()
+      if (typeof onSaved === 'function') await onSaved()
       onClose?.()
     } catch (err) {
       toast.error(err?.message || 'Gagal menghapus pinjaman')

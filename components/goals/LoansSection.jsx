@@ -300,8 +300,16 @@ export default function LoansSection({
           setSelectedLoan(null)
         }}
         loan={selectedLoan}
-        onSaved={onRefresh}
-        onDeleted={onRefresh}
+        onSaved={async () => {
+          await onRefresh?.()
+          setLoanModalOpen(false)
+          setSelectedLoan(null)
+        }}
+        onDeleted={async () => {
+          setSelectedLoan(null)
+          setLoanModalOpen(false)
+          await onRefresh?.()
+        }}
         home={home}
         accounts={accounts}
         store={store}
@@ -318,8 +326,16 @@ export default function LoansSection({
           setSelectedPostpaid(null)
         }}
         plan={selectedPostpaid}
-        onSaved={onRefresh}
-        onDeleted={onRefresh}
+        onSaved={async () => {
+          await onRefresh?.()
+          setPostpaidModalOpen(false)
+          setSelectedPostpaid(null)
+        }}
+        onDeleted={async () => {
+          setSelectedPostpaid(null)
+         setPostpaidModalOpen(false)
+          await onRefresh?.()
+          }}
         home={home}
         store={store}
         t={t}
