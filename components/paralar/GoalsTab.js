@@ -281,7 +281,7 @@ export default function GoalsTab() {
           <button
             type="button"
             onClick={openNewSub}
-            className="w-full rounded-2xl border border-dashed border-border/60 p-4 text-center text-xs text-muted-foreground hover:border-foreground/30 hover:bg-muted/10 transition-all cursor-pointer block"
+            className="w-full min-h-[90px] rounded-2xl border border-dashed border-border/70 py-7 px-4 text-center text-sm font-medium text-muted-foreground hover:border-foreground/40 hover:bg-muted/15 transition-all cursor-pointer flex items-center justify-center"
           >
             + Add your first subscription
           </button>
@@ -373,7 +373,7 @@ export default function GoalsTab() {
           <button
             type="button"
             onClick={openNewBudget}
-            className="w-full rounded-2xl border border-dashed border-border/60 p-4 text-center text-xs text-muted-foreground hover:border-foreground/30 hover:bg-muted/10 transition-all cursor-pointer block"
+            className="w-full min-h-[90px] rounded-2xl border border-dashed border-border/70 py-7 px-4 text-center text-sm font-medium text-muted-foreground hover:border-foreground/40 hover:bg-muted/15 transition-all cursor-pointer flex items-center justify-center"
           >
             + Set your first budget limit
           </button>
@@ -455,7 +455,7 @@ export default function GoalsTab() {
           <button
             type="button"
             onClick={openNewGoalModal}
-            className="w-full rounded-2xl border border-dashed border-border/60 p-4 text-center text-xs text-muted-foreground hover:border-foreground/30 hover:bg-muted/10 transition-all cursor-pointer block"
+            className="w-full min-h-[90px] rounded-2xl border border-dashed border-border/70 py-7 px-4 text-center text-sm font-medium text-muted-foreground hover:border-foreground/40 hover:bg-muted/15 transition-all cursor-pointer flex items-center justify-center"
           >
             + Add a savings goal
           </button>
