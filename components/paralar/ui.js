@@ -166,7 +166,7 @@ export function CheckIcon({ active }) {
 }
 
 // Bottom sheet built on framer-motion (supports stacking, swipe-to-dismiss, standardized header)
-export function Sheet({ open, onClose, children, title, left, right, full = false, className, zIndex = 50, noPadding = false }) {
+export function Sheet({ open, onClose, children, title, left, right, full = false, className, zIndex = 70, noPadding = false }) {
   const app = useApp()
   const cancelText = app?.t ? app.t('cancel') : 'Cancel'
   const controls = useDragControls()

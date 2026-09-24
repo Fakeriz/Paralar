@@ -5,8 +5,21 @@ import { cn } from '@/lib/utils'
 import { useApp } from './context'
 
 export default function BottomNav({ tab, onTab, onPlus }) {
-  const { t, open } = useApp()
+  // Ambil semua kemungkinan nama state modal / sheet dari Context
+  const app = useApp()
+  const { t, open } = app || {}
 
+  // Context Belanje/Paralar umumnya menyimpan activeSheet, currentModal, sheet, atau modal
+  const isAnyModalOpen = Boolean(
+    app?.modal || 
+    app?.activeModal || 
+    app?.activeSheet || 
+    app?.sheet || 
+    app?.currentModal
+  )
+
+  // Sembunyikan navbar jika ada sheet/modal aktif
+  if (isAnyModalOpen) return null
   const items = [
     { id: 'home', label: t('home') || 'Home', icon: Home },
     { id: 'transactions', label: t('transactions') || 'Transactions', icon: ArrowLeftRight },
