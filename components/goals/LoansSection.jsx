@@ -1,6 +1,5 @@
 'use client'
 import { useState, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import {
   CreditCard,
   Plus,
@@ -13,7 +12,8 @@ import {
   Layers,
   ChevronRight,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, triggerHaptic } from '@/lib/utils'
+import { Sheet } from '@/components/paralar/ui'
 import LoanModal from './LoanModal'
 import PostpaidPlanModal from './PostpaidPlanModal'
 
@@ -186,109 +186,76 @@ export default function LoansSection({
 
       {/* ============================================================ */}
       {/* 1. DIALOG AKSI PEMILIH JENIS UTANG (TYPE ACTION SHEET) */}
-      {/* Mengacu image_15.png: Action Sheet / Modal dengan backdrop gelap */}
       {/* ============================================================ */}
-      <AnimatePresence>
-        {typeActionSheetOpen && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.16 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-[2px]"
-              onClick={() => setTypeActionSheetOpen(false)}
-            />
+      <Sheet
+        open={typeActionSheetOpen}
+        onClose={() => setTypeActionSheetOpen(false)}
+        zIndex={70}
+        title="TAMBAH PINJAMAN / BNPL"
+      >
+        <div className="space-y-4 pt-1">
+          <p className="text-xs text-muted-foreground text-center font-medium">
+            Pilih Format Penagihan
+          </p>
 
-            {/* Modal Bottom Sheet Shell */}
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-              className="relative z-10 w-full max-w-sm sm:max-w-md bg-card border border-border/40 rounded-t-3xl sm:rounded-3xl p-5 pt-3 shadow-2xl"
+          {/* Action Buttons */}
+          <div className="space-y-2.5">
+            {/* Tombol Pilihan 1: Pinjaman atau Cicilan BNPL */}
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic('light')
+                setTypeActionSheetOpen(false)
+                setSelectedLoan(null)
+                setLoanModalOpen(true)
+              }}
+              className="w-full p-4 rounded-2xl bg-muted/40 hover:bg-muted/70 active:scale-[0.99] border border-border/40 text-left transition-all cursor-pointer flex items-center justify-between group"
             >
-              {/* Drag Handle Bar */}
-              <div className="w-12 h-1.5 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
-
-              {/* Judul kecil atas */}
-              <div className="text-center mb-4">
-                <span className="text-xs font-semibold text-muted-foreground tracking-wider uppercase">
-                  TAMBAH PINJAMAN / BNPL
-                </span>
-                <p className="text-sm font-bold text-foreground mt-0.5">
-                  Pilih Format Penagihan
-                </p>
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-xl bg-foreground text-background flex items-center justify-center shrink-0">
+                  <CreditCard size={20} strokeWidth={1.75} />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-foreground">
+                    Pinjaman atau Cicilan BNPL
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Cicilan tenor 3–36 bln, KTA, Kartu Kredit, atau PayLater
+                  </p>
+                </div>
               </div>
+              <ChevronRight size={18} className="text-muted-foreground group-hover:text-foreground shrink-0" />
+            </button>
 
-              {/* Action Buttons */}
-              <div className="space-y-2.5">
-                {/* Tombol Pilihan 1: Pinjaman atau Cicilan BNPL */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTypeActionSheetOpen(false)
-                    setSelectedLoan(null)
-                    setLoanModalOpen(true)
-                  }}
-                  className="w-full p-4 rounded-2xl bg-muted/40 hover:bg-muted/70 active:scale-[0.99] border border-border/40 text-left transition-all cursor-pointer flex items-center justify-between group"
-                >
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-11 h-11 rounded-xl bg-foreground text-background flex items-center justify-center shrink-0">
-                      <CreditCard size={20} strokeWidth={1.75} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-foreground">
-                        Pinjaman atau Cicilan BNPL
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Cicilan tenor 3–36 bln, KTA, Kartu Kredit, atau PayLater
-                      </p>
-                    </div>
-                  </div>
-                  <ChevronRight size={18} className="text-muted-foreground group-hover:text-foreground shrink-0" />
-                </button>
-
-                {/* Tombol Pilihan 2: Tagihan Bulanan PayLater (SPayLater, GoPay Later, dll.) */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTypeActionSheetOpen(false)
-                    setSelectedPostpaid(null)
-                    setPostpaidModalOpen(true)
-                  }}
-                  className="w-full p-4 rounded-2xl bg-muted/40 hover:bg-muted/70 active:scale-[0.99] border border-border/40 text-left transition-all cursor-pointer flex items-center justify-between group"
-                >
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-11 h-11 rounded-xl bg-foreground text-background flex items-center justify-center shrink-0">
-                      <ShoppingBag size={20} strokeWidth={1.75} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-foreground">
-                        Tagihan Bulanan PayLater
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        SPayLater, GoPay Later, Kredivo 30 hari tanpa tenor tetap
-                      </p>
-                    </div>
-                  </div>
-                  <ChevronRight size={18} className="text-muted-foreground group-hover:text-foreground shrink-0" />
-                </button>
-
-                {/* Tombol Pilihan 3: Batal (Cancel) */}
-                <button
-                  type="button"
-                  onClick={() => setTypeActionSheetOpen(false)}
-                  className="w-full py-3.5 rounded-2xl text-center text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer mt-1"
-                >
-                  Batal
-                </button>
+            {/* Tombol Pilihan 2: Tagihan Bulanan PayLater (SPayLater, GoPay Later, dll.) */}
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic('light')
+                setTypeActionSheetOpen(false)
+                setSelectedPostpaid(null)
+                setPostpaidModalOpen(true)
+              }}
+              className="w-full p-4 rounded-2xl bg-muted/40 hover:bg-muted/70 active:scale-[0.99] border border-border/40 text-left transition-all cursor-pointer flex items-center justify-between group"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-xl bg-foreground text-background flex items-center justify-center shrink-0">
+                  <ShoppingBag size={20} strokeWidth={1.75} />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-foreground">
+                    Tagihan Bulanan PayLater
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    SPayLater, GoPay Later, Kredivo 30 hari tanpa tenor tetap
+                  </p>
+                </div>
               </div>
-            </motion.div>
+              <ChevronRight size={18} className="text-muted-foreground group-hover:text-foreground shrink-0" />
+            </button>
           </div>
-        )}
-      </AnimatePresence>
+        </div>
+      </Sheet>
 
       {/* ============================================================ */}
       {/* 2. MODAL CICILAN & PINJAMAN (LOAN MODAL) */}

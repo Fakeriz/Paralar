@@ -1,25 +1,44 @@
 'use client'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Home, ArrowLeftRight, Target, MoreHorizontal, Plus } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, triggerHaptic } from '@/lib/utils'
 import { useApp } from './context'
 
 export default function BottomNav({ tab, onTab, onPlus }) {
-  // Ambil semua kemungkinan nama state modal / sheet dari Context
   const app = useApp()
   const { t, open } = app || {}
 
-  // Context Belanje/Paralar umumnya menyimpan activeSheet, currentModal, sheet, atau modal
+  const [sheetToggled, setSheetToggled] = useState(false)
+
+  useEffect(() => {
+    const handleToggle = (e) => {
+      setSheetToggled(Boolean(e?.detail?.open))
+    }
+    window.addEventListener('paralar-sheet-toggle', handleToggle)
+    if (typeof document !== 'undefined' && document.body.hasAttribute('data-paralar-sheet-open')) {
+      setSheetToggled(true)
+    }
+    return () => {
+      window.removeEventListener('paralar-sheet-toggle', handleToggle)
+    }
+  }, [])
+
+  // Comprehensive check for any modal or sheet active
   const isAnyModalOpen = Boolean(
+    sheetToggled ||
     app?.modal || 
     app?.activeModal || 
     app?.activeSheet || 
     app?.sheet || 
-    app?.currentModal
+    app?.currentModal ||
+    app?.subModal ||
+    (app?.sheets && Object.values(app.sheets).some(Boolean))
   )
 
   // Sembunyikan navbar jika ada sheet/modal aktif
   if (isAnyModalOpen) return null
+
   const items = [
     { id: 'home', label: t('home') || 'Home', icon: Home },
     { id: 'transactions', label: t('transactions') || 'Transactions', icon: ArrowLeftRight },
@@ -29,11 +48,17 @@ export default function BottomNav({ tab, onTab, onPlus }) {
 
   const handlePlus = (e) => {
     e?.stopPropagation?.()
+    triggerHaptic('light')
     if (open) {
       open('addTx')
     } else if (onPlus) {
       onPlus()
     }
+  }
+
+  const handleTabClick = (id) => {
+    triggerHaptic('medium')
+    onTab?.(id)
   }
 
   return (
@@ -49,7 +74,7 @@ export default function BottomNav({ tab, onTab, onPlus }) {
               <button
                 key={it.id}
                 type="button"
-                onClick={() => onTab(it.id)}
+                onClick={() => handleTabClick(it.id)}
                 data-testid={`nav-${it.id}`}
                 aria-label={it.label}
                 className="relative flex items-center justify-center w-11 h-11 rounded-full cursor-pointer focus:outline-none select-none"

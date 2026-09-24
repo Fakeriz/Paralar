@@ -8,7 +8,7 @@ import { useApp } from '@/components/paralar/context'
 import { CATEGORIES } from '@/lib/categories'
 import { getCurrency } from '@/lib/currencies'
 import { convert } from '@/lib/rates'
-import { cn } from '@/lib/utils'
+import { cn, triggerHaptic } from '@/lib/utils'
 
 const EXPENSE_CATEGORIES = CATEGORIES.filter((c) => c.types?.includes('expense'))
 
@@ -290,11 +290,13 @@ export default function SetBudgetModal({
         if (store?.updateBudget) {
           await store.updateBudget(budget.id, payload)
         }
+        triggerHaptic('success')
         toast.success(t?.('saved_msg') || 'Anggaran diperbarui')
       } else {
         if (store?.createBudget) {
           await store.createBudget(payload)
         }
+        triggerHaptic('success')
         toast.success(t?.('saved_msg') || 'Anggaran berhasil diset')
       }
 
@@ -309,6 +311,7 @@ export default function SetBudgetModal({
 
   const handleDelete = async () => {
     if (!budget?.id) return
+    triggerHaptic('warning')
     try {
       if (store?.deleteBudget) {
         await store.deleteBudget(budget.id)
@@ -328,7 +331,7 @@ export default function SetBudgetModal({
       <Sheet
         open={open}
         onClose={onClose}
-        full
+        zIndex={70}
         title={
           <span className="inline-flex items-center justify-center gap-1.5">
             <span>{budget ? 'Edit Budget' : 'Set Budget'}</span>

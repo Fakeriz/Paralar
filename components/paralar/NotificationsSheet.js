@@ -15,7 +15,7 @@ import { useApp } from './context'
 import { Sheet, EmptyState } from './ui'
 import { deriveNotifications } from '@/lib/notifications'
 import { supabase } from '@/lib/supabase'
-import { cn } from '@/lib/utils'
+import { cn, triggerHaptic } from '@/lib/utils'
 
 function formatAnnouncementDate(dateStr) {
   if (!dateStr) return ''
@@ -171,7 +171,7 @@ export default function NotificationsSheet({ open, onClose }) {
 
   const handleNotificationClick = (n) => {
     if (!n.action) return
-
+    triggerHaptic('light')
     onClose?.()
     if (n.action === 'bills') {
       setTimeout(() => {
@@ -186,10 +186,12 @@ export default function NotificationsSheet({ open, onClose }) {
 
   const dismissNotification = (e, id) => {
     e.stopPropagation()
+    triggerHaptic('light')
     setDismissedIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
   }
 
   const clearAllNotifications = () => {
+    triggerHaptic('warning')
     setDismissedIds(combinedNotifications.map((n) => n.id))
   }
 

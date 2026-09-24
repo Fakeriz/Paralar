@@ -1,6 +1,5 @@
 'use client'
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import {
   CreditCard,
   Calendar,
@@ -19,7 +18,8 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { getCurrency } from '@/lib/currencies'
-import { cn } from '@/lib/utils'
+import { cn, triggerHaptic } from '@/lib/utils'
+import { Sheet } from '@/components/paralar/ui'
 
 // Indonesian Providers for Cicilan Tetap
 const INDO_PROVIDERS = [
@@ -283,6 +283,7 @@ export default function LoanModal({
           ? 'Cicilan 0%' 
           : 'Pinjaman cicilan'
 
+      triggerHaptic('success')
       toast.success(
         loan 
           ? `${labelType} berhasil diperbarui` 
@@ -300,6 +301,7 @@ export default function LoanModal({
   // Delete handler
   const handleDelete = async () => {
     if (!loan?.id) return
+    triggerHaptic('warning')
     setIsSubmitting(true)
     try {
       // 1. Hapus dari tabel goals Supabase
@@ -407,61 +409,41 @@ export default function LoanModal({
   }
 
   return (
-    <AnimatePresence>
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-[2px]"
-            onClick={onClose}
-          />
-
-          {/* Modal Sheet Drawer Shell */}
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-            className="relative z-10 w-full max-w-lg bg-card border border-border/40 rounded-t-3xl sm:rounded-3xl p-5 pt-3 max-h-[92vh] overflow-y-auto no-scrollbar shadow-2xl"
-          >
-            {/* 1. Drag Handle Bar */}
-            <div className="w-12 h-1.5 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
-
-            {/* Header Bar */}
-            <div className="flex items-center justify-between mb-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-              >
-                Batal
-              </button>
-              <h2 className="text-base font-bold text-foreground">
-                {loan ? 'Edit Pinjaman & BNPL' : 'Pinjaman & BNPL'}
-              </h2>
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={!isValid || isSubmitting}
-                className="text-sm font-bold text-foreground hover:opacity-80 transition-opacity cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? 'Menyimpan...' : loan ? 'Simpan' : 'Tambah'}
-              </button>
-            </div>
-
-            {/* Input Nominal Utama (Jumlah Pinjaman / Limit) */}
-            <div className="mb-5">
-              <label className="text-xs text-muted-foreground font-medium mb-1 block">
-                Jumlah Pinjaman / Limit Total
-              </label>
-              <div className="relative rounded-2xl bg-muted/40 border border-border/30 p-4 flex items-center gap-2 focus-within:border-foreground/40 transition-colors">
-                <span className="text-2xl font-extrabold text-foreground select-none shrink-0 pl-1">
-                  {currencySymbol}
-                </span>
+    <Sheet
+      open={open}
+      onClose={onClose}
+      zIndex={70}
+      title={loan ? 'Edit Pinjaman & BNPL' : 'Pinjaman & BNPL'}
+      left={
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+        >
+          Batal
+        </button>
+      }
+      right={
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={!isValid || isSubmitting}
+          className="text-sm font-bold text-foreground hover:opacity-80 transition-opacity cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          {isSubmitting ? 'Menyimpan...' : loan ? 'Simpan' : 'Tambah'}
+        </button>
+      }
+    >
+      <div className="space-y-5">
+        {/* Input Nominal Utama (Jumlah Pinjaman / Limit) */}
+        <div>
+          <label className="text-xs text-muted-foreground font-medium mb-1 block">
+            Jumlah Pinjaman / Limit Total
+          </label>
+          <div className="relative rounded-2xl bg-muted/40 border border-border/30 p-4 flex items-center gap-2 focus-within:border-foreground/40 transition-colors">
+            <span className="text-2xl font-extrabold text-foreground select-none shrink-0 pl-1">
+              {currencySymbol}
+            </span>
                 <input
                   type="text"
                   inputMode="decimal"
@@ -994,9 +976,7 @@ export default function LoanModal({
                 </button>
               </div>
             )}
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+          </div>
+        </Sheet>
   )
 }

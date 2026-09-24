@@ -1,6 +1,5 @@
 'use client'
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import {
   Camera,
   Trash2,
@@ -21,7 +20,8 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { getCurrency } from '@/lib/currencies'
-import { cn } from '@/lib/utils'
+import { cn, triggerHaptic } from '@/lib/utils'
+import { Sheet } from '@/components/paralar/ui'
 
 // 12 Lucide icons arranged in 2 rows x 6 columns
 export const SAVINGS_GOAL_ICONS = [
@@ -208,6 +208,7 @@ export default function NewSavingsGoalModal({
         await store.createGoal(payload)
       }
 
+      triggerHaptic('success')
       toast.success(t?.('saved_msg') || 'Target tabungan berhasil dibuat')
       onSaved?.()
       onClose?.()
@@ -223,6 +224,7 @@ export default function NewSavingsGoalModal({
             currency: home,
             deadline: deadline || null,
           })
+          triggerHaptic('success')
           toast.success(t?.('saved_msg') || 'Target tabungan berhasil dibuat')
           onSaved?.()
           onClose?.()
@@ -253,48 +255,16 @@ export default function NewSavingsGoalModal({
   }, [deadline])
 
   return (
-    <AnimatePresence>
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-[2px]"
-            onClick={onClose}
-          />
-
-          {/* Modal Sheet Drawer Shell */}
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-            className="relative z-10 w-full max-w-lg bg-card border border-border/40 rounded-t-3xl sm:rounded-3xl p-5 pt-3 max-h-[92vh] overflow-y-auto no-scrollbar shadow-2xl"
-          >
-            {/* 1. Drag Handle Bar */}
-            <div className="w-12 h-1.5 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
-
-            {/* Top Bar with Cancel */}
-            <div className="flex items-center justify-between mb-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-            </div>
-
-            {/* Header Title */}
-            <h2 className="text-xl font-bold text-foreground mb-4">New Savings Goal</h2>
-
-            <div className="space-y-4">
-              {/* ============================================================ */}
-              {/* 2. COVER PHOTO (OPTIONAL) */}
-              {/* ============================================================ */}
+    <Sheet
+      open={open}
+      onClose={onClose}
+      zIndex={70}
+      title="New Savings Goal"
+    >
+      <div className="space-y-4">
+        {/* ============================================================ */}
+        {/* 2. COVER PHOTO (OPTIONAL) */}
+        {/* ============================================================ */}
               <div>
                 <label className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase mb-2 block">
                   COVER PHOTO (OPTIONAL)
@@ -535,9 +505,6 @@ export default function NewSavingsGoalModal({
                 {isSubmitting ? 'Creating...' : 'Create Goal'}
               </button>
             </div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+    </Sheet>
   )
 }

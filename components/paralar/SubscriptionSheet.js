@@ -1,6 +1,5 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { AnimatePresence, motion, useDragControls } from 'framer-motion'
 import {
   Camera, Calendar, ChevronDown, Banknote, Smartphone, CreditCard,
   Landmark, X, Check, Repeat
@@ -8,10 +7,10 @@ import {
 import { toast } from 'sonner'
 import { useApp } from './context'
 import CurrencySheet from './CurrencySheet'
-import { CategoryIcon } from './ui'
+import { Sheet, CategoryIcon } from './ui'
 import { CATEGORIES } from '@/lib/categories'
 import { getCurrency } from '@/lib/currencies'
-import { cn } from '@/lib/utils'
+import { cn, triggerHaptic } from '@/lib/utils'
 
 const EXPENSE_CATEGORIES = CATEGORIES.filter((c) => c.types?.includes('expense'))
 
@@ -51,7 +50,6 @@ export default function SubscriptionSheet({
   onDeleted,
 }) {
   const { home, accounts = [], store, t, fmt } = useApp()
-  const controls = useDragControls()
 
   const [name, setName] = useState('')
   const [amount, setAmount] = useState('')
@@ -165,9 +163,11 @@ export default function SubscriptionSheet({
 
       if (isEditing) {
         await store.updateSubscription(subscription.id, payload)
+        triggerHaptic('success')
         toast.success(t('saved_msg') || 'Subscription updated')
       } else {
         await store.createSubscription(payload)
+        triggerHaptic('success')
         toast.success(t('saved_msg') || 'Subscription added')
       }
 
@@ -182,6 +182,7 @@ export default function SubscriptionSheet({
 
   const handleDelete = async () => {
     if (!isEditing || !subscription?.id) return
+    triggerHaptic('warning')
     setSaving(true)
     try {
       await store.deleteSubscription(subscription.id)
@@ -192,16 +193,6 @@ export default function SubscriptionSheet({
       toast.error(err?.message || 'Failed to delete subscription')
     } finally {
       setSaving(false)
-    }
-  }
-
-  const startDrag = (e) => {
-    try { controls.start(e) } catch {}
-  }
-
-  const onDragEnd = (_e, info) => {
-    if ((info?.offset?.y || 0) > 90 || (info?.velocity?.y || 0) > 500) {
-      onClose?.()
     }
   }
 
@@ -217,72 +208,33 @@ export default function SubscriptionSheet({
 
   return (
     <>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            className="fixed inset-0 z-50 flex items-end justify-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
+      <Sheet
+        open={open}
+        onClose={onClose}
+        zIndex={70}
+        title={isEditing ? 'Edit Subscription' : 'New Subscription'}
+        right={
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="text-sm font-bold text-foreground hover:opacity-80 transition-opacity cursor-pointer disabled:opacity-40"
           >
-            {/* Backdrop */}
-            <div
-              className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
-              onClick={onClose}
-            />
-
-            {/* Bottom Sheet Modal */}
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-              drag="y"
-              dragControls={controls}
-              dragListener={false}
-              dragConstraints={{ top: 0, bottom: 0 }}
-              dragElastic={{ top: 0, bottom: 0.5 }}
-              onDragEnd={onDragEnd}
-              className="relative w-full max-w-md bg-background rounded-t-3xl shadow-2xl flex flex-col overflow-hidden border-t border-border/40 max-h-[92vh]"
-            >
-              {/* Top Handle bar */}
-              <div className="shrink-0 pt-3 pb-1" onPointerDown={startDrag}>
-                <div className="w-12 h-1.5 bg-muted-foreground/30 rounded-full mx-auto mb-3 cursor-grab active:cursor-grabbing touch-none" />
-                <div className="flex items-center justify-between px-5 pb-2 min-h-[32px]">
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <h2 className="text-sm font-bold text-foreground text-center flex-1 truncate px-2">
-                    {isEditing ? 'Edit Subscription' : 'New Subscription'}
-                  </h2>
-                  <button
-                    type="button"
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="text-xs font-bold text-foreground hover:opacity-80 transition-opacity cursor-pointer disabled:opacity-40"
-                  >
-                    {saving ? '...' : 'Done'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Scrollable Form Content */}
-              <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain no-scrollbar px-5 pb-8 space-y-5">
-                {/* Field 1 - Service Name */}
-                <div className="space-y-1.5">
-                  <label className="text-xs text-muted-foreground font-medium block">
-                    Service name
-                  </label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. spotify"
+            {saving ? '...' : 'Done'}
+          </button>
+        }
+      >
+        <div className="space-y-5">
+          {/* Field 1 - Service Name */}
+          <div className="space-y-1.5">
+            <label className="text-xs text-muted-foreground font-medium block">
+              Service name
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. spotify"
                     className="w-full bg-muted/40 rounded-2xl p-4 text-sm font-medium text-foreground outline-none border border-border/20 focus:border-foreground/30 transition-colors"
                   />
                 </div>
@@ -645,10 +597,7 @@ export default function SubscriptionSheet({
                   )}
                 </div>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      </Sheet>
 
       <CurrencySheet
         open={pickCurrency}

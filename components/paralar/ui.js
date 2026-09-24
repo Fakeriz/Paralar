@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, Component } from 'react'
 import { AnimatePresence, motion, useDragControls } from 'framer-motion'
-import { cn } from '@/lib/utils'
+import { cn, triggerHaptic } from '@/lib/utils'
 import { useApp } from './context'
 import {
   Utensils, ShoppingBasket, Car, ShoppingBag, Receipt, Clapperboard, HeartPulse, GraduationCap, Plane, Home, User,
@@ -61,7 +61,10 @@ export function Segmented({ options = [], value, onChange, className, size = 'md
         <button
           key={o.id}
           type="button"
-          onClick={() => onChange?.(o.id)}
+          onClick={() => {
+            triggerHaptic('light')
+            onChange?.(o.id)
+          }}
           className={cn(
             'flex-1 rounded-xl transition-all cursor-pointer',
             size === 'sm' ? 'py-1.5 text-xs' : 'py-2 text-sm',
@@ -81,7 +84,10 @@ export function Pill({ active, children, onClick, className, icon: Icon }) {
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={(e) => {
+        triggerHaptic('light')
+        onClick?.(e)
+      }}
       className={cn(
         'inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border px-3.5 py-2 text-sm transition-all cursor-pointer',
         active
@@ -96,11 +102,15 @@ export function Pill({ active, children, onClick, className, icon: Icon }) {
   )
 }
 
-export function PrimaryButton({ children, className, disabled, ...props }) {
+export function PrimaryButton({ children, className, disabled, onClick, ...props }) {
   return (
     <button
       type="button"
       disabled={disabled}
+      onClick={(e) => {
+        triggerHaptic('light')
+        onClick?.(e)
+      }}
       className={cn(
         'w-full rounded-2xl bg-[#0c0c0e] hover:bg-zinc-900 text-white dark:bg-white dark:hover:bg-zinc-100 dark:text-[#0c0c0e] font-bold py-3.5 text-[15px] transition-all shadow-md shadow-black/15 active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100 cursor-pointer',
         className
@@ -112,10 +122,14 @@ export function PrimaryButton({ children, className, disabled, ...props }) {
   )
 }
 
-export function SecondaryButton({ children, className, ...props }) {
+export function SecondaryButton({ children, className, onClick, ...props }) {
   return (
     <button
       type="button"
+      onClick={(e) => {
+        triggerHaptic('light')
+        onClick?.(e)
+      }}
       className={cn('w-full rounded-2xl bg-white dark:bg-[#121214] border border-border/80 text-foreground hover:bg-muted/40 font-semibold py-3.5 text-[15px] transition-all active:scale-[0.98]', className)}
       {...props}
     >
@@ -173,15 +187,25 @@ export function Sheet({ open, onClose, children, title, left, right, full = fals
 
   useEffect(() => {
     if (!open) return
+    triggerHaptic('success')
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = prev }
+    document.body.setAttribute('data-paralar-sheet-open', 'true')
+    try {
+      window.dispatchEvent(new CustomEvent('paralar-sheet-toggle', { detail: { open: true } }))
+    } catch {}
+    return () => {
+      document.body.style.overflow = prev
+      document.body.removeAttribute('data-paralar-sheet-open')
+      try {
+        window.dispatchEvent(new CustomEvent('paralar-sheet-toggle', { detail: { open: false } }))
+      } catch {}
+    }
   }, [open])
 
   const startDrag = (e) => { try { controls.start(e) } catch { /* ignore */ } }
   const onDragEnd = (_e, info) => { if ((info?.offset?.y || 0) > 90 || (info?.velocity?.y || 0) > 500) onClose?.() }
 
-  // Ganti blok AnimatePresence di dalam export function Sheet:
   return (
     <AnimatePresence>
       {open ? (
@@ -201,9 +225,9 @@ export function Sheet({ open, onClose, children, title, left, right, full = fals
             className={cn(
               'absolute inset-x-0 bottom-0 mx-auto w-full max-w-md bg-white dark:bg-[#121214] shadow-2xl flex flex-col overflow-hidden border-t sm:border border-border/50',
               'rounded-t-3xl sm:rounded-3xl',
-              // Menggunakan dvh agar dinamis terhadap dynamic address bar Safari iOS
-              'max-h-[85dvh] sm:max-h-[88dvh] sm:bottom-6',
-              full && 'h-[85dvh] sm:h-[88dvh]',
+              // Dynamic viewport height constraint max-h-[78dvh] sm:max-h-[85dvh]
+              'max-h-[78dvh] sm:max-h-[85dvh] sm:bottom-6',
+              full && 'h-[78dvh] sm:h-[85dvh]',
               className
             )}
           >
@@ -213,7 +237,16 @@ export function Sheet({ open, onClose, children, title, left, right, full = fals
               <div className="flex items-center justify-between px-5 pb-3 min-h-[44px] gap-2">
                 <div className="min-w-[72px] flex justify-start">
                   {left !== undefined ? left : (
-                    <button type="button" onClick={onClose} className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer">{cancelText}</button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        triggerHaptic('light')
+                        onClose?.(e)
+                      }}
+                      className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                    >
+                      {cancelText}
+                    </button>
                   )}
                 </div>
                 <h2 onPointerDown={startDrag} className="text-base font-bold text-foreground text-center flex-1 truncate cursor-grab active:cursor-grabbing">{title}</h2>
@@ -230,17 +263,21 @@ export function Sheet({ open, onClose, children, title, left, right, full = fals
   )
 }
 
-export function SheetTextButton({ children, onClick, bold, muted, className }) {
+export function SheetTextButton({ children, onClick, bold, muted, className, ...props }) {
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={(e) => {
+        triggerHaptic('light')
+        onClick?.(e)
+      }}
       className={cn(
         'text-[15px] py-1 transition-colors cursor-pointer',
         bold && 'font-bold text-foreground hover:opacity-80',
         muted && 'font-medium text-muted-foreground hover:text-foreground',
         className
       )}
+      {...props}
     >
       {children}
     </button>
@@ -249,7 +286,15 @@ export function SheetTextButton({ children, onClick, bold, muted, className }) {
 
 export function IconButton({ children, onClick, className, ...props }) {
   return (
-    <button type="button" onClick={onClick} className={cn('h-10 w-10 rounded-full flex items-center justify-center bg-white dark:bg-[#121214] border border-border/70 text-foreground shadow-xs active:scale-95 transition cursor-pointer', className)} {...props}>
+    <button
+      type="button"
+      onClick={(e) => {
+        triggerHaptic('light')
+        onClick?.(e)
+      }}
+      className={cn('h-10 w-10 rounded-full flex items-center justify-center bg-white dark:bg-[#121214] border border-border/70 text-foreground shadow-xs active:scale-95 transition cursor-pointer', className)}
+      {...props}
+    >
       {children}
     </button>
   )
