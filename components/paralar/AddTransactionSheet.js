@@ -1,9 +1,9 @@
 'use client'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronRight, Calculator, Camera, Delete, Check, X, FileText, Search } from 'lucide-react'
+import { ChevronRight, Calculator, Camera, Delete, Check, X, FileText, Search, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
-import { Sheet, SheetTextButton, Segmented, Pill, Field, TextInput, CategoryBadge, CategoryIcon, Card } from './ui'
+import { Sheet, SheetTextButton, Segmented, Pill, Field, TextInput, CategoryBadge, CategoryIcon, Card, SectionLabel } from './ui'
 import CurrencySheet from './CurrencySheet'
 import { CATEGORIES, PAYMENT_METHODS } from '@/lib/categories'
 import { getCurrency, roundMoney } from '@/lib/currencies'
@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils'
 const KEYS = ['7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '−', '.', '0', '⌫', '+']
 
 export default function AddTransactionSheet({ open, onClose, initial }) {
-  const { t, home, rates, accounts = [], store, refresh, fmt, transactions = [] } = useApp()
+  const { t, home, rates, accounts = [], store, refresh, fmt, transactions = [], open: openSheet, isAiAllowed } = useApp()
   const [type, setType] = useState('expense')
   const [amount, setAmount] = useState('')
   const [currency, setCurrency] = useState(home)
@@ -242,7 +242,26 @@ export default function AddTransactionSheet({ open, onClose, initial }) {
               <TextInput value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('note_placeholder')} data-testid="note-input" />
             </Field>
 
-            <Field label={t('receipt')}>
+            <Field>
+              <div className="flex items-center justify-between pb-1">
+                <SectionLabel className="mb-0">{t('receipt')}</SectionLabel>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!isAiAllowed) {
+                      openSheet('aiPremium')
+                    } else {
+                      onClose?.()
+                      openSheet('scan')
+                    }
+                  }}
+                  className="text-xs font-bold text-zinc-950 dark:text-white flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition cursor-pointer"
+                  data-testid="add-tx-scan-receipt"
+                >
+                  <Sparkles size={12} className="text-zinc-950 dark:text-white" />
+                  <span>{t('scan_receipt') || 'Scan Receipt'}</span>
+                </button>
+              </div>
               <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={onFile} />
               <Card onClick={() => fileRef.current?.click()} className="flex items-center gap-3 p-3">
                 {receipt?.dataUrl ? (

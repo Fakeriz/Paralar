@@ -7,16 +7,32 @@ import { Sheet, PrimaryButton, SecondaryButton, Card } from './ui'
 import { fileToDataUrl } from '@/lib/ledger'
 
 export default function ScanReceiptSheet({ open, onClose, onUse }) {
-  const { t, home, fmt } = useApp()
+  const { t, home, fmt, session, isAiAllowed, open: openSheet } = useApp()
   const [preview, setPreview] = useState(null)
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState(null)
   const fileRef = useRef(null)
   const camRef = useRef(null)
 
-  useEffect(() => { if (open) { setPreview(null); setResult(null); setBusy(false) } }, [open])
+  useEffect(() => {
+    if (open) {
+      if (!isAiAllowed) {
+        onClose?.()
+        openSheet?.('aiPremium')
+        return
+      }
+      setPreview(null)
+      setResult(null)
+      setBusy(false)
+    }
+  }, [open, isAiAllowed, onClose, openSheet])
 
   const onFile = async (e) => {
+    if (!isAiAllowed) {
+      onClose?.()
+      openSheet?.('aiPremium')
+      return
+    }
     const f = e.target.files?.[0]
     if (!f) return
     e.target.value = ''
@@ -25,7 +41,15 @@ export default function ScanReceiptSheet({ open, onClose, onUse }) {
     try {
       const dataUrl = await fileToDataUrl(f, 1600)
       setPreview(dataUrl)
-      const res = await fetch('/api/ai/ocr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageBase64: dataUrl }) })
+      const headers = { 'Content-Type': 'application/json' }
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+      const res = await fetch('/api/ai/ocr', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ imageBase64: dataUrl }),
+      })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || t('error'))
       setResult(data?.receipt || null)
@@ -67,8 +91,33 @@ export default function ScanReceiptSheet({ open, onClose, onUse }) {
             <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">Gemini Vision OCR</p>
           </div>
           <div className="grid grid-cols-2 gap-3 mt-4">
-            <PrimaryButton onClick={() => camRef.current?.click()}><Camera size={18} className="inline mr-2" />{t('take_photo')}</PrimaryButton>
-            <SecondaryButton onClick={() => fileRef.current?.click()} data-testid="scan-upload"><Upload size={18} className="inline mr-2" />Upload</SecondaryButton>
+            <PrimaryButton
+              onClick={() => {
+                if (!isAiAllowed) {
+                  onClose?.()
+                  openSheet?.('aiPremium')
+                  return
+                }
+                camRef.current?.click()
+              }}
+            >
+              <Camera size={18} className="inline mr-2" />
+              {t('take_photo')}
+            </PrimaryButton>
+            <SecondaryButton
+              onClick={() => {
+                if (!isAiAllowed) {
+                  onClose?.()
+                  openSheet?.('aiPremium')
+                  return
+                }
+                fileRef.current?.click()
+              }}
+              data-testid="scan-upload"
+            >
+              <Upload size={18} className="inline mr-2" />
+              Upload
+            </SecondaryButton>
           </div>
         </div>
       ) : (

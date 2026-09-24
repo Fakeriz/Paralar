@@ -9,7 +9,7 @@ import { CATEGORIES } from '@/lib/categories'
 import { cn } from '@/lib/utils'
 
 export default function VoiceLogSheet({ open, onClose, onResult }) {
-  const { t, home, lang, accounts = [], fmt } = useApp()
+  const { t, home, lang, accounts = [], fmt, session, isAiAllowed, open: openSheet } = useApp()
   const [state, setState] = useState('idle') // idle | recording | processing | result
   const [transcript, setTranscript] = useState('')
   const [parsed, setParsed] = useState(null)
@@ -18,14 +18,43 @@ export default function VoiceLogSheet({ open, onClose, onResult }) {
   const recRef = useRef(null)
   const chunksRef = useRef([])
 
-  useEffect(() => { if (open) { setState('idle'); setTranscript(''); setParsed(null); setTyped(''); setShowTyped(false) } }, [open])
+  useEffect(() => {
+    if (open) {
+      if (!isAiAllowed) {
+        onClose?.()
+        openSheet?.('aiPremium')
+        return
+      }
+      setState('idle')
+      setTranscript('')
+      setParsed(null)
+      setTyped('')
+      setShowTyped(false)
+    }
+  }, [open, isAiAllowed, onClose, openSheet])
 
   const parseText = async (text) => {
+    if (!isAiAllowed) {
+      onClose?.()
+      openSheet?.('aiPremium')
+      return
+    }
     setState('processing')
     try {
+      const headers = { 'Content-Type': 'application/json' }
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
       const res = await fetch('/api/ai/parse', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, homeCurrency: home, language: lang, accounts: accounts.map((a) => a.name), categories: CATEGORIES.filter((c) => c.id !== 'transfer').map((c) => c.id) }),
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          text,
+          homeCurrency: home,
+          language: lang,
+          accounts: accounts.map((a) => a.name),
+          categories: CATEGORIES.filter((c) => c.id !== 'transfer').map((c) => c.id),
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || t('error'))
@@ -39,6 +68,11 @@ export default function VoiceLogSheet({ open, onClose, onResult }) {
   }
 
   const start = async () => {
+    if (!isAiAllowed) {
+      onClose?.()
+      openSheet?.('aiPremium')
+      return
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'].find((x) => window.MediaRecorder?.isTypeSupported?.(x)) || ''
@@ -55,7 +89,11 @@ export default function VoiceLogSheet({ open, onClose, onResult }) {
           const form = new FormData()
           form.append('file', blob, type.includes('mp4') ? 'recording.mp4' : type.includes('ogg') ? 'recording.ogg' : 'recording.webm')
           form.append('language', lang)
-          const res = await fetch('/api/ai/transcribe', { method: 'POST', body: form })
+          const headers = {}
+          if (session?.access_token) {
+            headers['Authorization'] = `Bearer ${session.access_token}`
+          }
+          const res = await fetch('/api/ai/transcribe', { method: 'POST', headers, body: form })
           const data = await res.json()
           if (!res.ok) throw new Error(data?.error || t('error'))
           if (!data?.text) throw new Error(t('error'))

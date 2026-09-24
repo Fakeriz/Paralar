@@ -38,6 +38,8 @@ import CategoriesTemplatesSheet from '@/components/paralar/CategoriesTemplatesSh
 import DebtTrackerSheet from '@/components/paralar/DebtTrackerSheet'
 import ExportTransactionsSheet from '@/components/paralar/ExportTransactionsSheet'
 import ImportTransactionsSheet from '@/components/paralar/ImportTransactionsSheet'
+import AiPremiumSheet from '@/components/paralar/AiPremiumSheet'
+import PaywallSheet from '@/components/paralar/PaywallSheet'
 
 const GUEST_KEY = 'paralar_guest_mode'
 const ONBOARD_KEY = 'paralar_onboarded'
@@ -139,7 +141,16 @@ export default function App() {
     return saved
   }, [store])
 
-  const open = useCallback((name, payload = true) => setSheets((s) => ({ ...s, [name]: payload })), [])
+  const userTier = (!session || isGuest) ? 'free' : (profile?.plan_tier || 'free')
+  const isAiAllowed = userTier === 'premium' || userTier === 'admin'
+
+  const open = useCallback((name, payload = true) => {
+    if ((name === 'scan' || name === 'voice' || name === 'coach') && !isAiAllowed) {
+      setSheets((s) => ({ ...s, aiPremium: true }))
+      return
+    }
+    setSheets((s) => ({ ...s, [name]: payload }))
+  }, [isAiAllowed])
   const close = useCallback((name) => setSheets((s) => ({ ...s, [name]: null })), [])
 
   const signOut = useCallback(async () => {
@@ -177,6 +188,7 @@ export default function App() {
   const ctx = {
     t, lang, setLang, fmt, home, rates, convertToHome,
     session, user: session?.user || null, isGuest, profile, updateProfile, signOut,
+    userTier, isAiAllowed,
     accounts, transactions, goals, bills, budgets, stats, store, refresh, addTransaction,
     tab, setTab, sheets, open, close,
     hideBalance, setHideBalance,
@@ -248,6 +260,15 @@ export default function App() {
           title={t('home_currency')}
           onSelect={(code) => updateProfile({ home_currency: code })}
         />
+        <AiPremiumSheet
+          open={!!sheets.aiPremium}
+          onClose={() => close('aiPremium')}
+          onUpgrade={() => {
+            close('aiPremium')
+            open('paywall')
+          }}
+        />
+        <PaywallSheet open={!!sheets.paywall} onClose={() => close('paywall')} />
       </main>
     </AppContext.Provider>
   )

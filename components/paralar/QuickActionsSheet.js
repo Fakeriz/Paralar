@@ -4,13 +4,35 @@ import { useApp } from './context'
 import { Sheet } from './ui'
 
 export default function QuickActionsSheet({ open, onClose }) {
-  const { t, open: openSheet, setTab } = useApp()
+  const { t, open: openSheet, setTab, isAiAllowed } = useApp()
   const go = (fn) => { onClose?.(); setTimeout(fn, 120) }
   const tiles = [
     { id: 'add', label: t('add_transaction'), icon: PlusCircle, onClick: () => go(() => openSheet('addTx', {})) },
-    { id: 'scan', label: t('scan_receipt'), icon: ScanLine, onClick: () => go(() => openSheet('scan')) },
+    {
+      id: 'scan',
+      label: t('scan_receipt'),
+      icon: ScanLine,
+      onClick: () => go(() => {
+        if (!isAiAllowed) {
+          openSheet('aiPremium')
+        } else {
+          openSheet('scan')
+        }
+      }),
+    },
     { id: 'savings', label: t('add_to_savings'), icon: PiggyBank, onClick: () => go(() => setTab('goals')) },
-    { id: 'voice', label: t('voice_log'), icon: Mic, onClick: () => go(() => openSheet('voice')) },
+    {
+      id: 'voice',
+      label: t('voice_log'),
+      icon: Mic,
+      onClick: () => go(() => {
+        if (!isAiAllowed) {
+          openSheet('aiPremium')
+        } else {
+          openSheet('voice')
+        }
+      }),
+    },
   ]
   return (
     <Sheet open={open} onClose={onClose} title={t('quick_actions')}>

@@ -271,10 +271,21 @@ function BalanceCarousel() {
 }
 
 function QuickGrid() {
-  const { t, open } = useApp()
+  const { t, open, isAiAllowed } = useApp()
   const items = [
     { id: 'bills', label: t('bills'), icon: FileText, onClick: () => open('bills') },
-    { id: 'receipts', label: t('receipts'), icon: Receipt, onClick: () => open('scan') },
+    {
+      id: 'receipts',
+      label: t('receipts'),
+      icon: Receipt,
+      onClick: () => {
+        if (!isAiAllowed) {
+          open('aiPremium')
+        } else {
+          open('scan')
+        }
+      },
+    },
     { id: 'split', label: t('bill_split'), icon: Users, onClick: () => open('split') },
     { id: 'analytics', label: t('analytics'), icon: PieChart, onClick: () => open('analytics') },
   ]

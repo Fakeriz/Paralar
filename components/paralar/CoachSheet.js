@@ -7,7 +7,7 @@ import { convert } from '@/lib/rates'
 import { cn } from '@/lib/utils'
 
 export default function CoachSheet({ open, onClose }) {
-  const { t, home, lang, transactions = [], accounts = [], goals = [], rates, fmt } = useApp()
+  const { t, home, lang, transactions = [], accounts = [], goals = [], rates, fmt, session, isAiAllowed, open: openSheet } = useApp()
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
@@ -37,12 +37,24 @@ export default function CoachSheet({ open, onClose }) {
   ]
 
   useEffect(() => {
-    if (open) setMessages([{ role: 'assistant', content: lang === 'id' ? 'Halo! Saya AI Financial Coach kamu. Tanya apa saja soal keuanganmu. 💰' : lang === 'ms' ? 'Hai! Saya AI Financial Coach anda. Tanya apa sahaja tentang kewangan anda. 💰' : lang === 'tr' ? 'Merhaba! Ben AI Finans Koçunuzum. Finanslarınız hakkında her şeyi sorun. 💰' : "Hi! I'm your AI Financial Coach. Ask me anything about your money. 💰" }])
-  }, [open, lang])
+    if (open) {
+      if (!isAiAllowed) {
+        onClose?.()
+        openSheet?.('aiPremium')
+        return
+      }
+      setMessages([{ role: 'assistant', content: lang === 'id' ? 'Halo! Saya AI Financial Coach kamu. Tanya apa saja soal keuanganmu. 💰' : lang === 'ms' ? 'Hai! Saya AI Financial Coach anda. Tanya apa sahaja tentang kewangan anda. 💰' : lang === 'tr' ? 'Merhaba! Ben AI Finans Koçunuzum. Finanslarınız hakkında her şeyi sorun. 💰' : "Hi! I'm your AI Financial Coach. Ask me anything about your money. 💰" }])
+    }
+  }, [open, lang, isAiAllowed, onClose, openSheet])
 
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }) }, [messages, busy])
 
   const send = async (text) => {
+    if (!isAiAllowed) {
+      onClose?.()
+      openSheet?.('aiPremium')
+      return
+    }
     const content = (text ?? input).trim()
     if (!content || busy) return
     const next = [...messages, { role: 'user', content }]
@@ -50,7 +62,15 @@ export default function CoachSheet({ open, onClose }) {
     setInput('')
     setBusy(true)
     try {
-      const res = await fetch('/api/ai/coach', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: next.filter((m) => m.role !== 'system'), language: lang, context }) })
+      const headers = { 'Content-Type': 'application/json' }
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+      const res = await fetch('/api/ai/coach', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ messages: next.filter((m) => m.role !== 'system'), language: lang, context }),
+      })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || t('error'))
       setMessages((m) => [...m, { role: 'assistant', content: data.reply }])

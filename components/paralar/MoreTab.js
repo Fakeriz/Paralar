@@ -13,6 +13,7 @@ import HealthScoreSheet from './HealthScoreSheet'
 import BusinessInvoiceSheet from './BusinessInvoiceSheet'
 import AccountSupportSection from './AccountSupportSection'
 import AppSettingsSheet from './AppSettingsSheet'
+import PaywallSheet from './PaywallSheet'
 
 function Row({ icon: Icon, label, onClick, right, testId }) {
   return (
@@ -26,8 +27,8 @@ function Row({ icon: Icon, label, onClick, right, testId }) {
 }
 
 export default function MoreTab() {
-  const { t, profile, open, home, sheets, close } = useApp()
-  const isPremium = profile?.plan_tier === 'premium'
+  const { t, profile, open, home, sheets, close, userTier, isAiAllowed } = useApp()
+  const isPremium = userTier === 'premium' || userTier === 'admin'
   const mode = profile?.usage_mode || 'personal'
   const [recurringOpen, setRecurringOpen] = useState(false)
   const [netWorthOpen, setNetWorthOpen] = useState(false)
@@ -56,15 +57,26 @@ export default function MoreTab() {
       <button type="button" onClick={() => open('paywall')} className="w-full mt-5 rounded-2xl bg-[#0A0A0B] text-white p-5 text-left relative overflow-hidden border border-white/10" data-testid="premium-card">
         <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/[0.05]" />
         <div className="flex items-center gap-2"><Crown size={18} /><p className="font-bold">{t('premium_title')}</p></div>
-        <p className="text-sm text-white/60 mt-1">{t('current_plan')}: {isPremium ? t('premium') : t('free')}</p>
-        <span className="inline-block mt-3 rounded-xl bg-white text-zinc-950 text-sm font-bold px-4 py-2">{t('upgrade')}</span>
+        <p className="text-sm text-white/60 mt-1">{t('current_plan')}: <span className="uppercase font-semibold">{userTier}</span></p>
+        <span className="inline-block mt-3 rounded-xl bg-white text-zinc-950 text-sm font-bold px-4 py-2">{isPremium ? 'Active' : t('upgrade')}</span>
       </button>
 
       <SectionLabel className="mt-7 mb-2 px-1">{t('everyday')}</SectionLabel>
       <Card className="divide-y divide-zinc-200/60 dark:divide-white/5 overflow-hidden">
         <Row icon={CreditCard} label={t('accounts_cards')} onClick={() => open('accounts')} testId="more-accounts" />
         <Row icon={ReceiptText} label={t('bills_tracker')} onClick={() => open('bills')} testId="more-bills" />
-        <Row icon={Bot} label={t('ai_coach')} onClick={() => open('coach')} testId="more-coach" />
+        <Row
+          icon={Bot}
+          label={t('ai_coach')}
+          onClick={() => {
+            if (!isAiAllowed) {
+              open('aiPremium')
+            } else {
+              open('coach')
+            }
+          }}
+          testId="more-coach"
+        />
         <Row icon={Calculator} label={t('loan_calculator')} onClick={() => open('loan')} testId="more-loan" />
         <Row icon={Tags} label={t('categories_templates')} onClick={() => open('catman')} testId="more-catman" />
         <Row icon={Users} label={t('split_bill')} onClick={() => open('split')} />
@@ -92,26 +104,7 @@ export default function MoreTab() {
       </Sheet>
 
       {/* Paywall */}
-      <Sheet open={!!sheets?.paywall} onClose={() => close('paywall')}>
-        <div className="pt-2 pb-2">
-          <div className="h-14 w-14 rounded-2xl bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 flex items-center justify-center mx-auto"><Crown size={26} /></div>
-          <h2 className="text-2xl font-extrabold text-center mt-4 text-zinc-950 dark:text-white">{t('unlock_premium')}</h2>
-          <p className="text-center text-zinc-600 dark:text-zinc-400 text-sm mt-1">{t('current_plan')}: {isPremium ? t('premium') : t('free')}</p>
-          <div className="mt-6 space-y-3">
-            {[t('perk_wallets'), t('perk_ocr'), t('perk_invoicing'), t('perk_tax')].map((p) => (
-              <div key={p} className="flex items-center gap-3 rounded-xl bg-white dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 px-4 py-3">
-                <div className="h-6 w-6 rounded-full bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 flex items-center justify-center"><Check size={14} strokeWidth={3} /></div>
-                <span className="font-semibold text-zinc-950 dark:text-white">{p}</span>
-              </div>
-            ))}
-          </div>
-          <p className="text-center mt-6"><span className="text-3xl font-extrabold text-zinc-950 dark:text-white">{getCurrency(home).symbol} {home === 'IDR' ? '49.000' : home === 'MYR' ? '14.90' : home === 'TRY' ? '99' : '4.99'}</span><span className="text-zinc-600 dark:text-zinc-400 text-sm"> {t('per_month')}</span></p>
-          <div className="mt-5 space-y-2">
-            <PrimaryButton onClick={() => { toast(t('coming_soon')); close('paywall') }}>{t('upgrade_now')}</PrimaryButton>
-            <SecondaryButton onClick={() => close('paywall')}>{t('maybe_later')}</SecondaryButton>
-          </div>
-        </div>
-      </Sheet>
+      <PaywallSheet open={!!sheets?.paywall} onClose={() => close('paywall')} />
 
       <RecurringSheet open={recurringOpen} onClose={() => setRecurringOpen(false)} />
       <NetWorthSheet open={netWorthOpen} onClose={() => setNetWorthOpen(false)} />
