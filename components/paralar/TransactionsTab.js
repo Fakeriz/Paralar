@@ -23,7 +23,7 @@ function dayKey(d) {
 
 function TransactionsContent() {
   // UBAH MENJADI (tambahkan hideBalance):
-  const { t, transactions, open, fmt, home, convertToHome, lang, store, refresh, accounts = [], rates, hideBalance } = useApp()
+  const { t, transactions, open, fmt, home, convertToHome, lang, store, refresh, accounts = [], rates, hideBalance, deleteTransaction } = useApp()
   const [filter, setFilter] = useState('all')
   const [q, setQ] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -40,15 +40,19 @@ function TransactionsContent() {
 
   const confirmDelete = async () => {
     if (!deletingTx?.id) return
+    const target = deletingTx
+    setDeletingTx(null) // Close confirmation modal immediately
     try {
-      await applyTxToBalances(store, accounts, deletingTx, -1, rates)
-      await store?.deleteTransaction?.(deletingTx.id)
-      if (refresh) await refresh()
+      if (deleteTransaction) {
+        await deleteTransaction(target)
+      } else {
+        await applyTxToBalances(store, accounts, target, -1, rates)
+        await store?.deleteTransaction?.(target.id)
+        if (refresh) await refresh()
+      }
       toast.success(t('deleted'))
     } catch {
       toast.error(t('error'))
-    } finally {
-      setDeletingTx(null)
     }
   }
 

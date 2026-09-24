@@ -9,7 +9,7 @@ import { applyTxToBalances } from '@/lib/ledger'
 import { cn } from '@/lib/utils'
 
 export default function TransactionDetailSheet({ open, onClose, tx, onEdit }) {
-  const { t, fmt, home, accounts = [], store, refresh, rates, profile, lang, convertToHome } = useApp()
+  const { t, fmt, home, accounts = [], store, refresh, rates, profile, lang, convertToHome, deleteTransaction } = useApp()
   const [subTab, setSubTab] = useState('items')
   const [viewImg, setViewImg] = useState(false)
   const [items, setItems] = useState([])
@@ -59,10 +59,16 @@ export default function TransactionDetailSheet({ open, onClose, tx, onEdit }) {
   const total = Number(tx.amount) || (items || []).reduce((s, i) => s + (Number(i?.price) || 0), 0)
 
   const remove = async () => {
+    onClose?.()
+    toast.success(t('deleted'))
     try {
-      await applyTxToBalances(store, accounts, tx, -1, rates)
-      await store.deleteTransaction(tx.id)
-      await refresh(); toast.success(t('deleted')); onClose?.()
+      if (deleteTransaction) {
+        await deleteTransaction(tx)
+      } else {
+        await applyTxToBalances(store, accounts, tx, -1, rates)
+        await store.deleteTransaction(tx.id)
+        if (refresh) await refresh()
+      }
     } catch (e) { toast.error(e?.message || t('error')) }
   }
 

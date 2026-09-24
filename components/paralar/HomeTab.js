@@ -304,7 +304,7 @@ function QuickGrid() {
 }
 
 export default function HomeTab() {
-  const { t, transactions = [], setTab, open, isGuest, store, refresh, accounts = [], rates } = useApp()
+  const { t, transactions = [], setTab, open, isGuest, store, refresh, accounts = [], rates, deleteTransaction } = useApp()
   const [openRowId, setOpenRowId] = useState(null)
   const [deletingTx, setDeletingTx] = useState(null)
 
@@ -318,15 +318,19 @@ export default function HomeTab() {
 
   const confirmDelete = async () => {
     if (!deletingTx?.id) return
+    const target = deletingTx
+    setDeletingTx(null) // Close modal immediately
     try {
-      await applyTxToBalances(store, accounts, deletingTx, -1, rates)
-      await store?.deleteTransaction?.(deletingTx.id)
-      if (refresh) await refresh()
+      if (deleteTransaction) {
+        await deleteTransaction(target)
+      } else {
+        await applyTxToBalances(store, accounts, target, -1, rates)
+        await store?.deleteTransaction?.(target.id)
+        if (refresh) await refresh()
+      }
       toast.success(t('deleted'))
     } catch {
       toast.error(t('error'))
-    } finally {
-      setDeletingTx(null)
     }
   }
 

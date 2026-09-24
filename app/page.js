@@ -7,7 +7,7 @@ import { createStore, DEFAULT_PROFILE } from '@/lib/store'
 import { translate, LOCALE_MAP } from '@/lib/i18n'
 import { formatMoney } from '@/lib/currencies'
 import { convert, FALLBACK_RATES } from '@/lib/rates'
-import { applyTxToBalances } from '@/lib/ledger'
+import { applyTxToBalances, computeBalanceDelta } from '@/lib/ledger'
 import { AppContext } from '@/components/paralar/context'
 
 import Onboarding from '@/components/paralar/Onboarding'
@@ -104,6 +104,24 @@ export default function App() {
 
   const authed = !!session?.user || isGuest
 
+  // ---- instant cache hydration on session load ----
+  useEffect(() => {
+    const uid = session?.user?.id
+    if (!uid) return
+    try {
+      const raw = localStorage.getItem(`paralar_state_cache_${uid}`)
+      if (raw) {
+        const cached = JSON.parse(raw)
+        if (cached?.profile) setProfile((p) => ({ ...p, ...cached.profile }))
+        if (Array.isArray(cached?.accounts) && cached.accounts.length) setAccounts(cached.accounts)
+        if (Array.isArray(cached?.transactions) && cached.transactions.length) setTransactions(cached.transactions)
+        if (Array.isArray(cached?.goals) && cached.goals.length) setGoals(cached.goals)
+        if (Array.isArray(cached?.bills) && cached.bills.length) setBills(cached.bills)
+        if (Array.isArray(cached?.budgets) && cached.budgets.length) setBudgets(cached.budgets)
+      }
+    } catch {}
+  }, [session?.user?.id])
+
   const refresh = useCallback(async () => {
     if (!authed) return
     try {
@@ -115,18 +133,40 @@ export default function App() {
         store.listBills ? store.listBills() : Promise.resolve([]),
         store.listBudgets ? store.listBudgets() : Promise.resolve([]),
       ])
-      setProfile({ ...DEFAULT_PROFILE, ...(p || {}) })
-      setAccounts(Array.isArray(a) ? a : [])
-      setTransactions(Array.isArray(tx) ? tx : [])
-      setGoals(Array.isArray(g) ? g : [])
-      setBills(Array.isArray(b) ? b : [])
-      setBudgets(Array.isArray(bg) ? bg : [])
+      const nextProfile = { ...DEFAULT_PROFILE, ...(p || {}) }
+      const nextAccounts = Array.isArray(a) ? a : []
+      const nextTransactions = Array.isArray(tx) ? tx : []
+      const nextGoals = Array.isArray(g) ? g : []
+      const nextBills = Array.isArray(b) ? b : []
+      const nextBudgets = Array.isArray(bg) ? bg : []
+
+      setProfile(nextProfile)
+      setAccounts(nextAccounts)
+      setTransactions(nextTransactions)
+      setGoals(nextGoals)
+      setBills(nextBills)
+      setBudgets(nextBudgets)
+
+      const uid = session?.user?.id
+      if (uid) {
+        try {
+          localStorage.setItem(`paralar_state_cache_${uid}`, JSON.stringify({
+            profile: nextProfile,
+            accounts: nextAccounts,
+            transactions: nextTransactions,
+            goals: nextGoals,
+            bills: nextBills,
+            budgets: nextBudgets,
+          }))
+        } catch {}
+      }
+
       const savedLang = (() => { try { return localStorage.getItem(LANG_KEY) } catch { return null } })()
       if (!savedLang && p?.language) setLangState(p.language)
     } catch (e) {
       console.warn('refresh failed', e?.message)
     }
-  }, [authed, store])
+  }, [authed, store, session?.user?.id])
 
   useEffect(() => { if (authed) refresh() }, [authed, refresh])
 
@@ -164,16 +204,95 @@ export default function App() {
   const enterGuest = () => { try { localStorage.setItem(GUEST_KEY, '1') } catch {}; setIsGuest(true) }
   const finishOnboarding = () => { try { localStorage.setItem(ONBOARD_KEY, '1') } catch {}; setOnboarded(true) }
 
-  const addTransaction = useCallback(async (txData) => {
-    const res = await store.createTransaction(txData)
-    try {
-      await applyTxToBalances(store, accounts, txData, 1, rates)
-    } catch (err) {
-      console.warn('applyTxToBalances error:', err)
+  // High-performance optimistic transaction mutations
+  const saveTransaction = useCallback(async (txData, editId) => {
+    const prevTxList = transactions
+    const prevAccList = accounts
+
+    // 1. Instant optimistic state update
+    let nextAccounts = accounts
+    if (editId) {
+      const old = transactions.find((x) => x.id === editId)
+      if (old) {
+        nextAccounts = computeBalanceDelta(nextAccounts, old, -1, rates)
+      }
     }
-    await refresh()
-    return res
-  }, [store, accounts, rates, refresh])
+    nextAccounts = computeBalanceDelta(nextAccounts, txData, 1, rates)
+    setAccounts(nextAccounts)
+
+    const tempId = editId || txData.id || `tx_${Date.now()}`
+    const optimisticTx = { ...txData, id: tempId, created_at: txData.created_at || new Date().toISOString() }
+
+    if (editId) {
+      setTransactions((prev) => prev.map((t) => (t.id === editId ? { ...t, ...optimisticTx } : t)))
+    } else {
+      setTransactions((prev) => [optimisticTx, ...prev])
+    }
+
+    try {
+      let saved
+      if (editId) {
+        const old = prevTxList.find((x) => x.id === editId)
+        const ops = [store.updateTransaction(editId, txData)]
+        if (old) {
+          ops.push(applyTxToBalances(store, prevAccList, old, -1, rates))
+        }
+        ops.push(applyTxToBalances(store, nextAccounts, txData, 1, rates))
+        const [updated] = await Promise.all(ops)
+        saved = updated
+      } else {
+        // Run DB creation and balance sync concurrently for maximum speed
+        const [created] = await Promise.all([
+          store.createTransaction(txData),
+          applyTxToBalances(store, prevAccList, txData, 1, rates),
+        ])
+        saved = created
+        // If created has real ID, swap it in transactions
+        if (saved?.id && saved.id !== tempId) {
+          setTransactions((prev) => prev.map((t) => (t.id === tempId ? { ...t, id: saved.id } : t)))
+        }
+      }
+
+      // Silent background sync
+      refresh()
+      return saved
+    } catch (err) {
+      console.error('saveTransaction error, reverting:', err)
+      setTransactions(prevTxList)
+      setAccounts(prevAccList)
+      throw err
+    }
+  }, [transactions, accounts, rates, store, refresh])
+
+  const deleteTransaction = useCallback(async (tx) => {
+    if (!tx?.id) return
+    const txId = tx.id
+    const prevTxList = transactions
+    const prevAccList = accounts
+
+    // 1. Instant optimistic state update (0ms latency for user)
+    setTransactions((prev) => prev.filter((item) => item.id !== txId))
+    const deltaAccounts = computeBalanceDelta(accounts, tx, -1, rates)
+    if (deltaAccounts) {
+      setAccounts(deltaAccounts)
+    }
+
+    try {
+      // 2. Concurrently delete transaction and balance update in DB
+      await Promise.all([
+        store.deleteTransaction(txId),
+        applyTxToBalances(store, accounts, tx, -1, rates),
+      ])
+      // Silent background sync
+      refresh()
+      return true
+    } catch (err) {
+      console.error('deleteTransaction error, reverting:', err)
+      setTransactions(prevTxList)
+      setAccounts(prevAccList)
+      throw err
+    }
+  }, [transactions, accounts, rates, store, refresh])
 
   // stats
   const stats = useMemo(() => {
@@ -189,7 +308,8 @@ export default function App() {
     t, lang, setLang, fmt, home, rates, convertToHome,
     session, user: session?.user || null, isGuest, profile, updateProfile, signOut,
     userTier, isAiAllowed,
-    accounts, transactions, goals, bills, budgets, stats, store, refresh, addTransaction,
+    accounts, transactions, goals, bills, budgets, stats, store, refresh,
+    addTransaction: saveTransaction, saveTransaction, deleteTransaction,
     tab, setTab, sheets, open, close,
     hideBalance, setHideBalance,
   }

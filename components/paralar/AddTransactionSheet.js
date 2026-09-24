@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils'
 const KEYS = ['7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '−', '.', '0', '⌫', '+']
 
 export default function AddTransactionSheet({ open, onClose, initial }) {
-  const { t, home, rates, accounts = [], store, refresh, fmt, transactions = [], open: openSheet, isAiAllowed } = useApp()
+  const { t, home, rates, accounts = [], store, refresh, fmt, transactions = [], open: openSheet, isAiAllowed, saveTransaction } = useApp()
   const [type, setType] = useState('expense')
   const [amount, setAmount] = useState('')
   const [currency, setCurrency] = useState(home)
@@ -142,17 +142,24 @@ export default function AddTransactionSheet({ open, onClose, initial }) {
         date: new Date(date).toISOString(),
         transaction_date: new Date(date).toISOString(),
       }
-      if (editId) {
-        const old = transactions.find((x) => x.id === editId)
-        if (old) await applyTxToBalances(store, accounts, old, -1, rates)
-        await store.updateTransaction(editId, tx)
-      } else {
-        await store.createTransaction(tx)
-      }
-      await applyTxToBalances(store, accounts, tx, 1, rates)
-      await refresh()
-      toast.success(t('saved_msg'))
+
+      // Close immediately & notify for instantaneous UI feedback
       onClose?.()
+      toast.success(t('saved_msg'))
+
+      if (saveTransaction) {
+        await saveTransaction(tx, editId)
+      } else {
+        if (editId) {
+          const old = transactions.find((x) => x.id === editId)
+          if (old) await applyTxToBalances(store, accounts, old, -1, rates)
+          await store.updateTransaction(editId, tx)
+        } else {
+          await store.createTransaction(tx)
+        }
+        await applyTxToBalances(store, accounts, tx, 1, rates)
+        if (refresh) await refresh()
+      }
     } catch (e) {
       toast.error(e?.missingTable ? t('db_missing') : e?.message || t('error'))
     } finally {
