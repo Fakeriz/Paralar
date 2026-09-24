@@ -219,7 +219,7 @@ export default function App() {
           {tab === 'more' ? <MoreTab /> : null}
         </motion.div>
 
-        <BottomNav tab={tab} onTab={setTab} onPlus={() => open('quick')} />
+        <BottomNav tab={tab} onTab={setTab} onPlus={() => open('addTx')} />
 
         {/* Sheets */}
         <QuickActionsSheet open={!!sheets.quick} onClose={() => close('quick')} />

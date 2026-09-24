@@ -1,69 +1,81 @@
 'use client'
-import { Home, ArrowLeftRight, Target, LayoutGrid, Plus } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { Home, ArrowLeftRight, Target, MoreHorizontal, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useApp } from './context'
 
 export default function BottomNav({ tab, onTab, onPlus }) {
-  const { t } = useApp()
+  const { t, open } = useApp()
+
   const items = [
-    { id: 'home', label: t('home'), icon: Home },
-    { id: 'transactions', label: t('transactions'), icon: ArrowLeftRight },
-    { id: 'plus' },
-    { id: 'goals', label: t('goals'), icon: Target },
-    { id: 'more', label: t('more'), icon: LayoutGrid },
+    { id: 'home', label: t('home') || 'Home', icon: Home },
+    { id: 'transactions', label: t('transactions') || 'Transactions', icon: ArrowLeftRight },
+    { id: 'goals', label: t('goals') || 'Goals', icon: Target },
+    { id: 'more', label: t('more') || 'More', icon: MoreHorizontal },
   ]
+
+  const handlePlus = (e) => {
+    e?.stopPropagation?.()
+    if (open) {
+      open('addTx')
+    } else if (onPlus) {
+      onPlus()
+    }
+  }
+
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-40 pointer-events-none">
-      <div className="mx-auto max-w-md pointer-events-auto">
-        <div className="relative bg-white/95 dark:bg-[#0c0c0e]/95 backdrop-blur-xl border-t border-border/50 safe-bottom shadow-lg">
-          <div className="grid grid-cols-5 items-end h-[64px]">
-            {items.map((it) => {
-              if (it.id === 'plus') {
-                return (
-                  <div key="plus" className="flex justify-center">
-                    <button
-                      type="button"
-                      onClick={onPlus}
-                      aria-label="add"
-                      data-testid="fab-add"
-                      className="-translate-y-5 h-14 w-14 rounded-full bg-[#0c0c0e] hover:bg-zinc-900 text-white dark:bg-white dark:hover:bg-zinc-100 dark:text-[#0c0c0e] flex items-center justify-center shadow-md shadow-black/20 active:scale-95 transition-all"
-                    >
-                      <Plus size={26} strokeWidth={2.5} className="text-white dark:text-[#0c0c0e]" />
-                    </button>
-                  </div>
-                )
-              }
-              const Icon = it.icon
-              const active = tab === it.id
-              return (
-                <button
-                  key={it.id}
-                  type="button"
-                  onClick={() => onTab(it.id)}
-                  data-testid={`nav-${it.id}`}
-                  className="flex flex-col items-center justify-center gap-1 h-full pb-1 transition-colors group"
-                >
-                  <Icon
-                    size={22}
-                    strokeWidth={active ? 2.5 : 2}
-                    className={cn(
-                      'transition-colors',
-                      active ? 'text-[#0c0c0e] dark:text-white' : 'text-zinc-400 group-hover:text-zinc-700 dark:text-zinc-500 dark:group-hover:text-zinc-300'
-                    )}
+    <nav className="fixed bottom-5 inset-x-0 z-50 flex items-center justify-center px-4 pointer-events-none select-none">
+      <div className="flex items-center gap-2.5 max-w-[360px] w-full justify-center pointer-events-none">
+        
+        {/* Dock Navigasi 4 Menu Utama */}
+        <div className="pointer-events-auto flex-1 h-[52px] rounded-full px-1.5 py-1 flex items-center justify-between bg-white/95 dark:bg-[#0c0c0e]/95 backdrop-blur-2xl border border-zinc-200/90 dark:border-white/10 shadow-lg shadow-black/5">
+          {items.map((it) => {
+            const Icon = it.icon
+            const active = tab === it.id
+            return (
+              <button
+                key={it.id}
+                type="button"
+                onClick={() => onTab(it.id)}
+                data-testid={`nav-${it.id}`}
+                aria-label={it.label}
+                className="relative flex items-center justify-center w-11 h-11 rounded-full cursor-pointer focus:outline-none select-none"
+              >
+                {active && (
+                  <motion.div
+                    layoutId="activePillBubble"
+                    className="absolute inset-0 rounded-full bg-zinc-950 dark:bg-white shadow-sm"
+                    transition={{ type: 'spring', stiffness: 480, damping: 36 }}
                   />
-                  <span
-                    className={cn(
-                      'text-[10px] transition-colors',
-                      active ? 'text-[#0c0c0e] dark:text-white font-bold' : 'text-zinc-400 group-hover:text-zinc-700 dark:text-zinc-500 dark:group-hover:text-zinc-300 font-medium'
-                    )}
-                  >
-                    {it.label}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
+                )}
+                <span
+                  className={cn(
+                    'relative z-10 flex items-center justify-center transition-all duration-200',
+                    active
+                      ? 'text-white dark:text-zinc-950 fill-current stroke-[1.2]'
+                      : 'text-zinc-400 hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-200'
+                  )}
+                >
+                  <Icon size={19} strokeWidth={active ? 2.6 : 2} />
+                </span>
+              </button>
+            )
+          })}
         </div>
+
+        {/* Tombol Add Transaction (+) Bersanding Rapi di Sisi Kanan Tanpa Menabrak */}
+        <motion.button
+          type="button"
+          onClick={handlePlus}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.92 }}
+          aria-label="Add transaction"
+          data-testid="fab-add"
+          className="pointer-events-auto shrink-0 w-[52px] h-[52px] rounded-full bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 flex items-center justify-center shadow-lg shadow-black/20 border border-white/10 cursor-pointer"
+        >
+          <Plus size={22} strokeWidth={2.6} />
+        </motion.button>
+
       </div>
     </nav>
   )
