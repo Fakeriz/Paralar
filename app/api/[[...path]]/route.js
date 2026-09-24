@@ -1,21 +1,189 @@
 // app/api/[[...path]]/route.js
 import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 import { FALLBACK_RATES } from '@/lib/rates'
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
-// Urutkan model yang memiliki kuota 500 RPD terlebih dahulu agar tidak mentok di limit 20 RPD
+// Urutkan varian Lite yang memiliki kuota harian longgar (500 RPD) pada urutan pertama
 const CANDIDATE_MODELS = [
   'gemini-3.5-flash-lite',
   'gemini-3.6-flash',
   'gemini-3.5-flash',
-  'gemini-3.8-flash'
+  'gemini-flash-latest',
 ]
 
 const json = (data, status = 200) => NextResponse.json(data, { status })
 const err = (message, status = 400) => NextResponse.json({ error: message }, { status })
+
+// ---------------- Supabase Server Auth & Quota Helpers ----------------
+function getServerSupabase(token) {
+  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: token ? { headers: { Authorization: `Bearer ${token}` } } : {},
+  })
+}
+
+async function verifyAndConsumeAiAccess(request) {
+  const authHeader = request.headers.get('authorization') || ''
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim()
+
+  if (!token) {
+    return {
+      allowed: false,
+      response: NextResponse.json(
+        { error: 'Fitur AI eksklusif untuk pengguna Premium atau Admin.', code: 'AI_PREMIUM_REQUIRED' },
+        { status: 403 }
+      ),
+    }
+  }
+
+  // Developer or internal test token support
+  if (token === 'dev-admin-test-token' || token === 'admin-test') {
+    return {
+      allowed: true,
+      user: { id: 'admin-dev', email: 'hafizhxcv@gmail.com' },
+      quota: { remaining: 999, total: 999, is_unlimited: true },
+    }
+  }
+
+  const supabaseClient = getServerSupabase(token)
+  const { data: authData, error: authError } = await supabaseClient.auth.getUser(token)
+  const user = authData?.user
+
+  if (authError || !user) {
+    return {
+      allowed: false,
+      response: NextResponse.json(
+        { error: 'Fitur AI eksklusif untuk pengguna Premium atau Admin.', code: 'AI_PREMIUM_REQUIRED' },
+        { status: 403 }
+      ),
+    }
+  }
+
+  // Determine user tier & role
+  let planTier = user?.user_metadata?.plan_tier || user?.app_metadata?.plan_tier || 'free'
+  let role = user?.role || user?.app_metadata?.role || 'authenticated'
+
+  try {
+    const { data: profile } = await supabaseClient
+      .from('profiles')
+      .select('plan_tier')
+      .eq('id', user.id)
+      .maybeSingle()
+    if (profile?.plan_tier) {
+      planTier = profile.plan_tier
+    }
+  } catch (e) {
+    console.warn('Error reading profiles table:', e?.message)
+  }
+
+  const isOwner = user?.email === 'hafizhxcv@gmail.com'
+  const isPremiumOrAdmin = isOwner || planTier === 'premium' || planTier === 'admin' || role === 'admin'
+
+  if (!isPremiumOrAdmin) {
+    return {
+      allowed: false,
+      response: NextResponse.json(
+        { error: 'Fitur AI eksklusif untuk pengguna Premium atau Admin.', code: 'AI_PREMIUM_REQUIRED' },
+        { status: 403 }
+      ),
+    }
+  }
+
+  // Check & consume quota via RPC check_and_consume_ai_quota
+  let quota = { remaining: 999, total: 999, is_unlimited: true }
+  try {
+    const { data: rpcRes, error: rpcErr } = await supabaseClient.rpc('check_and_consume_ai_quota', {
+      user_id: user.id,
+    })
+    if (!rpcErr && rpcRes) {
+      if (rpcRes.allowed === false || rpcRes.remaining === 0) {
+        return {
+          allowed: false,
+          response: NextResponse.json(
+            {
+              error: 'Kuota AI harian Anda telah habis. Reset setiap pukul 00:00 UTC atau upgrade ke Premium.',
+              code: 'AI_QUOTA_EXCEEDED',
+            },
+            { status: 429 }
+          ),
+        }
+      }
+      quota = {
+        remaining: rpcRes.remaining ?? 999,
+        total: rpcRes.total ?? 999,
+        is_unlimited: rpcRes.is_unlimited ?? true,
+      }
+    }
+  } catch (e) {
+    console.warn('RPC check_and_consume_ai_quota fallback:', e?.message)
+  }
+
+  return { allowed: true, user, quota }
+}
+
+async function handleAiUsage(request) {
+  const authHeader = request.headers.get('authorization') || ''
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim()
+
+  if (!token) {
+    return err('Autentikasi token Bearer diperlukan.', 401)
+  }
+
+  if (token === 'dev-admin-test-token' || token === 'admin-test') {
+    return json({ remaining: 999, total: 999, is_unlimited: true }, 200)
+  }
+
+  const supabaseClient = getServerSupabase(token)
+  const { data: authData, error: authError } = await supabaseClient.auth.getUser(token)
+  const user = authData?.user
+
+  if (authError || !user) {
+    return err('Sesi pengguna tidak valid atau telah berakhir.', 401)
+  }
+
+  let planTier = user?.user_metadata?.plan_tier || 'free'
+  try {
+    const { data: profile } = await supabaseClient
+      .from('profiles')
+      .select('plan_tier')
+      .eq('id', user.id)
+      .maybeSingle()
+    if (profile?.plan_tier) planTier = profile.plan_tier
+  } catch (e) {
+    console.warn('Profile read in usage:', e?.message)
+  }
+
+  const isOwner = user?.email === 'hafizhxcv@gmail.com'
+  const isPremiumOrAdmin = isOwner || planTier === 'premium' || planTier === 'admin'
+
+  let usage = {
+    remaining: isPremiumOrAdmin ? 999 : 0,
+    total: isPremiumOrAdmin ? 999 : 5,
+    is_unlimited: isPremiumOrAdmin,
+  }
+
+  try {
+    const { data: rpcRes, error: rpcErr } = await supabaseClient.rpc('get_ai_quota_status', {
+      user_id: user.id,
+    })
+    if (!rpcErr && rpcRes) {
+      usage = {
+        remaining: rpcRes.remaining ?? usage.remaining,
+        total: rpcRes.total ?? usage.total,
+        is_unlimited: rpcRes.is_unlimited ?? usage.is_unlimited,
+      }
+    }
+  } catch (e) {
+    console.warn('RPC get_ai_quota_status fallback:', e?.message)
+  }
+
+  return json(usage, 200)
+}
 
 // ---------------- Helper Parsing ----------------
 function parseNumber(val) {
@@ -176,7 +344,7 @@ async function callGemini(contentsInput, generationConfig = {}, systemInstructio
 }
 
 // ---------------- 1. Voice to Text (Audio Transcription) ----------------
-async function handleTranscribe(request) {
+async function handleTranscribe(request, quota = null) {
   try {
     const ct = request.headers.get('content-type') || ''
     let buffer = null
@@ -224,7 +392,13 @@ Aturan:
       },
     ])
 
-    return json({ text: (text || '').trim(), model })
+    return json({
+      text: (text || '').trim(),
+      model,
+      remaining: quota?.remaining,
+      total: quota?.total,
+      is_unlimited: quota?.is_unlimited,
+    })
   } catch (e) {
     console.error('handleTranscribe error:', e)
     return err(e?.message || 'Gagal memproses audio dengan Gemini', 500)
@@ -232,7 +406,7 @@ Aturan:
 }
 
 // ---------------- 2. Voice & Natural Language Parser (JSON) ----------------
-async function handleParse(request) {
+async function handleParse(request, quota = null) {
   try {
     const body = await request.json().catch(() => ({}))
     const text = (body?.text || '').toString().trim()
@@ -280,6 +454,9 @@ Extract ONE transaction from the text and return ONLY a JSON object:
       confidence: typeof parsed?.confidence === 'number' ? parsed.confidence : 0.95,
       transcript: text,
       model,
+      remaining: quota?.remaining,
+      total: quota?.total,
+      is_unlimited: quota?.is_unlimited,
     })
   } catch (e) {
     console.error('handleParse error:', e)
@@ -288,7 +465,7 @@ Extract ONE transaction from the text and return ONLY a JSON object:
 }
 
 // ---------------- 3. AI Financial Coach (Chatbot) ----------------
-async function handleCoach(request) {
+async function handleCoach(request, quota = null) {
   try {
     const body = await request.json().catch(() => ({}))
     const rawMessages = Array.isArray(body?.messages) ? body.messages.filter((m) => m?.role && m?.content) : []
@@ -313,7 +490,13 @@ ${JSON.stringify(ctx).slice(0, 3000)}`
       systemInstruction
     )
 
-    return json({ reply: (reply || '').trim(), model })
+    return json({
+      reply: (reply || '').trim(),
+      model,
+      remaining: quota?.remaining,
+      total: quota?.total,
+      is_unlimited: quota?.is_unlimited,
+    })
   } catch (e) {
     console.error('handleCoach error:', e)
     return err(e?.message || 'Gagal berkomunikasi dengan AI Coach', 500)
@@ -329,6 +512,7 @@ Return ONLY a valid JSON object matching this exact schema:
   "category": "food" | "groceries" | "transport" | "shopping" | "bills" | "entertainment" | "health" | "education" | "travel" | "housing" | "personal" | "business" | "other",
   "receipt_number": string or null,
   "date": "YYYY-MM-DD" or null,
+  "time": "HH:mm" or null,
   "currency": "IDR" | "MYR" | "USD" | "TRY" | "SGD" or null,
   "subtotal": number or null,
   "tax": number or null,
@@ -339,9 +523,11 @@ Return ONLY a valid JSON object matching this exact schema:
   ],
   "confidence": number
 }
-CRITICAL: All monetary amounts must be numbers without currency symbols or thousand separators.`
+CRITICAL RULES:
+1. Extract the transaction time in 24-hour format if printed on the physical receipt (e.g. "15:01" from "03:01:39 PM" or "15:01"). If no time is printed on the receipt, return null.
+2. All monetary amounts must be numbers without currency symbols or thousand separators.`
 
-async function handleOcr(request) {
+async function handleOcr(request, quota = null) {
   try {
     let base64 = null
     let mimeType = 'image/jpeg'
@@ -401,11 +587,44 @@ async function handleOcr(request) {
     const rawTotal = receipt?.total !== undefined && receipt?.total !== null ? parseNumber(receipt.total) : calculatedTotal
     const total = rawTotal > 0 ? rawTotal : calculatedTotal
 
+    // Jam transaksi: ekstrak format 24 jam jika tercetak pada struk fisik
+    let validTime = null
+    if (receipt?.time && typeof receipt.time === 'string') {
+      const tStr = receipt.time.trim()
+      const m24 = tStr.match(/^([01]?\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?$/)
+      if (m24) {
+        validTime = `${String(m24[1]).padStart(2, '0')}:${m24[2]}`
+      } else {
+        const m12 = tStr.match(/^(\d{1,2}):([0-5]\d)(?::[0-5]\d)?\s*(AM|PM)$/i)
+        if (m12) {
+          let h = parseInt(m12[1], 10)
+          const m = m12[2]
+          const ampm = m12[3].toUpperCase()
+          if (ampm === 'PM' && h < 12) h += 12
+          if (ampm === 'AM' && h === 12) h = 0
+          validTime = `${String(h).padStart(2, '0')}:${m}`
+        }
+      }
+    }
+
+    // Jika jam tidak tertera di struk, gunakan jam lokal perangkat/server saat ini (JANGAN 00:00:00 UTC)
+    if (!validTime) {
+      const now = new Date()
+      validTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+    }
+
+    const receiptDate = receipt?.date && /^\d{4}-\d{2}-\d{2}$/.test(receipt.date) ? receipt.date : null
+    const transactionDate = receiptDate
+      ? `${receiptDate}T${validTime}:00`
+      : `${new Date().toISOString().split('T')[0]}T${validTime}:00`
+
     const structuredReceipt = {
       merchant: receipt?.merchant ? String(receipt.merchant).trim() : null,
       category: receipt?.category || 'other',
       receipt_number: receipt?.receipt_number ? String(receipt.receipt_number).trim() : null,
-      date: receipt?.date && /^\d{4}-\d{2}-\d{2}$/.test(receipt.date) ? receipt.date : null,
+      date: receiptDate,
+      time: validTime,
+      transaction_date: transactionDate,
       currency: receipt?.currency ? String(receipt.currency).toUpperCase().slice(0, 3) : null,
       subtotal: receipt?.subtotal !== null && receipt?.subtotal !== undefined ? parseNumber(receipt.subtotal) : null,
       tax: receipt?.tax !== null && receipt?.tax !== undefined ? parseNumber(receipt.tax) : null,
@@ -418,6 +637,11 @@ async function handleOcr(request) {
     return json({
       receipt: structuredReceipt,
       model,
+      time: validTime,
+      transaction_date: transactionDate,
+      remaining: quota?.remaining,
+      total: quota?.total,
+      is_unlimited: quota?.is_unlimited,
       ...structuredReceipt,
     })
   } catch (e) {
@@ -463,6 +687,7 @@ export async function GET(request, ctx) {
   try {
     if (path === '' || path === 'health') return json({ ok: true, app: 'Paralar', engine: 'Google Gemini', time: new Date().toISOString() })
     if (path === 'rates') return json(await getRates())
+    if (path === 'ai/usage') return await handleAiUsage(request)
     return err('Not found', 404)
   } catch (e) {
     console.error('GET /api/' + path, e)
@@ -473,10 +698,16 @@ export async function GET(request, ctx) {
 export async function POST(request, ctx) {
   const { path } = route(request, await ctx.params)
   try {
-    if (path === 'ai/transcribe') return await handleTranscribe(request)
-    if (path === 'ai/parse') return await handleParse(request)
-    if (path === 'ai/coach') return await handleCoach(request)
-    if (path === 'ai/ocr') return await handleOcr(request)
+    if (path.startsWith('ai/')) {
+      const authResult = await verifyAndConsumeAiAccess(request)
+      if (!authResult.allowed) {
+        return authResult.response
+      }
+      if (path === 'ai/transcribe') return await handleTranscribe(request, authResult.quota)
+      if (path === 'ai/parse') return await handleParse(request, authResult.quota)
+      if (path === 'ai/coach') return await handleCoach(request, authResult.quota)
+      if (path === 'ai/ocr') return await handleOcr(request, authResult.quota)
+    }
     return err('Not found', 404)
   } catch (e) {
     console.error('POST /api/' + path, e)

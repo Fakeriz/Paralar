@@ -1,10 +1,11 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Mic, Square, Loader2, Sparkles, Keyboard } from 'lucide-react'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import { useApp } from './context'
 import { Sheet, PrimaryButton, TextInput, CategoryBadge, Card } from './ui'
+import { QuotaBadge } from './QuotaBadge'
 import { CATEGORIES } from '@/lib/categories'
 import { cn } from '@/lib/utils'
 
@@ -15,8 +16,28 @@ export default function VoiceLogSheet({ open, onClose, onResult }) {
   const [parsed, setParsed] = useState(null)
   const [typed, setTyped] = useState('')
   const [showTyped, setShowTyped] = useState(false)
+  const [quota, setQuota] = useState(null)
+  const [quotaLoading, setQuotaLoading] = useState(false)
   const recRef = useRef(null)
   const chunksRef = useRef([])
+
+  const fetchQuota = useCallback(async () => {
+    if (!session?.access_token) return
+    setQuotaLoading(true)
+    try {
+      const res = await fetch('/api/ai/usage', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setQuota(data)
+      }
+    } catch (e) {
+      console.warn('Failed to fetch AI quota:', e)
+    } finally {
+      setQuotaLoading(false)
+    }
+  }, [session?.access_token])
 
   useEffect(() => {
     if (open) {
@@ -30,8 +51,9 @@ export default function VoiceLogSheet({ open, onClose, onResult }) {
       setParsed(null)
       setTyped('')
       setShowTyped(false)
+      fetchQuota()
     }
-  }, [open, isAiAllowed, onClose, openSheet])
+  }, [open, isAiAllowed, onClose, openSheet, fetchQuota])
 
   const parseText = async (text) => {
     if (!isAiAllowed) {
@@ -57,9 +79,30 @@ export default function VoiceLogSheet({ open, onClose, onResult }) {
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || t('error'))
+      if (!res.ok) {
+        if (res.status === 403 || data?.code === 'AI_PREMIUM_REQUIRED') {
+          onClose?.()
+          openSheet?.('aiPremium')
+          return
+        }
+        if (res.status === 429 || data?.code === 'AI_QUOTA_EXCEEDED') {
+          toast.error(data?.error || 'Kuota AI harian Anda telah habis.')
+          setState('idle')
+          return
+        }
+        throw new Error(data?.error || t('error'))
+      }
+
+      if (data?.remaining !== undefined) {
+        setQuota({
+          remaining: data.remaining,
+          total: data.total,
+          is_unlimited: data.is_unlimited,
+        })
+      }
+
       setTranscript(text)
-      setParsed(data)
+      setParsed(data?.parsed || data)
       setState('result')
     } catch (e) {
       toast.error(e?.message || t('error'))
@@ -95,10 +138,34 @@ export default function VoiceLogSheet({ open, onClose, onResult }) {
           }
           const res = await fetch('/api/ai/transcribe', { method: 'POST', headers, body: form })
           const data = await res.json()
-          if (!res.ok) throw new Error(data?.error || t('error'))
+          if (!res.ok) {
+            if (res.status === 403 || data?.code === 'AI_PREMIUM_REQUIRED') {
+              onClose?.()
+              openSheet?.('aiPremium')
+              return
+            }
+            if (res.status === 429 || data?.code === 'AI_QUOTA_EXCEEDED') {
+              toast.error(data?.error || 'Kuota AI harian Anda telah habis.')
+              setState('idle')
+              return
+            }
+            throw new Error(data?.error || t('error'))
+          }
+
+          if (data?.remaining !== undefined) {
+            setQuota({
+              remaining: data.remaining,
+              total: data.total,
+              is_unlimited: data.is_unlimited,
+            })
+          }
+
           if (!data?.text) throw new Error(t('error'))
           await parseText(data.text)
-        } catch (e) { toast.error(e?.message || t('error')); setState('idle') }
+        } catch (e) {
+          toast.error(e?.message || t('error'))
+          setState('idle')
+        }
       }
       recRef.current = rec
       rec.start()
@@ -117,7 +184,12 @@ export default function VoiceLogSheet({ open, onClose, onResult }) {
   }
 
   return (
-    <Sheet open={open} onClose={onClose} title={t('voice_log')}>
+    <Sheet
+      open={open}
+      onClose={onClose}
+      title={t('voice_log')}
+      right={<QuotaBadge quota={quota} loading={quotaLoading} />}
+    >
       <div className="flex flex-col items-center pt-6 pb-4">
         {state !== 'result' ? (
           <>

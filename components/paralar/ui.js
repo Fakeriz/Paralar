@@ -251,26 +251,46 @@ export function CheckIcon({ active }) {
 }
 
 // Bottom sheet built on framer-motion (supports stacking, swipe-to-dismiss, standardized header)
+let activeSheetCount = 0
+
+function safeUnlockBody() {
+  if (activeSheetCount <= 0) {
+    activeSheetCount = 0
+    document.body.style.removeProperty('overflow')
+    document.body.style.removeProperty('pointer-events')
+    document.body.style.removeProperty('position')
+    document.body.style.removeProperty('touch-action')
+    document.documentElement.style.removeProperty('overflow')
+    document.documentElement.style.removeProperty('pointer-events')
+    document.body.removeAttribute('data-paralar-sheet-open')
+    try {
+      window.dispatchEvent(new CustomEvent('paralar-sheet-toggle', { detail: { open: false } }))
+    } catch {}
+  }
+}
+
 export function Sheet({ open, onClose, children, title, left, right, full = false, className, zIndex = 70, noPadding = false }) {
   const app = useApp()
   const cancelText = app?.t ? app.t('cancel') : 'Cancel'
   const controls = useDragControls()
 
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      safeUnlockBody()
+      return
+    }
+
+    activeSheetCount++
     triggerHaptic('success')
-    const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     document.body.setAttribute('data-paralar-sheet-open', 'true')
     try {
       window.dispatchEvent(new CustomEvent('paralar-sheet-toggle', { detail: { open: true } }))
     } catch {}
+
     return () => {
-      document.body.style.overflow = prev
-      document.body.removeAttribute('data-paralar-sheet-open')
-      try {
-        window.dispatchEvent(new CustomEvent('paralar-sheet-toggle', { detail: { open: false } }))
-      } catch {}
+      activeSheetCount = Math.max(0, activeSheetCount - 1)
+      safeUnlockBody()
     }
   }, [open])
 
@@ -278,10 +298,20 @@ export function Sheet({ open, onClose, children, title, left, right, full = fals
   const onDragEnd = (_e, info) => { if ((info?.offset?.y || 0) > 90 || (info?.velocity?.y || 0) > 500) onClose?.() }
 
   return (
-    <AnimatePresence>
+    <AnimatePresence onExitComplete={safeUnlockBody}>
       {open ? (
-        <motion.div className="fixed inset-0" style={{ zIndex }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}>
-          <div className="absolute inset-0 bg-black/55 backdrop-blur-[2px]" onClick={onClose} />
+        <motion.div
+          className={cn('fixed inset-0', !open && 'pointer-events-none')}
+          style={{ zIndex }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0, pointerEvents: 'none' }}
+          transition={{ duration: 0.18 }}
+        >
+          <div
+            className={cn('absolute inset-0 bg-black/55 backdrop-blur-[2px]', !open && 'pointer-events-none')}
+            onClick={onClose}
+          />
           <motion.div
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
@@ -299,6 +329,7 @@ export function Sheet({ open, onClose, children, title, left, right, full = fals
               // Dynamic viewport height constraint max-h-[78dvh] sm:max-h-[85dvh]
               'max-h-[78dvh] sm:max-h-[85dvh] sm:bottom-6',
               full && 'h-[78dvh] sm:h-[85dvh]',
+              !open && 'pointer-events-none',
               className
             )}
           >

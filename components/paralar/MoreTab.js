@@ -13,7 +13,6 @@ import HealthScoreSheet from './HealthScoreSheet'
 import BusinessInvoiceSheet from './BusinessInvoiceSheet'
 import AccountSupportSection from './AccountSupportSection'
 import AppSettingsSheet from './AppSettingsSheet'
-import PaywallSheet from './PaywallSheet'
 
 function Row({ icon: Icon, label, onClick, right, testId }) {
   return (
@@ -39,7 +38,7 @@ export default function MoreTab() {
   const setBizCtx = (c) => { setBizCtxState(c); try { localStorage.setItem('paralar_bizctx', JSON.stringify(c)) } catch {} }
 
   return (
-    <div className="px-5 pb-28">
+    <div className="px-5 pt-2 pb-20">
       <div className="flex items-center justify-between pt-6">
         <h1 className="text-2xl font-extrabold tracking-tight text-zinc-950 dark:text-white">{t('more')}</h1>
         <div className="flex items-center gap-2">
@@ -102,9 +101,6 @@ export default function MoreTab() {
           ))}
         </div>
       </Sheet>
-
-      {/* Paywall */}
-      <PaywallSheet open={!!sheets?.paywall} onClose={() => close('paywall')} />
 
       <RecurringSheet open={recurringOpen} onClose={() => setRecurringOpen(false)} />
       <NetWorthSheet open={netWorthOpen} onClose={() => setNetWorthOpen(false)} />

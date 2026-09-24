@@ -257,7 +257,9 @@ export default function AccountSupportSection() {
       </div>
 
       {/* Footer */}
-      <p className="text-xs text-muted-foreground/60 text-center py-6">Paralar v1.0.0 · Finance app</p>
+      <p className="text-center text-[11px] text-zinc-400 dark:text-zinc-600 mt-4 mb-2">
+        Paralar v1.0.0 · Finance app
+      </p>
 
       {/* Clear Transactions sheet */}
       <Sheet open={clearOpen} onClose={() => { setClearOpen(false); setClearStep(0) }} title={t('clear_tx')}>

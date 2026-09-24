@@ -1,9 +1,10 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Camera, Upload, Loader2, ScanLine } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
 import { Sheet, PrimaryButton, SecondaryButton, Card } from './ui'
+import { QuotaBadge } from './QuotaBadge'
 import { fileToDataUrl } from '@/lib/ledger'
 
 export default function ScanReceiptSheet({ open, onClose, onUse }) {
@@ -11,8 +12,28 @@ export default function ScanReceiptSheet({ open, onClose, onUse }) {
   const [preview, setPreview] = useState(null)
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState(null)
+  const [quota, setQuota] = useState(null)
+  const [quotaLoading, setQuotaLoading] = useState(false)
   const fileRef = useRef(null)
   const camRef = useRef(null)
+
+  const fetchQuota = useCallback(async () => {
+    if (!session?.access_token) return
+    setQuotaLoading(true)
+    try {
+      const res = await fetch('/api/ai/usage', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setQuota(data)
+      }
+    } catch (e) {
+      console.warn('Failed to fetch AI quota:', e)
+    } finally {
+      setQuotaLoading(false)
+    }
+  }, [session?.access_token])
 
   useEffect(() => {
     if (open) {
@@ -24,8 +45,9 @@ export default function ScanReceiptSheet({ open, onClose, onUse }) {
       setPreview(null)
       setResult(null)
       setBusy(false)
+      fetchQuota()
     }
-  }, [open, isAiAllowed, onClose, openSheet])
+  }, [open, isAiAllowed, onClose, openSheet, fetchQuota])
 
   const onFile = async (e) => {
     if (!isAiAllowed) {
@@ -51,8 +73,29 @@ export default function ScanReceiptSheet({ open, onClose, onUse }) {
         body: JSON.stringify({ imageBase64: dataUrl }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || t('error'))
-      setResult(data?.receipt || null)
+      if (!res.ok) {
+        if (res.status === 403 || data?.code === 'AI_PREMIUM_REQUIRED') {
+          onClose?.()
+          openSheet?.('aiPremium')
+          return
+        }
+        if (res.status === 429 || data?.code === 'AI_QUOTA_EXCEEDED') {
+          toast.error(data?.error || 'Kuota AI harian Anda telah habis.')
+          return
+        }
+        throw new Error(data?.error || t('error'))
+      }
+
+      if (data?.remaining !== undefined) {
+        setQuota({
+          remaining: data.remaining,
+          total: data.total,
+          is_unlimited: data.is_unlimited,
+        })
+      }
+
+      const receiptData = data?.receipt || data || null
+      setResult(receiptData)
     } catch (err) {
       toast.error(err?.message || t('error'))
     } finally { setBusy(false) }
@@ -60,6 +103,12 @@ export default function ScanReceiptSheet({ open, onClose, onUse }) {
 
   const useIt = () => {
     if (!result) return
+    const now = new Date()
+    const pad = (n) => String(n).padStart(2, '0')
+    const fallbackTime = `${pad(now.getHours())}:${pad(now.getMinutes())}`
+    const finalTime = result.time || fallbackTime
+    const finalDate = result.transaction_date || (result.date ? `${result.date}T${finalTime}:00` : now.toISOString())
+
     onUse?.({
       type: 'expense',
       amount: result.total,
@@ -71,7 +120,9 @@ export default function ScanReceiptSheet({ open, onClose, onUse }) {
       items: result.items || [],
       receipt_url: preview,
       note: result.merchant,
-      date: result.date ? new Date(result.date) : new Date(),
+      time: finalTime,
+      transaction_date: finalDate,
+      date: finalDate,
     })
     onClose?.()
   }
@@ -79,7 +130,13 @@ export default function ScanReceiptSheet({ open, onClose, onUse }) {
   const cur = result?.currency || home
 
   return (
-    <Sheet open={open} onClose={onClose} title={t('scan_receipt')} full={!!result}>
+    <Sheet
+      open={open}
+      onClose={onClose}
+      title={t('scan_receipt')}
+      right={<QuotaBadge quota={quota} loading={quotaLoading} />}
+      full={!!result}
+    >
       <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFile} data-testid="scan-file" />
       <input ref={camRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onFile} />
 
@@ -137,7 +194,11 @@ export default function ScanReceiptSheet({ open, onClose, onUse }) {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-xl font-extrabold text-zinc-950 dark:text-white">{result.merchant || t('merchant')}</p>
-                  <p className="text-xs text-zinc-600 dark:text-zinc-400 font-medium mt-0.5">{result.receipt_number ? `${t('receipt_no')} ${result.receipt_number}` : ''} {result.date ? `· ${result.date}` : ''}</p>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-400 font-medium mt-0.5">
+                    {result.receipt_number ? `${t('receipt_no')} ${result.receipt_number}` : ''}
+                    {result.date ? ` · ${result.date}` : ''}
+                    {result.time ? ` · ${result.time}` : ''}
+                  </p>
                 </div>
                 <span className="text-[10px] font-bold uppercase rounded-md bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 px-2 py-1">{t(`cat_${result.category || 'other'}`)}</span>
               </div>

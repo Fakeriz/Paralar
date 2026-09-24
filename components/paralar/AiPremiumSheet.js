@@ -1,10 +1,28 @@
 'use client'
+import { useEffect } from 'react'
 import { Sparkles, ScanLine, Mic, Bot } from 'lucide-react'
 import { useApp } from './context'
 import { Sheet, SecondaryButton } from './ui'
 
 export default function AiPremiumSheet({ open, onClose, onUpgrade }) {
   const { t, open: openSheet } = useApp()
+
+  useEffect(() => {
+    if (!open) {
+      document.body.style.removeProperty('overflow')
+      document.body.style.removeProperty('pointer-events')
+      document.body.style.removeProperty('position')
+      document.body.style.removeProperty('touch-action')
+      document.documentElement.style.removeProperty('overflow')
+    }
+    return () => {
+      document.body.style.removeProperty('overflow')
+      document.body.style.removeProperty('pointer-events')
+      document.body.style.removeProperty('position')
+      document.body.style.removeProperty('touch-action')
+      document.documentElement.style.removeProperty('overflow')
+    }
+  }, [open])
 
   const handleUpgrade = () => {
     onClose?.()

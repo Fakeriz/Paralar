@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Crown, Check, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
@@ -10,6 +10,23 @@ export default function PaywallSheet({ open, onClose }) {
   const { t, home, profile, updateProfile, isGuest, userTier } = useApp()
   const [loading, setLoading] = useState(false)
   const isPremium = userTier === 'premium' || userTier === 'admin'
+
+  useEffect(() => {
+    if (!open) {
+      document.body.style.removeProperty('overflow')
+      document.body.style.removeProperty('pointer-events')
+      document.body.style.removeProperty('position')
+      document.body.style.removeProperty('touch-action')
+      document.documentElement.style.removeProperty('overflow')
+    }
+    return () => {
+      document.body.style.removeProperty('overflow')
+      document.body.style.removeProperty('pointer-events')
+      document.body.style.removeProperty('position')
+      document.body.style.removeProperty('touch-action')
+      document.documentElement.style.removeProperty('overflow')
+    }
+  }, [open])
 
   const handleUpgrade = async () => {
     if (isPremium) {

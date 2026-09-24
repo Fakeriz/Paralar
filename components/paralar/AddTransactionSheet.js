@@ -23,6 +23,7 @@ export default function AddTransactionSheet({ open, onClose, initial }) {
   const [payment, setPayment] = useState('cash')
   const [accountId, setAccountId] = useState(null)
   const [toAccountId, setToAccountId] = useState(null)
+  const [time, setTime] = useState(() => `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`)
   const [date, setDate] = useState(toLocalDatetimeValue(new Date()))
   const [note, setNote] = useState('')
   const [receipt, setReceipt] = useState(null)
@@ -43,6 +44,15 @@ export default function AddTransactionSheet({ open, onClose, initial }) {
   useEffect(() => {
     if (!open) return
     const ini = initial || {}
+    const pad = (n) => String(n).padStart(2, '0')
+    const now = new Date()
+    const defaultTime = `${pad(now.getHours())}:${pad(now.getMinutes())}`
+    const scanned = ini
+
+    // Sinkronisasi jam dari hasil scan struk agar akurat dan tidak default ke 08:00 AM
+    const validTime = scanned.time || defaultTime
+    setTime(validTime)
+
     setType(ini.type || 'expense')
     setAmount(ini.amount ? String(ini.amount) : '')
     setCurrency(ini.currency || home)
@@ -56,7 +66,22 @@ export default function AddTransactionSheet({ open, onClose, initial }) {
     if (!accId && !ini.editId && ini.account_id !== null) accId = accounts[0]?.id || null
     setAccountId(accId)
     setToAccountId(ini.to_account_id || accounts.find((a) => a.id !== accId)?.id || null)
-    setDate(toLocalDatetimeValue(ini.date || new Date()))
+
+    let dtVal = ''
+    if (scanned.transaction_date && typeof scanned.transaction_date === 'string' && scanned.transaction_date.includes('T')) {
+      dtVal = scanned.transaction_date.slice(0, 16)
+    } else if (typeof scanned.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(scanned.date)) {
+      dtVal = `${scanned.date}T${validTime}`
+    } else if (typeof scanned.date === 'string' && scanned.date.includes('T')) {
+      const parts = scanned.date.split('T')
+      dtVal = `${parts[0]}T${scanned.time || (parts[1].startsWith('00:00') ? validTime : parts[1].slice(0, 5))}`
+    } else if (scanned.date) {
+      dtVal = toLocalDatetimeValue(scanned.date)
+    } else {
+      dtVal = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${validTime}`
+    }
+    setDate(dtVal)
+
     setNote(ini.note || '')
     setReceipt(ini.receipt_url ? { dataUrl: ini.receipt_url, name: 'receipt' } : null)
     setItems(Array.isArray(ini.items) ? ini.items : [])
@@ -115,6 +140,7 @@ export default function AddTransactionSheet({ open, onClose, initial }) {
         items: items?.length ? items : [],
         tax_deductible: type === 'expense' ? tax : false,
         date: new Date(date).toISOString(),
+        transaction_date: new Date(date).toISOString(),
       }
       if (editId) {
         const old = transactions.find((x) => x.id === editId)
@@ -231,7 +257,17 @@ export default function AddTransactionSheet({ open, onClose, initial }) {
             <Field label={t('source_account')}>{accountPills(accountId, setAccountId)}</Field>
 
             <Field label={t('date_time')}>
-              <TextInput type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} data-testid="date-input" />
+              <TextInput
+                type="datetime-local"
+                value={date}
+                onChange={(e) => {
+                  setDate(e.target.value)
+                  if (e.target.value?.includes('T')) {
+                    setTime(e.target.value.split('T')[1].slice(0, 5))
+                  }
+                }}
+                data-testid="date-input"
+              />
             </Field>
 
             <Field label={t('merchant')}>

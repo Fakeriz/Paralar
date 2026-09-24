@@ -312,3 +312,89 @@ values (
   'normal'
 )
 on conflict do nothing;
+
+-- ============================================================================
+-- 11. AI QUOTA & USAGE TRACKING (Admin & Premium Quota Management)
+-- ============================================================================
+create table if not exists public.ai_quotas (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  used_count integer default 0,
+  last_reset_date date default current_date,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table public.ai_quotas enable row level security;
+grant select, insert, update on public.ai_quotas to authenticated;
+
+drop policy if exists "ai_quotas own" on public.ai_quotas;
+create policy "ai_quotas own" on public.ai_quotas for all to authenticated
+  using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+
+-- RPC: get_ai_quota_status(user_id)
+create or replace function public.get_ai_quota_status(user_id uuid)
+returns jsonb
+language plpgsql
+security definer
+as $$
+declare
+  v_plan text;
+  v_used int;
+  v_limit int := 50;
+  v_last_date date;
+begin
+  select plan_tier into v_plan from public.profiles where id = user_id;
+  if v_plan = 'premium' or v_plan = 'admin' then
+    return jsonb_build_object(
+      'remaining', 999,
+      'total', 999,
+      'is_unlimited', true
+    );
+  end if;
+
+  select used_count, last_reset_date into v_used, v_last_date
+  from public.ai_quotas where ai_quotas.user_id = get_ai_quota_status.user_id;
+
+  if v_used is null or v_last_date < current_date then
+    v_used := 0;
+  end if;
+
+  return jsonb_build_object(
+    'remaining', greatest(0, v_limit - v_used),
+    'total', v_limit,
+    'is_unlimited', false
+  );
+end;
+$$;
+
+-- RPC: check_and_consume_ai_quota(user_id)
+create or replace function public.check_and_consume_ai_quota(user_id uuid)
+returns jsonb
+language plpgsql
+security definer
+as $$
+declare
+  v_plan text;
+  v_used int;
+  v_limit int := 50;
+  v_last_date date;
+begin
+  select plan_tier into v_plan from public.profiles where id = user_id;
+  if v_plan = 'premium' or v_plan = 'admin' then
+    return jsonb_build_object(
+      'allowed', true,
+      'remaining', 999,
+      'total', 999,
+      'is_unlimited', true
+    );
+  end if;
+
+  -- Default Free users are not allowed
+  return jsonb_build_object(
+    'allowed', false,
+    'error', 'Fitur AI eksklusif untuk pengguna Premium atau Admin.',
+    'code', 'AI_PREMIUM_REQUIRED'
+  );
+end;
+$$;
+
