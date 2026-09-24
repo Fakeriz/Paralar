@@ -102,7 +102,7 @@ export default function VoiceLogSheet({ open, onClose, onResult }) {
             </div>
             <p className="font-semibold mt-4">{state === 'recording' ? t('listening') : state === 'processing' ? t('processing') : t('tap_to_speak')}</p>
             <p className="text-sm text-muted-foreground mt-1 text-center">{state === 'recording' ? t('tap_to_stop') : t('say_example')}</p>
-            <p className="text-[10px] text-muted-foreground mt-3">Groq · whisper-large-v3 → NLP</p>
+            <p className="text-[10px] text-muted-foreground mt-3">Google Gemini 2.0 Flash · Voice & NLP</p>
 
             <button type="button" onClick={() => setShowTyped(!showTyped)} className="mt-6 text-sm font-semibold flex items-center gap-1.5 text-muted-foreground"><Keyboard size={14} /> {showTyped ? t('close') : 'Type instead'}</button>
             {showTyped ? (

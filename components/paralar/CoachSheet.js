@@ -64,7 +64,7 @@ export default function CoachSheet({ open, onClose }) {
       title={<span className="flex items-center gap-2"><Bot size={18} /> {t('ai_coach')}</span>}
     >
       <div className="flex flex-col h-full">
-        <div className="px-3 py-2 bg-muted/50 text-[11px] text-muted-foreground text-center">{fmt(context.totalBalance, home)} · {t('spending')}: {fmt(context.monthSpending, home)} · Groq llama</div>
+        <div className="px-3 py-2 bg-muted/50 text-[11px] text-muted-foreground text-center">{fmt(context.totalBalance, home)} · {t('spending')}: {fmt(context.monthSpending, home)} · Gemini 2.0 Flash</div>
         <div ref={scrollRef} className="flex-1 overflow-y-auto no-scrollbar px-4 py-4 space-y-3">
           {messages.map((m, i) => (
             <div key={i} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
