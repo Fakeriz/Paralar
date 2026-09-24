@@ -180,6 +180,75 @@ export default function AnalyticsSheet({ open, onClose }) {
     return isNaN(d.getTime()) ? '-' : d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' })
   }, [filteredTxs, home, rates])
 
+  // Trend line chart points calculation with Finsight Sky Blue accent
+  const trendData = useMemo(() => {
+    const buckets = []
+    const start = new Date(range.start)
+    const end = new Date(range.end)
+    const totalDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)))
+    const stepDays = totalDays > 31 ? 30 : totalDays > 14 ? 3 : 1
+
+    for (let t = new Date(start); t <= end; t.setDate(t.getDate() + stepDays)) {
+      const bStart = new Date(t)
+      bStart.setHours(0, 0, 0, 0)
+      const bEnd = new Date(t)
+      bEnd.setDate(bEnd.getDate() + stepDays)
+      bEnd.setHours(23, 59, 59, 999)
+
+      const bucketSum = filteredTxs.reduce((sum, tx) => {
+        if (tx?.type !== 'expense') return sum
+        const d = new Date(tx.date || tx.transaction_date)
+        if (d >= bStart && d <= bEnd) {
+          return sum + convert(tx.amount || 0, tx.currency || home, home, rates)
+        }
+        return sum
+      }, 0)
+
+      buckets.push({
+        label: bStart.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
+        value: bucketSum,
+      })
+    }
+
+    if (buckets.length < 2) {
+      buckets.push({ label: 'Now', value: periodExpense })
+    }
+
+    const maxVal = Math.max(1, ...buckets.map((b) => b.value))
+    const width = 320
+    const height = 90
+    const paddingX = 14
+    const paddingY = 14
+    const usableW = width - paddingX * 2
+    const usableH = height - paddingY * 2
+
+    const points = buckets.map((b, i) => {
+      const x = paddingX + (i / Math.max(1, buckets.length - 1)) * usableW
+      const y = height - paddingY - (b.value / maxVal) * usableH
+      return { x, y, value: b.value, label: b.label }
+    })
+
+    let path = `M ${points[0].x} ${points[0].y}`
+    for (let i = 0; i < points.length - 1; i++) {
+      const p0 = points[i]
+      const p1 = points[i + 1]
+      const cp1x = p0.x + (p1.x - p0.x) / 2
+      const cp1y = p0.y
+      const cp2x = p0.x + (p1.x - p0.x) / 2
+      const cp2y = p1.y
+      path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p1.x} ${p1.y}`
+    }
+
+    const areaPath = `${path} L ${points[points.length - 1].x} ${height} L ${points[0].x} ${height} Z`
+
+    let peak = points[0]
+    points.forEach((p) => {
+      if (p.value > peak.value) peak = p
+    })
+
+    return { points, path, areaPath, peak, width, height }
+  }, [filteredTxs, range, home, rates, periodExpense])
+
   const catRows = useMemo(() => {
     const byCat = {}
     filteredTxs.forEach((tx) => {
@@ -430,6 +499,40 @@ export default function AnalyticsSheet({ open, onClose }) {
               <div className="pt-2 flex items-center justify-between text-xs text-muted-foreground font-medium">
                 <span>Rata-rata: {fmt(avgPerDay, home)} / hari</span>
                 <span>{entryCount} transaksi</span>
+              </div>
+            </div>
+
+            {/* Finsight Sky Blue Trend Micro-Accent */}
+            <div className="pt-2">
+              <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                <span>SPENDING TRAJECTORY</span>
+                {trendData?.peak?.value > 0 && (
+                  <span className="text-[#6A92FC] tabular-nums lowercase font-semibold">
+                    peak ~ {fmt(trendData.peak.value, home)}
+                  </span>
+                )}
+              </div>
+              <div className="w-full relative overflow-hidden rounded-xl bg-background/50 border border-border/30 p-2">
+                <svg viewBox={`0 0 ${trendData.width} ${trendData.height}`} className="w-full h-20 overflow-visible">
+                  <defs>
+                    <linearGradient id="skyBlueTrendGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#6A92FC" stopOpacity="0.25" />
+                      <stop offset="100%" stopColor="#6A92FC" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  <path d={trendData.areaPath} fill="url(#skyBlueTrendGrad)" />
+                  <path d={trendData.path} fill="none" stroke="#6A92FC" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  {trendData?.peak?.value > 0 && (
+                    <g>
+                      <circle cx={trendData.peak.x} cy={trendData.peak.y} r="5" fill="#6A92FC" fillOpacity="0.25" />
+                      <circle cx={trendData.peak.x} cy={trendData.peak.y} r="3" fill="#6A92FC" stroke="#ffffff" strokeWidth="1.5" />
+                    </g>
+                  )}
+                </svg>
+                <div className="flex justify-between items-center text-[9.5px] font-medium text-muted-foreground px-1 pt-1">
+                  <span>{trendData.points[0]?.label || ''}</span>
+                  <span>{trendData.points[trendData.points.length - 1]?.label || ''}</span>
+                </div>
               </div>
             </div>
 

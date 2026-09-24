@@ -1,5 +1,13 @@
+import { Manrope } from 'next/font/google'
 import './globals.css'
 import { Providers } from './providers'
+
+const manrope = Manrope({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700', '800'],
+  variable: '--font-manrope',
+  display: 'swap',
+})
 
 export const metadata = {
   title: 'Paralar — Personal & Business Finance',
@@ -15,18 +23,18 @@ export const viewport = {
   maximumScale: 1,
   viewportFit: 'cover',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#FFFFFF' },
-    { media: '(prefers-color-scheme: dark)', color: '#0A0A0B' },
+    { media: '(prefers-color-scheme: light)', color: '#F6F6F6' },
+    { media: '(prefers-color-scheme: dark)', color: '#09090b' },
   ],
 }
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={manrope.variable}>
       <head>
         <script dangerouslySetInnerHTML={{__html:'window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);'}} />
       </head>
-      <body className="font-sans antialiased">
+      <body className={`${manrope.variable} font-sans antialiased`}>
         <Providers>{children}</Providers>
       </body>
     </html>

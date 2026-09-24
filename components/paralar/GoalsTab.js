@@ -281,7 +281,7 @@ export default function GoalsTab() {
           <button
             type="button"
             onClick={openNewSub}
-            className="w-full min-h-[90px] rounded-2xl border border-dashed border-border/70 py-7 px-4 text-center text-sm font-medium text-muted-foreground hover:border-foreground/40 hover:bg-muted/15 transition-all cursor-pointer flex items-center justify-center"
+            className="w-full min-h-[90px] rounded-2xl border border-dashed border-border/80 bg-white dark:bg-[#121214] py-7 px-4 text-center text-sm font-medium text-muted-foreground hover:border-foreground/40 hover:text-foreground transition-all cursor-pointer flex items-center justify-center shadow-xs"
           >
             + Add your first subscription
           </button>
@@ -373,7 +373,7 @@ export default function GoalsTab() {
           <button
             type="button"
             onClick={openNewBudget}
-            className="w-full min-h-[90px] rounded-2xl border border-dashed border-border/70 py-7 px-4 text-center text-sm font-medium text-muted-foreground hover:border-foreground/40 hover:bg-muted/15 transition-all cursor-pointer flex items-center justify-center"
+            className="w-full min-h-[90px] rounded-2xl border border-dashed border-border/80 bg-white dark:bg-[#121214] py-7 px-4 text-center text-sm font-medium text-muted-foreground hover:border-foreground/40 hover:text-foreground transition-all cursor-pointer flex items-center justify-center shadow-xs"
           >
             + Set your first budget limit
           </button>
@@ -455,7 +455,7 @@ export default function GoalsTab() {
           <button
             type="button"
             onClick={openNewGoalModal}
-            className="w-full min-h-[90px] rounded-2xl border border-dashed border-border/70 py-7 px-4 text-center text-sm font-medium text-muted-foreground hover:border-foreground/40 hover:bg-muted/15 transition-all cursor-pointer flex items-center justify-center"
+            className="w-full min-h-[90px] rounded-2xl border border-dashed border-border/80 bg-white dark:bg-[#121214] py-7 px-4 text-center text-sm font-medium text-muted-foreground hover:border-foreground/40 hover:text-foreground transition-all cursor-pointer flex items-center justify-center shadow-xs"
           >
             + Add a savings goal
           </button>
@@ -504,7 +504,7 @@ export default function GoalsTab() {
                     <button
                       type="button"
                       onClick={() => setFunding(g)}
-                      className="flex-1 rounded-xl bg-foreground text-background text-xs font-bold py-2.5 transition-opacity hover:opacity-90 active:scale-[0.99] cursor-pointer"
+                      className="flex-1 rounded-xl bg-foreground text-background text-xs font-bold py-2.5 transition-opacity hover:opacity-90 active:scale-[0.99] cursor-pointer shadow-xs"
                     >
                       {t('add_funds') || '+ Add funds'}
                     </button>

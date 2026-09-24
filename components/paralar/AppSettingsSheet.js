@@ -30,7 +30,7 @@ export default function AppSettingsSheet({ open, onClose }) {
   const nav = (fn) => { onClose?.(); setTimeout(() => fn(), 140) }
   const soon = () => toast(t('coming_soon'))
   const langName = LANGUAGES.find((l) => l.code === lang)?.name || 'English'
-  const box = 'rounded-2xl divide-y divide-zinc-200 dark:divide-white/10 border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1c1c1e] overflow-hidden'
+  const box = 'rounded-2xl divide-y divide-zinc-200 dark:divide-white/10 border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#121214] overflow-hidden'
 
   return (
     <Sheet open={open} onClose={onClose} full title={t('app_settings')}>

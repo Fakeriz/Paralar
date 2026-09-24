@@ -173,17 +173,18 @@ export function CardMotifTexture({ motif = 'parang', isLight = false }) {
     )
   }
 
-  // 5) "Cyber Matrix": Futuristic dark night with soft cyan/sapphire hex grid
+  // 5) "Cyber Matrix": Futuristic dark night with soft Sky Blue #6A92FC hex grid
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
-      <div className="absolute -bottom-8 -right-8 w-48 h-48 rounded-full bg-cyan-500/15 blur-2xl" />
-      <svg className="absolute inset-0 w-full h-full opacity-25" xmlns="http://www.w3.org/2000/svg">
+      <div className="absolute -bottom-8 -right-8 w-48 h-48 rounded-full bg-[#6A92FC]/20 blur-2xl" />
+      <div className="absolute -top-10 -left-10 w-40 h-40 rounded-full bg-[#6A92FC]/10 blur-xl" />
+      <svg className="absolute inset-0 w-full h-full opacity-30" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <pattern id="cyber-hex" width="30" height="51.96" patternUnits="userSpaceOnUse">
-            <path d="M 15 0 L 30 8.66 L 30 25.98 L 15 34.64 L 0 25.98 L 0 8.66 Z" fill="none" stroke="#38bdf8" strokeWidth="0.9" />
-            <path d="M 15 34.64 L 30 43.3 L 30 60.62 L 15 69.28 L 0 60.62 L 0 43.3 Z" fill="none" stroke="#06b6d4" strokeWidth="0.9" />
-            <circle cx="15" cy="0" r="1.5" fill="#38bdf8" opacity="0.7" />
-            <circle cx="15" cy="34.64" r="1.5" fill="#06b6d4" opacity="0.7" />
+            <path d="M 15 0 L 30 8.66 L 30 25.98 L 15 34.64 L 0 25.98 L 0 8.66 Z" fill="none" stroke="#6A92FC" strokeWidth="0.9" />
+            <path d="M 15 34.64 L 30 43.3 L 30 60.62 L 15 69.28 L 0 60.62 L 0 43.3 Z" fill="none" stroke="#8FB0FD" strokeWidth="0.9" />
+            <circle cx="15" cy="0" r="1.5" fill="#6A92FC" opacity="0.8" />
+            <circle cx="15" cy="34.64" r="1.5" fill="#AEC6FD" opacity="0.8" />
           </pattern>
         </defs>
         <rect width="100%" height="100%" fill="url(#cyber-hex)" />
@@ -219,18 +220,16 @@ export function BankCard({
   const isGlacier = th.isLight || th.id === 'glacier'
   const motif = th.motif || 'parang'
 
-  // Jika Glacier selalu hitam. Untuk kartu lain: hitam di Light Mode, putih di Dark Mode
-  const titleCls = isGlacier 
-    ? 'text-zinc-950' 
-    : 'text-zinc-950 dark:text-white'
+  // Cek apakah tema kartu berlatar terang (Glacier / White)
+  const isCardLight = Boolean(th.isLight || th.id === 'glacier' || theme === 'glacier' || theme === 'white')
 
-  const subCls = isGlacier 
-    ? 'text-zinc-600' 
-    : 'text-zinc-600 dark:text-zinc-300/85'
+  // Warna teks adaptif kartu
+  const titleCls = isCardLight ? 'text-zinc-950' : 'text-white'
+  const subCls = isCardLight ? 'text-zinc-600' : 'text-zinc-300'
+  const accentCls = isCardLight ? 'text-zinc-700' : 'text-zinc-200'
 
-  const accentCls = isGlacier 
-    ? 'text-zinc-800' 
-    : 'text-zinc-700 dark:text-zinc-200'
+  // Warna ikon sinyal contactless adaptif kartu
+  const waveCls = isCardLight ? 'text-zinc-700 opacity-80' : 'text-white/80'
 
   const formattedBalance = useMemo(() => {
     if (hideBalance) return '••••••••'
@@ -256,7 +255,7 @@ export function BankCard({
       <div className="flex items-center justify-between gap-3 relative z-10">
         <div className="flex items-center gap-2.5">
           <EmvChip isLight={isGlacier} />
-          <ContactlessWave className={cn('opacity-75', isGlacier ? 'text-zinc-700' : 'text-zinc-700 dark:text-zinc-300')} />
+          <ContactlessWave className={cn('w-4 h-4', waveCls)} />
         </div>
 
         {rightHeader ? (
@@ -269,9 +268,9 @@ export function BankCard({
               <div
                 className={cn(
                   'h-9 w-9 rounded-xl flex items-center justify-center border shrink-0 backdrop-blur-sm',
-                  isGlacier
+                  isCardLight
                     ? 'bg-zinc-950/5 border-zinc-300 text-zinc-900'
-                    : 'bg-zinc-900/10 border-zinc-300 text-zinc-900 dark:bg-white/10 dark:border-white/20 dark:text-white'
+                    : 'bg-white/10 border-white/20 text-white'
                 )}
                 title="Account Icon"
               >
@@ -313,7 +312,7 @@ export function BankCard({
         </div>
 
         {showNetwork && (
-          <NetworkBadge network={th.network || 'visa'} isLight={isGlacier} />
+          <NetworkBadge network={th.network || 'visa'} isLight={isCardLight} />
         )}
       </div>
     </div>

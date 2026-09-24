@@ -110,7 +110,7 @@ export default function LoansSection({
         <button
           type="button"
           onClick={() => setTypeActionSheetOpen(true)}
-          className="w-full min-h-[90px] rounded-2xl border border-dashed border-border/70 py-7 px-4 text-center text-sm font-medium text-muted-foreground hover:border-foreground/40 hover:bg-muted/15 transition-all cursor-pointer flex items-center justify-center"
+          className="w-full min-h-[90px] rounded-2xl border border-dashed border-border/80 bg-white dark:bg-[#121214] py-7 px-4 text-center text-sm font-medium text-muted-foreground hover:border-foreground/40 hover:text-foreground transition-all cursor-pointer flex items-center justify-center shadow-xs"
         >
           + Tambah pinjaman atau cicilan BNPL
         </button>

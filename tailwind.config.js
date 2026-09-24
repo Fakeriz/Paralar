@@ -20,9 +20,30 @@ module.exports = {
       },
       extend: {
         fontFamily: {
-          sans: ['"Plus Jakarta Sans"', '"Cera Round Pro"', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
+          sans: ['var(--font-manrope)', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
         },
         colors: {
+          brand: {
+            DEFAULT: '#6A92FC',
+            50: '#F0F4FF',
+            100: '#E4ECFF',
+            200: '#C9D9FE',
+            300: '#AEC6FD',
+            400: '#8FB0FD',
+            500: '#6A92FC',
+            600: '#4872E8',
+            700: '#2E54C7',
+            800: '#1C3896',
+            900: '#112265',
+          },
+          navy: {
+            DEFAULT: '#111625',
+            950: '#0E131F',
+            900: '#111625',
+            800: '#161C2E',
+            700: '#1E253B',
+            600: '#2A3450',
+          },
           border: 'hsl(var(--border))',
           input: 'hsl(var(--input))',
           ring: 'hsl(var(--ring))',

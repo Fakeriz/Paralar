@@ -90,7 +90,7 @@ export default function SplitBillSheet({ open, onClose }) {
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-600 dark:text-zinc-400 mb-2">{t('participants')}</p>
           <div className="space-y-2">
             {people.map((p) => (
-              <div key={p.id} className={cn('flex items-center gap-2 p-2.5 bg-white dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 rounded-2xl transition-all', mode === 'items' && activePerson === p.id && 'ring-2 ring-zinc-950 dark:ring-white')} onClick={mode === 'items' ? () => setActivePerson(p.id) : undefined}>
+              <div key={p.id} className={cn('flex items-center gap-2 p-2.5 bg-white dark:bg-[#121214] border border-zinc-200 dark:border-white/10 rounded-2xl transition-all', mode === 'items' && activePerson === p.id && 'ring-2 ring-zinc-950 dark:ring-white')} onClick={mode === 'items' ? () => setActivePerson(p.id) : undefined}>
                 <div className="h-9 w-9 rounded-full bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 flex items-center justify-center text-sm font-bold shrink-0">{(p.name.trim()[0] || '?').toUpperCase()}</div>
                 <input value={p.name} onChange={(e) => setPerson(p.id, { name: e.target.value })} placeholder="Name" className="flex-1 bg-transparent outline-none text-sm font-bold min-w-0 text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500" onClick={(e) => e.stopPropagation()} />
                 {mode === 'uneven' ? (
