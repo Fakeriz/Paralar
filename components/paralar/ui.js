@@ -198,8 +198,11 @@ export function Sheet({ open, onClose, children, title, left, right, full = fals
             dragElastic={{ top: 0, bottom: 0.5 }}
             onDragEnd={onDragEnd}
             className={cn(
-              'absolute inset-x-0 bottom-0 mx-auto w-full max-w-md bg-white dark:bg-[#121214] rounded-t-3xl shadow-2xl flex flex-col overflow-hidden border-t border-border/50 max-h-[90vh]',
-              full && 'h-[90vh]',
+              'absolute inset-x-0 bottom-0 mx-auto w-full max-w-md bg-white dark:bg-[#121214] shadow-2xl flex flex-col overflow-hidden border-t sm:border border-border/50',
+              // Di HP: rounded-t-3xl & bottom sheet (max-h 85vh)
+              // Di Web/Tablet (sm): rounded-3xl, melayang dengan margin bawah aman (sm:bottom-6 sm:max-h-[88vh])
+              'rounded-t-3xl sm:rounded-3xl max-h-[85vh] sm:max-h-[88vh] sm:bottom-6',
+              full && 'h-[85vh] sm:h-[88vh]',
               className
             )}
           >
@@ -216,7 +219,7 @@ export function Sheet({ open, onClose, children, title, left, right, full = fals
                 <div className="min-w-[72px] flex justify-end">{right}</div>
               </div>
             </div>
-            <div className={cn('flex-1 min-h-0 overflow-y-auto overscroll-contain no-scrollbar safe-bottom', noPadding ? '' : 'px-5 pb-8')}>{children}</div>
+            <div className={cn('flex-1 min-h-0 overflow-y-auto overscroll-contain no-scrollbar safe-bottom', noPadding ? '' : 'px-5 pb-10 sm:pb-6')}>{children}</div>
           </motion.div>
         </motion.div>
       ) : null}
