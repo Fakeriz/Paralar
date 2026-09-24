@@ -53,8 +53,7 @@ export default function TransactionRow({ tx, onClick, showDate = false }) {
   }
 
   const sub = [
-    isTransfer ? `${acc?.name || '?'} → ${toAcc?.name || '?'}` : (t ? t(`cat_${tx?.category || 'other'}`) : (tx?.category || 'Other')),
-    !isTransfer && acc?.name,
+    isTransfer ? `${acc?.name || '?'} → ${toAcc?.name || '?'}` : acc?.name,
     dateStr || timeStr,
   ].filter(Boolean).join(' · ')
 

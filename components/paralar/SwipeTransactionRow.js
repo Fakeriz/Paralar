@@ -112,13 +112,8 @@ export default function SwipeTransactionRow({
     try { return typeof fmt === 'function' ? fmt(amount, code) : String(amount ?? '') } catch { return String(amount ?? '') }
   }
 
-  const catLabel = isTransfer
-    ? `${acc?.name || '?'} → ${toAcc?.name || '?'}`
-    : (t ? t(`cat_${tx?.category || 'other'}`) : (tx?.category || 'Other'))
-
   const sub = [
-    catLabel,
-    !isTransfer ? acc?.name : null,
+    isTransfer ? `${acc?.name || '?'} → ${toAcc?.name || '?'}` : acc?.name,
     dateStr || timeStr,
   ].filter(Boolean).join(' · ')
 
@@ -200,7 +195,7 @@ export default function SwipeTransactionRow({
           </p>
           {showHomeApprox ? (
             <span className="inline-block mt-0.5 text-[10px] font-semibold rounded-md bg-muted/60 dark:bg-zinc-800 px-1.5 py-0.5 text-muted-foreground tabular-nums">
-              {hideBalance ? '≈ ••••••' : `≈ ${safeFmt(homeAmount, home)} ${getCurrency(tx?.currency)?.flag || ''}`}
+              {hideBalance ? '≈ ••••••' : `≈ ${safeFmt(homeAmount, home)}`}
             </span>
           ) : null}
         </div>
