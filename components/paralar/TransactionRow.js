@@ -75,7 +75,7 @@ export default function TransactionRow({ tx, onClick, showDate = false }) {
         </p>
         {showHomeApprox ? (
           <span className="inline-block mt-0.5 text-[10px] font-semibold rounded-md bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 text-zinc-600 dark:text-zinc-400 tabular-nums">
-            ≈ {safeFmt(homeAmount, home)} {getCurrency(tx?.currency)?.flag || ''}
+            ≈ {safeFmt(homeAmount, home)}
           </span>
         ) : null}
       </div>
