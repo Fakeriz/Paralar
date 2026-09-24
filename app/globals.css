@@ -92,6 +92,19 @@
   input[type='number'] {
     -moz-appearance: textfield;
   }
+  input[type='date']::-webkit-date-and-time-value,
+  input[type='datetime-local']::-webkit-date-and-time-value {
+    text-align: left;
+  }
+  input[type='date'],
+  input[type='datetime-local'] {
+    text-align: left;
+  }
+  .dark input[type='date']::-webkit-calendar-picker-indicator,
+  .dark input[type='datetime-local']::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    opacity: 0.6;
+  }
 }
 
 @layer utilities {

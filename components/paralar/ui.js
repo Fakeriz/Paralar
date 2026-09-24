@@ -6,7 +6,7 @@ import { useApp } from './context'
 import {
   Utensils, ShoppingBasket, Car, ShoppingBag, Receipt, Clapperboard, HeartPulse, GraduationCap, Plane, Home, User,
   Briefcase, Wallet, Laptop, TrendingUp, Gift, ArrowLeftRight, CircleDashed, X, Check,
-  CreditCard, Banknote, Landmark, Smartphone, BarChart3, Vault, PiggyBank, Bitcoin,
+  CreditCard, Banknote, Landmark, Smartphone, BarChart3, Vault, PiggyBank, Bitcoin, Calendar,
 } from 'lucide-react'
 import { getCategory, getLogo } from '@/lib/categories'
 
@@ -155,12 +155,83 @@ export function Field({ label, children, className }) {
   )
 }
 
-export function TextInput({ className, ...props }) {
+export function TextInput({ className, type, ...props }) {
+  if (type === 'date' || type === 'datetime-local') {
+    return (
+      <div
+        className={cn(
+          'w-full h-12 rounded-2xl bg-[#F6F6F6] dark:bg-[#18181b] border border-border/70 dark:border-white/10 text-sm font-semibold text-foreground px-4 flex items-center gap-2.5 transition-all focus-within:ring-2 focus-within:ring-foreground/15 focus-within:border-foreground',
+          className
+        )}
+      >
+        <Calendar size={16} className="text-muted-foreground shrink-0 pointer-events-none" />
+        <input
+          type={type}
+          className="w-full h-full bg-transparent text-sm font-semibold text-foreground outline-none text-left cursor-pointer border-0 p-0 m-0"
+          {...props}
+        />
+      </div>
+    )
+  }
   return (
     <input
+      type={type}
       className={cn('w-full rounded-2xl bg-[#F6F6F6] dark:bg-[#121214] border border-border/70 text-foreground placeholder:text-muted-foreground/60 px-4 py-3 text-[15px] outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground transition-all', className)}
       {...props}
     />
+  )
+}
+
+export function DateSelector({
+  value,
+  onChange,
+  displayValue,
+  placeholder = 'Pilih tanggal',
+  type = 'date',
+  className,
+  clearable = false,
+  onClear,
+  disabled = false,
+  ...props
+}) {
+  return (
+    <div
+      className={cn(
+        'relative w-full h-12 rounded-2xl bg-[#F6F6F6] dark:bg-[#18181b] border border-border/70 dark:border-white/10 text-sm font-semibold text-foreground px-4 flex items-center gap-2.5 cursor-pointer transition-all hover:bg-muted/20 focus-within:ring-2 focus-within:ring-foreground/15 focus-within:border-foreground',
+        disabled && 'opacity-50 pointer-events-none',
+        className
+      )}
+    >
+      <Calendar size={16} className="text-muted-foreground shrink-0 pointer-events-none" />
+      <span
+        className={cn(
+          'text-sm font-semibold truncate flex-1 text-left',
+          value ? 'text-foreground' : 'text-muted-foreground/60 font-medium'
+        )}
+      >
+        {displayValue || value || placeholder}
+      </span>
+      {clearable && value && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onClear?.()
+          }}
+          className="text-xs text-muted-foreground hover:text-foreground p-1 z-20 shrink-0 cursor-pointer"
+        >
+          Clear
+        </button>
+      )}
+      <input
+        type={type}
+        value={value || ''}
+        onChange={onChange}
+        disabled={disabled}
+        className="opacity-0 absolute inset-0 cursor-pointer w-full h-full z-10"
+        {...props}
+      />
+    </div>
   )
 }
 

@@ -628,15 +628,21 @@ export default function LoanModal({
                   <label className="text-xs text-muted-foreground font-medium mb-1 block">
                     Tanggal Jatuh Tempo Bulanan (1–31)
                   </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="31"
-                    value={dueDay}
-                    onChange={(e) => setDueDay(e.target.value)}
-                    placeholder="25"
-                    className="w-full bg-muted/40 rounded-2xl p-3.5 text-sm font-medium text-foreground outline-none border border-border/30 placeholder:text-muted-foreground/40 focus:border-foreground/40 transition-colors"
-                  />
+                  <div className="relative w-full h-12 rounded-2xl bg-[#F6F6F6] dark:bg-[#18181b] border border-border/70 dark:border-white/10 text-sm font-semibold text-foreground px-4 flex items-center gap-2.5">
+                    <Calendar size={16} className="text-muted-foreground shrink-0" />
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={dueDay}
+                      onChange={(e) => setDueDay(e.target.value)}
+                      placeholder="25"
+                      className="w-full text-sm font-semibold text-foreground bg-transparent outline-none tabular-nums text-left"
+                    />
+                    <span className="text-xs text-muted-foreground font-medium shrink-0">
+                      Tiap bulan
+                    </span>
+                  </div>
                 </div>
 
                 {/* Toggle Pantau Bulanan di Tagihan (Bills) */}
@@ -831,13 +837,11 @@ export default function LoanModal({
                   <label className="text-xs text-muted-foreground font-medium mb-1 block">
                     Tanggal Pembayaran Pertama
                   </label>
-                  <div className="relative rounded-2xl bg-muted/40 border border-border/30 p-3.5 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Calendar size={18} className="text-muted-foreground shrink-0" />
-                      <span className="text-sm font-semibold text-foreground">
-                        {firstPaymentDate || 'Pilih tanggal'}
-                      </span>
-                    </div>
+                  <div className="relative w-full h-12 rounded-2xl bg-[#F6F6F6] dark:bg-[#18181b] border border-border/70 dark:border-white/10 text-sm font-semibold text-foreground px-4 flex items-center gap-2.5">
+                    <Calendar size={16} className="text-muted-foreground shrink-0" />
+                    <span className="text-sm font-semibold text-foreground truncate flex-1 text-left">
+                      {firstPaymentDate || 'Pilih tanggal'}
+                    </span>
                     <input
                       type="date"
                       value={firstPaymentDate}

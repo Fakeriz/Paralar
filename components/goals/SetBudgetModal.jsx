@@ -440,9 +440,9 @@ export default function SetBudgetModal({
                 {/* Kolom From */}
                 <div className="space-y-1">
                   <span className="text-xs text-muted-foreground font-medium">From</span>
-                  <div className="relative bg-card border border-border/40 rounded-xl p-3 flex items-center gap-2.5 hover:bg-muted/20 transition-colors">
+                  <div className="relative w-full h-12 rounded-2xl bg-[#F6F6F6] dark:bg-[#18181b] border border-border/70 dark:border-white/10 text-sm font-semibold text-foreground px-4 flex items-center gap-2.5 hover:bg-muted/20 transition-colors">
                     <Calendar size={16} className="text-muted-foreground shrink-0" />
-                    <span className="text-xs font-semibold text-foreground truncate">
+                    <span className="text-xs font-semibold text-foreground truncate flex-1 text-left">
                       {formatDateDisplay(fromDate)}
                     </span>
                     <input
@@ -457,9 +457,9 @@ export default function SetBudgetModal({
                 {/* Kolom To */}
                 <div className="space-y-1">
                   <span className="text-xs text-muted-foreground font-medium">To</span>
-                  <div className="relative bg-card border border-border/40 rounded-xl p-3 flex items-center gap-2.5 hover:bg-muted/20 transition-colors">
+                  <div className="relative w-full h-12 rounded-2xl bg-[#F6F6F6] dark:bg-[#18181b] border border-border/70 dark:border-white/10 text-sm font-semibold text-foreground px-4 flex items-center gap-2.5 hover:bg-muted/20 transition-colors">
                     <Calendar size={16} className="text-muted-foreground shrink-0" />
-                    <span className="text-xs font-semibold text-foreground truncate">
+                    <span className="text-xs font-semibold text-foreground truncate flex-1 text-left">
                       {formatDateDisplay(toDate)}
                     </span>
                     <input

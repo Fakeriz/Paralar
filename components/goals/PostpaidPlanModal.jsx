@@ -263,8 +263,8 @@ export default function PostpaidPlanModal({
                 <label className="text-xs text-muted-foreground font-medium mb-1 block">
                   Tanggal Jatuh Tempo (1–31)
                 </label>
-                <div className="relative rounded-2xl bg-muted/40 border border-border/30 p-3.5 flex items-center gap-3">
-                  <Calendar size={18} className="text-muted-foreground shrink-0" />
+                <div className="relative w-full h-12 rounded-2xl bg-[#F6F6F6] dark:bg-[#18181b] border border-border/70 dark:border-white/10 text-sm font-semibold text-foreground px-4 flex items-center gap-2.5">
+                  <Calendar size={16} className="text-muted-foreground shrink-0" />
                   <input
                     type="number"
                     min="1"
@@ -272,7 +272,7 @@ export default function PostpaidPlanModal({
                     value={dueDay}
                     onChange={(e) => setDueDay(e.target.value)}
                     placeholder="10"
-                    className="w-full text-sm font-semibold text-foreground bg-transparent outline-none tabular-nums"
+                    className="w-full text-sm font-semibold text-foreground bg-transparent outline-none tabular-nums text-left"
                   />
                   <span className="text-xs text-muted-foreground font-medium shrink-0">
                     Tiap bulan

@@ -432,18 +432,16 @@ export default function NewSavingsGoalModal({
                 <label className="text-xs text-muted-foreground font-medium mb-1 block">
                   Deadline (optional)
                 </label>
-                <div className="relative rounded-2xl bg-muted/40 border border-border/30 p-3.5 flex items-center justify-between focus-within:border-foreground/40 transition-colors cursor-pointer">
-                  <div className="flex items-center gap-3">
-                    <Calendar size={18} className="text-muted-foreground shrink-0" />
-                    <span
-                      className={cn(
-                        'text-sm font-medium',
-                        deadline ? 'text-foreground font-semibold' : 'text-muted-foreground/60'
-                      )}
-                    >
-                      {formattedDeadlineDisplay}
-                    </span>
-                  </div>
+                <div className="relative w-full h-12 rounded-2xl bg-[#F6F6F6] dark:bg-[#18181b] border border-border/70 dark:border-white/10 text-sm font-semibold text-foreground px-4 flex items-center gap-2.5 transition-colors cursor-pointer">
+                  <Calendar size={16} className="text-muted-foreground shrink-0" />
+                  <span
+                    className={cn(
+                      'text-sm font-semibold truncate flex-1 text-left',
+                      deadline ? 'text-foreground' : 'text-muted-foreground/60 font-medium'
+                    )}
+                  >
+                    {formattedDeadlineDisplay}
+                  </span>
                   {deadline && (
                     <button
                       type="button"
@@ -452,7 +450,7 @@ export default function NewSavingsGoalModal({
                         setDeadline('')
                         setMonthlyTarget('')
                       }}
-                      className="text-xs text-muted-foreground hover:text-foreground p-1 z-20"
+                      className="text-xs text-muted-foreground hover:text-foreground p-1 z-20 shrink-0 cursor-pointer"
                     >
                       Clear
                     </button>
