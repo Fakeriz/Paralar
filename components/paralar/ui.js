@@ -181,6 +181,7 @@ export function Sheet({ open, onClose, children, title, left, right, full = fals
   const startDrag = (e) => { try { controls.start(e) } catch { /* ignore */ } }
   const onDragEnd = (_e, info) => { if ((info?.offset?.y || 0) > 90 || (info?.velocity?.y || 0) > 500) onClose?.() }
 
+  // Ganti blok AnimatePresence di dalam export function Sheet:
   return (
     <AnimatePresence>
       {open ? (
@@ -199,27 +200,29 @@ export function Sheet({ open, onClose, children, title, left, right, full = fals
             onDragEnd={onDragEnd}
             className={cn(
               'absolute inset-x-0 bottom-0 mx-auto w-full max-w-md bg-white dark:bg-[#121214] shadow-2xl flex flex-col overflow-hidden border-t sm:border border-border/50',
-              // Di HP: rounded-t-3xl & bottom sheet (max-h 85vh)
-              // Di Web/Tablet (sm): rounded-3xl, melayang dengan margin bawah aman (sm:bottom-6 sm:max-h-[88vh])
-              'rounded-t-3xl sm:rounded-3xl max-h-[85vh] sm:max-h-[88vh] sm:bottom-6',
-              full && 'h-[85vh] sm:h-[88vh]',
+              'rounded-t-3xl sm:rounded-3xl',
+              // Menggunakan dvh agar dinamis terhadap dynamic address bar Safari iOS
+              'max-h-[85dvh] sm:max-h-[88dvh] sm:bottom-6',
+              full && 'h-[85dvh] sm:h-[88dvh]',
               className
             )}
           >
-            {/* Drag handle + sticky header */}
-            <div className="shrink-0">
-              <div onPointerDown={startDrag} className="w-10 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700 mx-auto my-2.5 cursor-grab active:cursor-grabbing touch-none" />
-              <div className="flex items-center justify-between px-5 pb-2 min-h-[40px] gap-2">
+            {/* Drag handle + sticky header berkunci latar belakang solid */}
+            <div className="shrink-0 bg-white dark:bg-[#121214] border-b border-border/40 z-20">
+              <div onPointerDown={startDrag} className="w-10 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700 mx-auto my-3 cursor-grab active:cursor-grabbing touch-none" />
+              <div className="flex items-center justify-between px-5 pb-3 min-h-[44px] gap-2">
                 <div className="min-w-[72px] flex justify-start">
                   {left !== undefined ? left : (
-                    <button type="button" onClick={onClose} className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors">{cancelText}</button>
+                    <button type="button" onClick={onClose} className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer">{cancelText}</button>
                   )}
                 </div>
                 <h2 onPointerDown={startDrag} className="text-base font-bold text-foreground text-center flex-1 truncate cursor-grab active:cursor-grabbing">{title}</h2>
                 <div className="min-w-[72px] flex justify-end">{right}</div>
               </div>
             </div>
-            <div className={cn('flex-1 min-h-0 overflow-y-auto overscroll-contain no-scrollbar safe-bottom', noPadding ? '' : 'px-5 pb-10 sm:pb-6')}>{children}</div>
+
+            {/* Area scroll form dengan padding bawah cukup untuk bilah Safari */}
+            <div className={cn('flex-1 min-h-0 overflow-y-auto overscroll-contain no-scrollbar safe-bottom', noPadding ? '' : 'px-5 pt-3 pb-24 sm:pb-8')}>{children}</div>
           </motion.div>
         </motion.div>
       ) : null}
