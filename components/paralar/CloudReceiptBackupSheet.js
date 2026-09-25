@@ -45,6 +45,8 @@ export default function CloudReceiptBackupSheet({ open, onClose }) {
     try {
       setBusy(true)
       setConnectingProvider('google_drive')
+
+      // 1. Simpan preferensi pengguna ke profile Supabase & localStorage
       if (updateProfile) {
         await updateProfile({ cloud_backup_provider: 'google_drive' })
       }
@@ -52,6 +54,16 @@ export default function CloudReceiptBackupSheet({ open, onClose }) {
         localStorage.setItem('paralar_cloud_backup_provider', 'google_drive')
       } catch {}
 
+      // 2. Periksa apakah user sudah login Google dan token drive sudah ada
+      const { data: { session } } = await supabase.auth.getSession()
+
+      // Jika session sudah memiliki token Google, langsung aktifkan tanpa pop-up izin ulang
+      if (session?.provider_token) {
+        toast.success('Google Drive connected')
+        return
+      }
+
+      // 3. Jika token belum ada (koneksi pertama kali), baru panggil OAuth TANPA prompt 'consent'
       const base = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_BASE_URL || '')
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -60,10 +72,11 @@ export default function CloudReceiptBackupSheet({ open, onClose }) {
           scopes: 'https://www.googleapis.com/auth/drive.file',
           queryParams: {
             access_type: 'offline',
-            prompt: 'consent',
+            // prompt: 'consent' DIHAPUS agar Google mengingat izin yang sudah diberikan
           },
         },
       })
+
       if (error) {
         console.warn('Google Drive OAuth warning:', error?.message)
         toast.success('Google Drive set as backup provider')
@@ -277,7 +290,7 @@ export default function CloudReceiptBackupSheet({ open, onClose }) {
           </div>
 
           <p className="text-xs text-muted-foreground leading-relaxed mb-4">
-            Foto hanya disimpan di IndexedDB/localStorage perangkat tanpa sinkronisasi cloud eksternal. Server Supabase Storage tetap 0 MB.
+            Foto hanya disimpan di localStorage perangkat tanpa sinkronisasi cloud eksternal.
           </p>
 
           <button
