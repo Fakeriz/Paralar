@@ -1,5 +1,6 @@
 'use client'
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { Bell, Eye, EyeOff, ArrowDownLeft, ArrowUpRight, Receipt, Users, PieChart, FileText, Plus, ChevronRight, Sparkles, Trash2, WifiOff, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
@@ -202,7 +203,7 @@ function BalanceCarousel() {
         {/* Slide 1: Total Balance Card — standardized aspect-[1.58/1] min-h-[185px] (Finsight Obsidian Luxury) */}
         <div className="w-full aspect-[1.58/1] min-h-[185px] shrink-0 snap-center">
           <div
-            className="w-full h-full rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between shadow-xl shadow-black/10 select-none bg-[#0c0c0e] text-white border border-white/10"
+            className="w-full h-full rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between select-none bg-[#0c0c0e] text-white border border-white/10"
             data-testid="balance-card"
           >
             {/* Background subtle monochrome depth */}
@@ -225,11 +226,8 @@ function BalanceCarousel() {
               </button>
             </div>
 
-            {/* Middle row: Label Total Saldo & Nominal */}
+            {/* Middle row: Nominal Saldo (tanpa label teks di atasnya) */}
             <div className="relative z-10 my-auto py-1 flex flex-col">
-              <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/50 mb-0.5">
-                {t('total_balance')}
-              </span>
               <p
                 className="text-[28px] sm:text-3xl font-extrabold tabular-nums tracking-tight text-white truncate"
                 data-testid="total-balance"
@@ -265,7 +263,7 @@ function BalanceCarousel() {
           </div>
         </div>
 
-        {/* Slide 2..N: Physical motif Bank Cards with exact uniform aspect ratio */}
+        {/* Slide 2..N: Physical motif Bank Cards with flat styling (no shadow) */}
         {accounts.map((a) => (
           <div key={a.id} className="w-full aspect-[1.58/1] min-h-[185px] shrink-0 snap-center">
             <BankCard
@@ -279,18 +277,20 @@ function BalanceCarousel() {
               id={a.id}
               fmt={fmt}
               hideBalance={hideBalance}
+              flat={true}
+              showOcclusionShadow={false}
               approxHome={a.currency !== home ? fmt(convertToHome(a.balance, a.currency), home) : null}
-              className="h-full"
+              className="h-full shadow-none"
             />
           </div>
         ))}
 
-        {/* Slide N+1: Add Account Card — pure monochrome dashed card */}
+        {/* Slide N+1: Add Account Card — pure flat monochrome dashed card */}
         <div className="w-full aspect-[1.58/1] min-h-[185px] shrink-0 snap-center">
           <button
             type="button"
             onClick={() => open('newAccount')}
-            className="w-full h-full rounded-2xl border-2 border-dashed border-border/80 bg-white dark:bg-[#121214] flex flex-col items-center justify-center text-muted-foreground gap-3 hover:border-zinc-950 dark:hover:border-white hover:text-foreground transition-all active:scale-[0.99] group shadow-xs"
+            className="w-full h-full rounded-2xl border-2 border-dashed border-border/80 bg-white dark:bg-[#121214] flex flex-col items-center justify-center text-muted-foreground gap-3 hover:border-zinc-950 dark:hover:border-white hover:text-foreground transition-all active:scale-[0.99] group"
             data-testid="add-account-card"
           >
             <div className="h-12 w-12 rounded-full bg-zinc-100 text-zinc-900 dark:bg-white/10 dark:text-white flex items-center justify-center group-hover:scale-105 group-hover:bg-[#0c0c0e] group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-[#0c0c0e] transition-all">
@@ -408,18 +408,29 @@ export default function HomeTab() {
         </Card>
       ) : (
         <div className="rounded-2xl border border-border/40 bg-card overflow-hidden divide-y divide-border/30 mb-4 touch-pan-y shadow-xs">
-          {recent.map((tx) => (
-            <SwipeTransactionRow
-              key={tx.id}
-              transaction={tx}
-              isGrouped
-              isOpen={openRowId === tx.id}
-              onOpenChange={(v) => setOpenRowId(v ? tx.id : null)}
-              onOpenDetail={() => open('txDetail', tx)}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-            />
-          ))}
+          <AnimatePresence mode="popLayout">
+            {recent.map((tx) => (
+              <motion.div
+                key={tx.id}
+                layout
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ type: "spring", stiffness: 350, damping: 30, mass: 0.8 }}
+                className="transform-gpu will-change-transform"
+              >
+                <SwipeTransactionRow
+                  transaction={tx}
+                  isGrouped
+                  isOpen={openRowId === tx.id}
+                  onOpenChange={(v) => setOpenRowId(v ? tx.id : null)}
+                  onOpenDetail={() => open('txDetail', tx)}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                />
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       )}
 

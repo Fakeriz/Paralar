@@ -15,14 +15,17 @@ export default function QuickActionsSheet({ open, onClose, onSelectAction }) {
     if (open) {
       window.dispatchEvent(new CustomEvent('paralar-sheet-toggle', { detail: { open: true } }))
       document.body?.setAttribute?.('data-paralar-sheet-open', 'true')
+      document.body.style.overflow = 'hidden'
     } else {
       window.dispatchEvent(new CustomEvent('paralar-sheet-toggle', { detail: { open: false } }))
       document.body?.removeAttribute?.('data-paralar-sheet-open')
+      document.body.style.overflow = ''
     }
     return () => {
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('paralar-sheet-toggle', { detail: { open: false } }))
         document.body?.removeAttribute?.('data-paralar-sheet-open')
+        document.body.style.overflow = ''
       }
     }
   }, [open])
@@ -110,20 +113,27 @@ export default function QuickActionsSheet({ open, onClose, onSelectAction }) {
             aria-hidden="true"
           />
 
-          {/* Bottom Sheet Container */}
+          {/* Bottom Sheet Container with Drag Gesture */}
           <motion.div
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{
               type: 'spring',
+              stiffness: 350,
               damping: 30,
-              stiffness: 380,
+              mass: 0.8,
             }}
-            className="relative w-full max-w-md rounded-t-[28px] sm:rounded-3xl bg-white dark:bg-[#0c0c0e] border-t sm:border border-zinc-200/80 dark:border-white/10 p-5 pt-3 pb-8 sm:pb-6 shadow-2xl z-10 select-none overflow-hidden"
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.6 }}
+            onDragEnd={(e, info) => {
+              if (info.offset.y > 80 || info.velocity.y > 400) onClose?.()
+            }}
+            className="relative w-full max-w-md rounded-t-[28px] sm:rounded-3xl bg-white dark:bg-[#0c0c0e] border-t sm:border border-zinc-200/80 dark:border-white/10 p-5 pt-3 pb-8 sm:pb-6 shadow-2xl z-10 select-none overflow-hidden transform-gpu will-change-transform"
           >
-            {/* Bar penarik sentuh di atas tengah */}
-            <div className="w-12 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700/80 mx-auto mb-4 cursor-grab" />
+            {/* Bar penarik sentuh di atas tengah: touch-none cursor-grab active:cursor-grabbing */}
+            <div className="w-12 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700/80 mx-auto mb-4 touch-none cursor-grab active:cursor-grabbing" />
 
             {/* Baris judul */}
             <div className="flex items-center justify-between mb-4 px-1">

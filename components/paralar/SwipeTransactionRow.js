@@ -48,12 +48,14 @@ export default function SwipeTransactionRow({
   const controls = useAnimation()
   const ACTION_WIDTH = 110
 
+  const SPRING_CONFIG = { type: 'spring', stiffness: 350, damping: 30, mass: 0.8 }
+
   useEffect(() => {
     if (isOpen !== undefined) {
       setInternalOpen(isOpen)
       controls.start({
         x: isOpen ? -ACTION_WIDTH : 0,
-        transition: { type: 'spring', stiffness: 400, damping: 32 },
+        transition: SPRING_CONFIG,
       })
     }
   }, [isOpen, controls])
@@ -62,18 +64,18 @@ export default function SwipeTransactionRow({
 
   const handleDragEnd = async (_, info) => {
     if (info.offset.x < -40 || info.velocity.x < -250) {
-      await controls.start({ x: -ACTION_WIDTH, transition: { type: 'spring', stiffness: 400, damping: 32 } })
+      await controls.start({ x: -ACTION_WIDTH, transition: SPRING_CONFIG })
       setInternalOpen(true)
       onOpenChange?.(true)
     } else {
-      await controls.start({ x: 0, transition: { type: 'spring', stiffness: 400, damping: 32 } })
+      await controls.start({ x: 0, transition: SPRING_CONFIG })
       setInternalOpen(false)
       onOpenChange?.(false)
     }
   }
 
   const closeSwipe = () => {
-    controls.start({ x: 0, transition: { type: 'spring', stiffness: 400, damping: 32 } })
+    controls.start({ x: 0, transition: SPRING_CONFIG })
     setInternalOpen(false)
     onOpenChange?.(false)
   }
@@ -163,7 +165,7 @@ export default function SwipeTransactionRow({
         animate={controls}
         onClick={handleCardClick}
         className={cn(
-          'relative z-10 bg-card p-3.5 flex items-center justify-between w-full cursor-pointer transition-colors',
+          'relative z-10 bg-card p-3.5 flex items-center justify-between w-full cursor-pointer transition-colors transform-gpu will-change-transform',
           isGrouped
             ? 'rounded-none border-0'
             : 'border border-border/40 rounded-2xl shadow-xs'

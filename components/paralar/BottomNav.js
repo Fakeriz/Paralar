@@ -79,9 +79,9 @@ export default function BottomNav({ tab, onTab, onPlus }) {
               layoutId="threadsActiveBubble"
               transition={{
                 type: 'spring',
-                stiffness: 460,
-                damping: 32,
-                mass: 0.7,
+                stiffness: 350,
+                damping: 30,
+                mass: 0.8,
               }}
               className="absolute inset-1 rounded-full bg-black/[0.06] dark:bg-[#26262a] border border-black/[0.04] dark:border-white/15 shadow-xs dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_4px_12px_rgba(0,0,0,0.3)] pointer-events-none"
             />
@@ -114,9 +114,9 @@ export default function BottomNav({ tab, onTab, onPlus }) {
               layoutId="threadsActiveBubble"
               transition={{
                 type: 'spring',
-                stiffness: 460,
-                damping: 32,
-                mass: 0.7,
+                stiffness: 350,
+                damping: 30,
+                mass: 0.8,
               }}
               className="absolute inset-1 rounded-full bg-black/[0.06] dark:bg-[#26262a] border border-black/[0.04] dark:border-white/15 shadow-xs dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_4px_12px_rgba(0,0,0,0.3)] pointer-events-none"
             />
@@ -161,9 +161,9 @@ export default function BottomNav({ tab, onTab, onPlus }) {
               layoutId="threadsActiveBubble"
               transition={{
                 type: 'spring',
-                stiffness: 460,
-                damping: 32,
-                mass: 0.7,
+                stiffness: 350,
+                damping: 30,
+                mass: 0.8,
               }}
               className="absolute inset-1 rounded-full bg-black/[0.06] dark:bg-[#26262a] border border-black/[0.04] dark:border-white/15 shadow-xs dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_4px_12px_rgba(0,0,0,0.3)] pointer-events-none"
             />
@@ -196,9 +196,9 @@ export default function BottomNav({ tab, onTab, onPlus }) {
               layoutId="threadsActiveBubble"
               transition={{
                 type: 'spring',
-                stiffness: 460,
-                damping: 32,
-                mass: 0.7,
+                stiffness: 350,
+                damping: 30,
+                mass: 0.8,
               }}
               className="absolute inset-1 rounded-full bg-black/[0.06] dark:bg-[#26262a] border border-black/[0.04] dark:border-white/15 shadow-xs dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_4px_12px_rgba(0,0,0,0.3)] pointer-events-none"
             />

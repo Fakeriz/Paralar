@@ -316,7 +316,7 @@ export function Sheet({ open, onClose, children, title, left, right, full = fals
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 30, stiffness: 320 }}
+            transition={{ type: 'spring', stiffness: 350, damping: 30, mass: 0.8 }}
             drag="y"
             dragControls={controls}
             dragListener={false}
@@ -324,7 +324,7 @@ export function Sheet({ open, onClose, children, title, left, right, full = fals
             dragElastic={{ top: 0, bottom: 0.5 }}
             onDragEnd={onDragEnd}
             className={cn(
-              'absolute inset-x-0 bottom-0 mx-auto w-full max-w-md bg-white dark:bg-[#121214] shadow-2xl flex flex-col overflow-hidden border-t sm:border border-border/50',
+              'absolute inset-x-0 bottom-0 mx-auto w-full max-w-md bg-white dark:bg-[#121214] shadow-2xl flex flex-col overflow-hidden border-t sm:border border-border/50 transform-gpu will-change-transform',
               'rounded-t-3xl sm:rounded-3xl',
               // Dynamic viewport height constraint max-h-[78dvh] sm:max-h-[85dvh]
               'max-h-[78dvh] sm:max-h-[85dvh] sm:bottom-6',

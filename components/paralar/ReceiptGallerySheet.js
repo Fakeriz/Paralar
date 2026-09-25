@@ -84,14 +84,17 @@ export default function ReceiptGallerySheet({ open, onClose, onOpenScanner }) {
     if (open) {
       window.dispatchEvent(new CustomEvent('paralar-sheet-toggle', { detail: { open: true } }))
       document.body?.setAttribute?.('data-paralar-sheet-open', 'true')
+      document.body.style.overflow = 'hidden'
     } else {
       window.dispatchEvent(new CustomEvent('paralar-sheet-toggle', { detail: { open: false } }))
       document.body?.removeAttribute?.('data-paralar-sheet-open')
+      document.body.style.overflow = ''
     }
     return () => {
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('paralar-sheet-toggle', { detail: { open: false } }))
         document.body?.removeAttribute?.('data-paralar-sheet-open')
+        document.body.style.overflow = ''
       }
     }
   }, [open])
@@ -130,11 +133,6 @@ export default function ReceiptGallerySheet({ open, onClose, onOpenScanner }) {
       return true
     })
   }, [receiptTxs, activeFolder, searchQuery])
-
-  // Calculate total amount
-  const totalAmount = useMemo(() => {
-    return receiptTxs.reduce((sum, tx) => sum + (Number(tx?.amount) || 0), 0)
-  }, [receiptTxs])
 
   // Group transactions by date
   const groupedTxs = useMemo(() => {
@@ -201,20 +199,27 @@ export default function ReceiptGallerySheet({ open, onClose, onOpenScanner }) {
             aria-hidden="true"
           />
 
-          {/* Full Bottom Sheet Container */}
+          {/* Full Bottom Sheet Container with Drag Gesture */}
           <motion.div
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{
               type: 'spring',
-              damping: 32,
-              stiffness: 380,
+              stiffness: 350,
+              damping: 30,
+              mass: 0.8,
             }}
-            className="relative w-full max-w-md h-[92vh] rounded-t-[32px] bg-white dark:bg-[#0c0c0e] border-t border-zinc-200/80 dark:border-white/10 shadow-2xl z-10 flex flex-col overflow-hidden select-none"
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.6 }}
+            onDragEnd={(e, info) => {
+              if (info.offset.y > 80 || info.velocity.y > 400) onClose?.()
+            }}
+            className="relative w-full max-w-md h-[92vh] rounded-t-[32px] bg-white dark:bg-[#0c0c0e] border-t border-zinc-200/80 dark:border-white/10 shadow-2xl z-10 flex flex-col overflow-hidden select-none transform-gpu will-change-transform"
           >
-            {/* Top Touch Handle */}
-            <div className="pt-3 pb-1 cursor-grab shrink-0">
+            {/* Top Touch Handle: touch-none cursor-grab active:cursor-grabbing */}
+            <div className="pt-3 pb-1 shrink-0 touch-none cursor-grab active:cursor-grabbing">
               <div className="w-12 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700/80 mx-auto" />
             </div>
 
@@ -233,13 +238,13 @@ export default function ReceiptGallerySheet({ open, onClose, onOpenScanner }) {
                 {t?.('cancel') || 'Cancel'}
               </button>
 
-              {/* Center: Title + item count & total amount */}
+              {/* Center: Title + item count */}
               <div className="text-center px-2">
                 <h2 className="text-base font-bold text-zinc-950 dark:text-white tracking-tight leading-tight">
                   {t?.('receipts') || 'Receipts'}
                 </h2>
                 <p className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 tabular-nums">
-                  {receiptTxs.length} {receiptTxs.length === 1 ? 'item' : 'items'} · {fmt?.(totalAmount, home)}
+                  {receiptTxs.length} {receiptTxs.length === 1 ? 'item' : 'items'}
                 </p>
               </div>
 

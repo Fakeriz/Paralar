@@ -1,5 +1,6 @@
 'use client'
 import { useMemo, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { Search, Receipt, MoreVertical, Download, Upload, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
@@ -167,18 +168,29 @@ function TransactionsContent() {
                 </span>
               </div>
               <div className="rounded-2xl border border-border/40 bg-card overflow-hidden divide-y divide-border/30 mb-4 touch-pan-y shadow-xs">
-                {(dayList || []).map((tx) => (
-                  <SwipeTransactionRow
-                    key={tx?.id || Math.random()}
-                    transaction={tx}
-                    isGrouped
-                    isOpen={openRowId === tx?.id}
-                    onOpenChange={(v) => setOpenRowId(v ? tx?.id : null)}
-                    onOpenDetail={() => open?.('txDetail', tx)}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                  />
-                ))}
+                <AnimatePresence mode="popLayout">
+                  {(dayList || []).map((tx) => (
+                    <motion.div
+                      key={tx?.id || Math.random()}
+                      layout
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ type: 'spring', stiffness: 350, damping: 30, mass: 0.8 }}
+                      className="transform-gpu will-change-transform"
+                    >
+                      <SwipeTransactionRow
+                        transaction={tx}
+                        isGrouped
+                        isOpen={openRowId === tx?.id}
+                        onOpenChange={(v) => setOpenRowId(v ? tx?.id : null)}
+                        onOpenDetail={() => open?.('txDetail', tx)}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                      />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
             </div>
           )
