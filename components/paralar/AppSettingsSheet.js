@@ -1,5 +1,5 @@
 'use client'
-import { User, Globe, Coins, Moon, CalendarDays, ShieldCheck, Bell, PlayCircle, ShieldAlert, ChevronRight } from 'lucide-react'
+import { User, Globe, Coins, Moon, CalendarDays, ShieldCheck, Bell, PlayCircle, ShieldAlert, ChevronRight, Cloud } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTheme } from 'next-themes'
 import { useApp } from './context'
@@ -24,13 +24,21 @@ function Row({ icon: Icon, label, sub, onClick, testId }) {
 }
 
 export default function AppSettingsSheet({ open, onClose }) {
-  const { t, open: openSheet, lang, home } = useApp()
+  const { t, open: openSheet, lang, home, profile } = useApp()
   const { theme, setTheme } = useTheme()
 
   const nav = (fn) => { onClose?.(); setTimeout(() => fn(), 140) }
   const soon = () => toast(t('coming_soon'))
   const langName = LANGUAGES.find((l) => l.code === lang)?.name || 'English'
   const box = 'rounded-2xl divide-y divide-zinc-200 dark:divide-white/10 border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#121214] overflow-hidden'
+
+  const provider = profile?.cloud_backup_provider
+  const providerSubtitle =
+    provider === 'google_drive' || provider === 'google'
+      ? 'Google Drive'
+      : provider === 'icloud'
+      ? 'iCloud'
+      : 'Local Storage'
 
   return (
     <Sheet open={open} onClose={onClose} full title={t('app_settings')}>
@@ -50,6 +58,7 @@ export default function AppSettingsSheet({ open, onClose }) {
 
         <div className={box}>
           <Row icon={CalendarDays} label={t('month_start_date')} sub={t('month_start_sub')} onClick={soon} testId="set-monthstart" />
+          <Row icon={Cloud} label="Cloud Receipt Backup" sub={providerSubtitle} onClick={() => nav(() => openSheet('cloudBackup'))} testId="set-cloud-backup" />
           <Row icon={ShieldCheck} label={t('account_backup')} sub={t('account_backup_sub')} onClick={soon} testId="set-backup" />
           <Row icon={Bell} label={t('notifications')} sub={t('notifications_sub')} onClick={soon} testId="set-notifications" />
         </div>
@@ -63,3 +72,4 @@ export default function AppSettingsSheet({ open, onClose }) {
     </Sheet>
   )
 }
+

@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { Crown, ChevronRight, CreditCard, Bot, Calculator, Tags, Users, HandCoins, Zap, Repeat, TrendingUp, HeartPulse, Briefcase, Check, ReceiptText, Settings } from 'lucide-react'
+import { Crown, ChevronRight, CreditCard, Bot, Calculator, Tags, Users, HandCoins, Zap, Repeat, TrendingUp, HeartPulse, Briefcase, Check, ReceiptText, Settings, Cloud } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
 import { Card, SectionLabel, Sheet, PrimaryButton, SecondaryButton } from './ui'
@@ -37,8 +37,16 @@ export default function MoreTab() {
   const [bizCtx, setBizCtxState] = useState(() => { try { return JSON.parse(localStorage.getItem('paralar_bizctx')) || 'personal' } catch { return 'personal' } })
   const setBizCtx = (c) => { setBizCtxState(c); try { localStorage.setItem('paralar_bizctx', JSON.stringify(c)) } catch {} }
 
+  const provider = profile?.cloud_backup_provider
+  const providerSubtitle =
+    provider === 'google_drive' || provider === 'google'
+      ? 'Google Drive'
+      : provider === 'icloud'
+      ? 'iCloud'
+      : 'Local Storage'
+
   return (
-    <div className="px-5 pt-2 pb-20">
+    <div className="w-full min-h-screen overflow-y-auto overscroll-y-contain px-5 pt-2 pb-40 touch-pan-y">
       <div className="flex items-center justify-between pt-6">
         <h1 className="text-2xl font-extrabold tracking-tight text-zinc-950 dark:text-white">{t('more')}</h1>
         <div className="flex items-center gap-2">
@@ -84,6 +92,7 @@ export default function MoreTab() {
 
       <SectionLabel className="mt-7 mb-2 px-1">{t('advanced')}</SectionLabel>
       <Card className="divide-y divide-zinc-200/60 dark:divide-white/5 overflow-hidden">
+        <Row icon={Cloud} label="Cloud Receipt Backup" right={providerSubtitle} onClick={() => open('cloudBackup')} testId="more-cloud-backup" />
         <Row icon={Zap} label={t('smart_automation')} onClick={() => open('automation')} testId="more-automation" />
         <Row icon={Repeat} label={t('recurring')} onClick={() => setRecurringOpen(true)} testId="more-recurring" />
         <Row icon={TrendingUp} label={t('net_worth')} onClick={() => setNetWorthOpen(true)} testId="more-networth" />

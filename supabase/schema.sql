@@ -18,6 +18,7 @@ create table if not exists public.profiles (
   language text default 'id',           -- id | ms | en | tr
   home_currency text default 'IDR',     -- IDR | USD | MYR | TRY | SGD | EUR | etc.
   plan_tier text default 'free',        -- free | premium
+  cloud_backup_provider text default 'local', -- local | icloud | google_drive
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );

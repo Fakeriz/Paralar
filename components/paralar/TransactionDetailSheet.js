@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
-import { Pencil, Trash2, Eye, X, Plus, Check, UserPlus } from 'lucide-react'
+import { Pencil, Trash2, Eye, X, Plus, Check, UserPlus, HardDrive, ExternalLink } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
 import { Sheet, Segmented, CategoryBadge, Card } from './ui'
@@ -124,10 +124,30 @@ export default function TransactionDetailSheet({ open, onClose, tx, onEdit }) {
       </div>
 
       {tx.receipt_url ? (
-        <button type="button" onClick={() => setViewImg(true)} className="relative mt-4 w-full rounded-2xl overflow-hidden bg-zinc-100 dark:bg-zinc-800">
-          <img src={tx.receipt_url} alt="receipt" className="w-full max-h-52 object-contain" />
-          <span className="absolute bottom-2 right-2 h-8 w-8 rounded-full bg-zinc-950/80 text-white flex items-center justify-center"><Eye size={16} /></span>
-        </button>
+        tx.receipt_url.includes('drive.google.com') ? (
+          <a
+            href={tx.receipt_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 p-4 rounded-2xl bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-white/10 flex items-center justify-between hover:bg-zinc-200/60 dark:hover:bg-zinc-700/60 transition group cursor-pointer"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="h-9 w-9 rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 flex items-center justify-center shrink-0">
+                <HardDrive size={18} />
+              </div>
+              <div className="min-w-0">
+                <p className="font-bold text-sm text-foreground">Google Drive Receipt</p>
+                <p className="text-xs text-muted-foreground truncate">{tx.receipt_url}</p>
+              </div>
+            </div>
+            <ExternalLink size={16} className="text-muted-foreground group-hover:text-foreground shrink-0 ml-2" />
+          </a>
+        ) : (
+          <button type="button" onClick={() => setViewImg(true)} className="relative mt-4 w-full rounded-2xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 cursor-pointer">
+            <img src={tx.receipt_url} alt="receipt" className="w-full max-h-52 object-contain" />
+            <span className="absolute bottom-2 right-2 h-8 w-8 rounded-full bg-zinc-950/80 text-white flex items-center justify-center"><Eye size={16} /></span>
+          </button>
+        )
       ) : null}
 
       <div className="text-center mt-6">

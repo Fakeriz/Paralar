@@ -40,6 +40,7 @@ import ExportTransactionsSheet from '@/components/paralar/ExportTransactionsShee
 import ImportTransactionsSheet from '@/components/paralar/ImportTransactionsSheet'
 import AiPremiumSheet from '@/components/paralar/AiPremiumSheet'
 import PaywallSheet from '@/components/paralar/PaywallSheet'
+import CloudReceiptBackupSheet from '@/components/paralar/CloudReceiptBackupSheet'
 
 const GUEST_KEY = 'paralar_guest_mode'
 const ONBOARD_KEY = 'paralar_onboarded'
@@ -389,6 +390,7 @@ export default function App() {
           }}
         />
         <PaywallSheet open={!!sheets.paywall} onClose={() => close('paywall')} />
+        <CloudReceiptBackupSheet open={!!sheets.cloudBackup} onClose={() => close('cloudBackup')} />
       </main>
     </AppContext.Provider>
   )

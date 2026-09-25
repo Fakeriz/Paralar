@@ -8,9 +8,10 @@ import { QuotaBadge } from './QuotaBadge'
 import { fileToDataUrl } from '@/lib/ledger'
 
 export default function ScanReceiptSheet({ open, onClose, onUse }) {
-  const { t, home, fmt, session, isAiAllowed, open: openSheet } = useApp()
+  const { t, home, fmt, session, isAiAllowed, open: openSheet, profile } = useApp()
   const [preview, setPreview] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [uploadingBackup, setUploadingBackup] = useState(false)
   const [result, setResult] = useState(null)
   const [quota, setQuota] = useState(null)
   const [quotaLoading, setQuotaLoading] = useState(false)
@@ -101,13 +102,54 @@ export default function ScanReceiptSheet({ open, onClose, onUse }) {
     } finally { setBusy(false) }
   }
 
-  const useIt = () => {
+  const useIt = async () => {
     if (!result) return
     const now = new Date()
     const pad = (n) => String(n).padStart(2, '0')
     const fallbackTime = `${pad(now.getHours())}:${pad(now.getMinutes())}`
     const finalTime = result.time || fallbackTime
     const finalDate = result.transaction_date || (result.date ? `${result.date}T${finalTime}:00` : now.toISOString())
+
+    const provider = profile?.cloud_backup_provider || 'local'
+    let finalReceiptUrl = preview
+    let storageProvider = 'local'
+
+    if (provider === 'google_drive') {
+      const gToken =
+        session?.provider_token ||
+        (typeof localStorage !== 'undefined' ? localStorage.getItem('paralar_gdrive_token') : null)
+      setUploadingBackup(true)
+      try {
+        const headers = { 'Content-Type': 'application/json' }
+        if (gToken) headers['Authorization'] = `Bearer ${gToken}`
+
+        const res = await fetch('/api/backup/gdrive', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            imageBase64: preview,
+            name: `receipt_${(result.merchant || 'paralar').replace(/\s+/g, '_')}_${Date.now()}.jpg`,
+            google_token: gToken,
+          }),
+        })
+
+        if (res.ok) {
+          const data = await res.json()
+          if (data?.url) {
+            finalReceiptUrl = data.url
+            storageProvider = 'google_drive'
+            toast.success('Foto struk dicadangkan ke Google Drive')
+          }
+        }
+      } catch (err) {
+        console.warn('Google Drive backup upload failed, stored locally:', err)
+      } finally {
+        setUploadingBackup(false)
+      }
+    } else {
+      // provider is 'icloud' or 'local'
+      storageProvider = 'local'
+    }
 
     onUse?.({
       type: 'expense',
@@ -118,7 +160,8 @@ export default function ScanReceiptSheet({ open, onClose, onUse }) {
       merchant: result.merchant,
       receipt_number: result.receipt_number,
       items: result.items || [],
-      receipt_url: preview,
+      receipt_url: finalReceiptUrl,
+      storage_provider: storageProvider,
       note: result.merchant,
       time: finalTime,
       transaction_date: finalDate,
@@ -214,8 +257,17 @@ export default function ScanReceiptSheet({ open, onClose, onUse }) {
                 {!(result.items || []).length ? <p className="px-4 py-3 text-sm text-zinc-400 dark:text-zinc-500">—</p> : null}
               </Card>
               <div className="mt-5 space-y-2">
-                <PrimaryButton onClick={useIt} data-testid="scan-use">{t('use_this')}</PrimaryButton>
-                <SecondaryButton onClick={() => fileRef.current?.click()}>{t('upload_receipt')}</SecondaryButton>
+                <PrimaryButton onClick={useIt} disabled={uploadingBackup} data-testid="scan-use">
+                  {uploadingBackup ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>{t('saving') || 'Saving...'}</span>
+                    </span>
+                  ) : (
+                    t('use_this')
+                  )}
+                </PrimaryButton>
+                <SecondaryButton disabled={uploadingBackup} onClick={() => fileRef.current?.click()}>{t('upload_receipt')}</SecondaryButton>
               </div>
             </div>
           ) : !busy ? (
