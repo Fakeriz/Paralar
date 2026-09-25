@@ -357,7 +357,7 @@ export function Sheet({ open, onClose, children, title, left, right, full = fals
             </div>
 
             {/* Area scroll form dengan padding bawah cukup untuk bilah Safari */}
-            <div className={cn('flex-1 min-h-0 overflow-y-auto overscroll-contain no-scrollbar safe-bottom', noPadding ? '' : 'px-5 pt-3 pb-24 sm:pb-8')}>{children}</div>
+            <div className={cn('flex-1 min-h-0 overflow-y-auto overscroll-contain no-scrollbar safe-bottom touch-pan-y', noPadding ? '' : 'px-5 pt-3 pb-24 sm:pb-8')}>{children}</div>
           </motion.div>
         </motion.div>
       ) : null}

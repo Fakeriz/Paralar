@@ -130,7 +130,7 @@ export default function QuickActionsSheet({ open, onClose, onSelectAction }) {
             onDragEnd={(e, info) => {
               if (info.offset.y > 80 || info.velocity.y > 400) onClose?.()
             }}
-            className="relative w-full max-w-md rounded-t-[28px] sm:rounded-3xl bg-white dark:bg-[#0c0c0e] border-t sm:border border-zinc-200/80 dark:border-white/10 p-5 pt-3 pb-8 sm:pb-6 shadow-2xl z-10 select-none overflow-hidden transform-gpu will-change-transform"
+            className="relative w-full max-w-md rounded-t-[28px] sm:rounded-3xl bg-white dark:bg-[#0c0c0e] border-t sm:border border-zinc-200/80 dark:border-white/10 p-5 pt-3 pb-8 sm:pb-6 shadow-2xl z-10 select-none max-h-[90dvh] overflow-y-auto no-scrollbar touch-pan-y transform-gpu will-change-transform"
           >
             {/* Bar penarik sentuh di atas tengah: touch-none cursor-grab active:cursor-grabbing */}
             <div className="w-12 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700/80 mx-auto mb-4 touch-none cursor-grab active:cursor-grabbing" />
