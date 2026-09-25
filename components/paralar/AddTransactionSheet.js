@@ -12,6 +12,7 @@ import { applyTxToBalances, evaluateExpression, toLocalDatetimeValue, fileToData
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { useHaptic } from '@/hooks/useHaptic'
+import { getDriveThumbnailUrl } from './ReceiptPreviewWithDrive'
 
 const KEYS = ['7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '−', '.', '0', '⌫', '+']
 
@@ -85,7 +86,17 @@ export default function AddTransactionSheet({ open, onClose, initial }) {
     setDate(dtVal)
 
     setNote(ini.note || '')
-    setReceipt(ini.receipt_url ? { dataUrl: ini.receipt_url, name: 'receipt' } : null)
+    const previewSrc = ini.receipt_preview || ini.receipt_url || null
+    setReceipt(
+      previewSrc
+        ? {
+            dataUrl: previewSrc,
+            driveUrl: ini.receipt_url?.includes('drive.google.com') ? ini.receipt_url : null,
+            name: ini.merchant ? `Struk ${ini.merchant}` : 'receipt',
+            isPdf: typeof previewSrc === 'string' && (previewSrc.endsWith('.pdf') || previewSrc.includes('application/pdf')),
+          }
+        : null
+    )
     setItems(Array.isArray(ini.items) ? ini.items : [])
     setMerchant(ini.merchant || '')
     setReceiptNumber(ini.receipt_number || '')
@@ -139,12 +150,27 @@ export default function AddTransactionSheet({ open, onClose, initial }) {
         note: note || null,
         merchant: merchant || null,
         receipt_number: receiptNumber || null,
-        receipt_url: receipt?.dataUrl || initial?.receipt_url || null,
-        storage_provider: initial?.storage_provider || (receipt?.dataUrl?.includes('drive.google.com') ? 'google_drive' : 'local'),
+        receipt_url: receipt?.driveUrl || (receipt?.dataUrl?.includes('drive.google.com') ? receipt.dataUrl : (initial?.receipt_url || receipt?.dataUrl || null)),
+        storage_provider: initial?.storage_provider || (receipt?.driveUrl || receipt?.dataUrl?.includes('drive.google.com') || initial?.receipt_url?.includes('drive.google.com') ? 'google_drive' : 'local'),
         items: items?.length ? items : [],
         tax_deductible: type === 'expense' ? tax : false,
         date: new Date(date).toISOString(),
         transaction_date: new Date(date).toISOString(),
+      }
+
+      // Persist local cache of receipt thumbnail image
+      if (typeof localStorage !== 'undefined' && receipt?.dataUrl && receipt.dataUrl.startsWith('data:')) {
+        try {
+          if (tx.receipt_url) {
+            localStorage.setItem(`paralar_receipt_cache_${tx.receipt_url}`, receipt.dataUrl)
+            const matchFId = tx.receipt_url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || tx.receipt_url.match(/[?&]id=([a-zA-Z0-9_-]+)/)
+            if (matchFId?.[1]) {
+              localStorage.setItem(`paralar_receipt_cache_${matchFId[1]}`, receipt.dataUrl)
+            }
+          }
+        } catch (cErr) {
+          console.warn('Cache save warning:', cErr)
+        }
       }
 
       // Trigger haptic feedback for successful transaction
@@ -315,7 +341,13 @@ export default function AddTransactionSheet({ open, onClose, initial }) {
               <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={onFile} />
               <Card onClick={() => fileRef.current?.click()} className="flex items-center gap-3 p-3">
                 {receipt?.dataUrl ? (
-                  <img src={receipt.dataUrl} alt="receipt" className="h-12 w-12 rounded-xl object-cover" />
+                  <img
+                    src={getDriveThumbnailUrl(receipt.dataUrl, 160, merchant)}
+                    alt="receipt"
+                    referrerPolicy="no-referrer"
+                    crossOrigin="anonymous"
+                    className="h-12 w-12 rounded-xl object-cover border border-border/40"
+                  />
                 ) : (
                   <div className="h-12 w-12 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center justify-center">{receipt?.isPdf ? <FileText size={20} /> : <Camera size={20} />}</div>
                 )}

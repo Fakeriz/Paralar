@@ -140,6 +140,14 @@ export default function ScanReceiptSheet({ open, onClose, onUse }) {
           if (data?.url) {
             finalReceiptUrl = data.url
             storageProvider = 'google_drive'
+            if (typeof localStorage !== 'undefined' && preview) {
+              try {
+                if (data.fileId) localStorage.setItem(`paralar_receipt_cache_${data.fileId}`, preview)
+                localStorage.setItem(`paralar_receipt_cache_${data.url}`, preview)
+              } catch (e) {
+                console.warn('Cache receipt failed:', e)
+              }
+            }
             toast.success('Foto struk dicadangkan ke Google Drive')
           }
         }
@@ -163,6 +171,7 @@ export default function ScanReceiptSheet({ open, onClose, onUse }) {
       receipt_number: result.receipt_number,
       items: result.items || [],
       receipt_url: finalReceiptUrl,
+      receipt_preview: preview,
       storage_provider: storageProvider,
       note: result.merchant,
       time: finalTime,

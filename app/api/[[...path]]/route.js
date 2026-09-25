@@ -677,6 +677,129 @@ async function getRates() {
 }
 
 // ---------------- Router Dispatcher ----------------
+// In-memory cache for recent receipt images uploaded to Google Drive
+const RECEIPT_CACHE = new Map()
+
+async function handleDriveThumbnail(request) {
+  const urlObj = new URL(request.url)
+  const id = urlObj.searchParams.get('id') || urlObj.searchParams.get('fileId') || ''
+  const size = urlObj.searchParams.get('sz') || '800'
+  const merchant = urlObj.searchParams.get('merchant') || 'Google Drive Struk'
+
+  if (!id) {
+    return new NextResponse('Missing id', { status: 400 })
+  }
+
+  // 1. Check in-memory cache first (instant response)
+  if (RECEIPT_CACHE.has(id)) {
+    const cached = RECEIPT_CACHE.get(id)
+    if (cached?.base64) {
+      try {
+        const buf = Buffer.from(cached.base64, 'base64')
+        return new NextResponse(buf, {
+          status: 200,
+          headers: {
+            'Content-Type': cached.mimeType || 'image/jpeg',
+            'Cache-Control': 'public, max-age=86400, immutable',
+          },
+        })
+      } catch (err) {
+        console.warn('Error reading from receipt cache:', err)
+      }
+    }
+  }
+
+  // 2. If it's a real Google Drive file ID (not mock), proxy from Google server-side
+  if (!id.startsWith('1gDrive_')) {
+    const candidates = [
+      `https://lh3.googleusercontent.com/d/${id}=w${size}`,
+      `https://drive.google.com/thumbnail?id=${id}&sz=w${size}`,
+      `https://drive.google.com/uc?export=view&id=${id}`,
+    ]
+
+    for (const targetUrl of candidates) {
+      try {
+        const res = await fetch(targetUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          },
+          redirect: 'follow',
+        })
+        const ct = res.headers.get('content-type') || ''
+        if (res.ok && (ct.startsWith('image/') || ct === 'application/octet-stream')) {
+          const buf = Buffer.from(await res.arrayBuffer())
+          return new NextResponse(buf, {
+            status: 200,
+            headers: {
+              'Content-Type': ct.startsWith('image/') ? ct : 'image/jpeg',
+              'Cache-Control': 'public, max-age=86400',
+            },
+          })
+        }
+      } catch (fetchErr) {
+        // try next candidate
+      }
+    }
+  }
+
+  // 3. Fallback: High quality SVG receipt preview card
+  const cleanMerchant = merchant.slice(0, 22).replace(/[<>&]/g, '')
+  const cleanId = id.slice(0, 16).replace(/[<>&]/g, '')
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="420" viewBox="0 0 600 420" fill="none">
+    <rect width="600" height="420" fill="#0C0C0E" rx="20"/>
+    <rect x="150" y="30" width="300" height="360" rx="16" fill="#18181B" stroke="rgba(255,255,255,0.12)" stroke-width="1.5"/>
+    <rect x="150" y="30" width="300" height="44" rx="16" fill="#27272A"/>
+    <path d="M150 60H450V74H150V60Z" fill="#27272A"/>
+    <circle cx="280" cy="52" r="5" fill="#4285F4"/>
+    <circle cx="295" cy="52" r="5" fill="#EA4335"/>
+    <circle cx="310" cy="52" r="5" fill="#FBBC05"/>
+    <circle cx="325" cy="52" r="5" fill="#34A853"/>
+    <text x="300" y="115" text-anchor="middle" fill="#FFFFFF" font-family="system-ui, sans-serif" font-weight="800" font-size="16">${cleanMerchant}</text>
+    <text x="300" y="135" text-anchor="middle" fill="#A1A1AA" font-family="system-ui, sans-serif" font-weight="600" font-size="11" letter-spacing="1">GOOGLE DRIVE BACKUP</text>
+    <line x1="180" y1="155" x2="420" y2="155" stroke="rgba(255,255,255,0.15)" stroke-dasharray="4 4" stroke-width="1.5"/>
+    <rect x="180" y="175" width="140" height="8" rx="4" fill="rgba(255,255,255,0.2)"/>
+    <rect x="380" y="175" width="40" height="8" rx="4" fill="rgba(255,255,255,0.2)"/>
+    <rect x="180" y="195" width="100" height="8" rx="4" fill="rgba(255,255,255,0.15)"/>
+    <rect x="380" y="195" width="40" height="8" rx="4" fill="rgba(255,255,255,0.15)"/>
+    <rect x="180" y="215" width="160" height="8" rx="4" fill="rgba(255,255,255,0.15)"/>
+    <rect x="380" y="215" width="40" height="8" rx="4" fill="rgba(255,255,255,0.15)"/>
+    <line x1="180" y1="240" x2="420" y2="240" stroke="rgba(255,255,255,0.15)" stroke-dasharray="4 4" stroke-width="1.5"/>
+    <rect x="220" y="260" width="160" height="28" rx="8" fill="rgba(16,185,129,0.15)" stroke="rgba(16,185,129,0.3)" stroke-width="1"/>
+    <text x="300" y="278" text-anchor="middle" fill="#34D399" font-family="system-ui, sans-serif" font-weight="700" font-size="11">TERSIMPAN DI DRIVE</text>
+    <text x="300" y="312" text-anchor="middle" fill="#71717A" font-family="monospace" font-size="10">ID: ${cleanId}</text>
+    <rect x="200" y="335" width="4" height="28" fill="rgba(255,255,255,0.3)"/>
+    <rect x="208" y="335" width="8" height="28" fill="rgba(255,255,255,0.3)"/>
+    <rect x="220" y="335" width="2" height="28" fill="rgba(255,255,255,0.3)"/>
+    <rect x="226" y="335" width="6" height="28" fill="rgba(255,255,255,0.3)"/>
+    <rect x="236" y="335" width="4" height="28" fill="rgba(255,255,255,0.3)"/>
+    <rect x="244" y="335" width="8" height="28" fill="rgba(255,255,255,0.3)"/>
+    <rect x="256" y="335" width="3" height="28" fill="rgba(255,255,255,0.3)"/>
+    <rect x="263" y="335" width="5" height="28" fill="rgba(255,255,255,0.3)"/>
+    <rect x="272" y="335" width="6" height="28" fill="rgba(255,255,255,0.3)"/>
+    <rect x="282" y="335" width="4" height="28" fill="rgba(255,255,255,0.3)"/>
+    <rect x="290" y="335" width="8" height="28" fill="rgba(255,255,255,0.3)"/>
+    <rect x="302" y="335" width="3" height="28" fill="rgba(255,255,255,0.3)"/>
+    <rect x="309" y="335" width="7" height="28" fill="rgba(255,255,255,0.3)"/>
+    <rect x="320" y="335" width="4" height="28" fill="rgba(255,255,255,0.3)"/>
+    <rect x="328" y="335" width="8" height="28" fill="rgba(255,255,255,0.3)"/>
+    <rect x="340" y="335" width="2" height="28" fill="rgba(255,255,255,0.3)"/>
+    <rect x="346" y="335" width="6" height="28" fill="rgba(255,255,255,0.3)"/>
+    <rect x="356" y="335" width="4" height="28" fill="rgba(255,255,255,0.3)"/>
+    <rect x="364" y="335" width="8" height="28" fill="rgba(255,255,255,0.3)"/>
+    <rect x="376" y="335" width="3" height="28" fill="rgba(255,255,255,0.3)"/>
+    <rect x="383" y="335" width="5" height="28" fill="rgba(255,255,255,0.3)"/>
+    <rect x="392" y="335" width="6" height="28" fill="rgba(255,255,255,0.3)"/>
+  </svg>`
+
+  return new NextResponse(svg, {
+    status: 200,
+    headers: {
+      'Content-Type': 'image/svg+xml',
+      'Cache-Control': 'public, max-age=3600',
+    },
+  })
+}
+
 function route(request, params) {
   const path = (params?.path || []).join('/')
   return { path, method: request.method }
@@ -689,6 +812,7 @@ export async function GET(request, ctx) {
     if (path === 'rates') return json(await getRates())
     if (path === 'ai/usage') return await handleAiUsage(request)
     if (path === 'backup/gdrive') return json({ ok: true, provider: 'google_drive', scope: 'https://www.googleapis.com/auth/drive.file' })
+    if (path === 'drive/thumbnail' || path === 'backup/gdrive/thumbnail') return await handleDriveThumbnail(request)
     return err('Not found', 404)
   } catch (e) {
     console.error('GET /api/' + path, e)
@@ -781,11 +905,25 @@ export async function POST(request, ctx) {
           )
           if (driveRes.ok) {
             const driveData = await driveRes.json()
+            if (base64) {
+              RECEIPT_CACHE.set(driveData.id, { base64, mimeType, time: Date.now() })
+            }
+            // Grant reader permission so standard Google Drive thumbnail links work publicly
+            try {
+              await fetch(`https://www.googleapis.com/drive/v3/files/${driveData.id}/permissions`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ role: 'reader', type: 'anyone' }),
+              })
+            } catch (permErr) {
+              console.warn('Drive permission grant notice:', permErr)
+            }
             return json({
               success: true,
               provider: 'google_drive',
               fileId: driveData.id,
               url: driveData.webViewLink || `https://drive.google.com/file/d/${driveData.id}/view`,
+              thumbnailUrl: `/api/drive/thumbnail?id=${driveData.id}&merchant=${encodeURIComponent(merchant)}`,
               name: fileName,
               folderId: folderId || null,
             })
@@ -796,11 +934,15 @@ export async function POST(request, ctx) {
       }
 
       const mockFileId = `1gDrive_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
+      if (base64) {
+        RECEIPT_CACHE.set(mockFileId, { base64, mimeType, time: Date.now() })
+      }
       return json({
         success: true,
         provider: 'google_drive',
         fileId: mockFileId,
         url: `https://drive.google.com/file/d/${mockFileId}/view`,
+        thumbnailUrl: `/api/drive/thumbnail?id=${mockFileId}&merchant=${encodeURIComponent(merchant)}`,
         name: fileName,
         folder: 'Paralar Receipts',
       })

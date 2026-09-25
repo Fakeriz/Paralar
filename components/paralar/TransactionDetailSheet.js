@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
-import { Pencil, Trash2, Eye, X, Plus, Check, UserPlus } from 'lucide-react'
+import { Pencil, Trash2, Eye, X, Plus, Check, UserPlus, ExternalLink } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
 import { Sheet, Segmented, CategoryBadge, Card } from './ui'
@@ -128,13 +128,7 @@ export default function TransactionDetailSheet({ open, onClose, tx, onEdit }) {
         receiptUrl={tx.receipt_url}
         storageProvider={tx.storage_provider}
         merchantName={tx.merchant || tx.note || tx.description}
-        onOpenFullImage={() => {
-          if (tx.receipt_url?.includes('drive.google.com')) {
-            window.open(tx.receipt_url, '_blank', 'noopener,noreferrer')
-          } else {
-            setViewImg(true)
-          }
-        }}
+        onOpenFullImage={() => setViewImg(true)}
       />
 
       <div className="text-center mt-6">
@@ -243,9 +237,28 @@ export default function TransactionDetailSheet({ open, onClose, tx, onEdit }) {
       <div className="h-8" />
 
       {viewImg && tx.receipt_url ? (
-        <div className="fixed inset-0 z-[80] bg-black/90 flex items-center justify-center p-4" onClick={() => setViewImg(false)}>
-          <button type="button" className="absolute top-6 right-6 text-white cursor-pointer" onClick={() => setViewImg(false)}><X size={26} /></button>
-          <img src={getDriveThumbnailUrl(tx.receipt_url)} alt="receipt" className="max-h-[85vh] max-w-full object-contain rounded-xl" />
+        <div className="fixed inset-0 z-[80] bg-black/95 flex items-center justify-center p-4 cursor-pointer" onClick={() => setViewImg(false)}>
+          <button type="button" className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition" onClick={() => setViewImg(false)}><X size={20} /></button>
+          <div className="relative max-h-[85vh] max-w-full flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={getDriveThumbnailUrl(tx.receipt_url, 1200, tx.merchant || tx.note)}
+              alt="receipt"
+              referrerPolicy="no-referrer"
+              crossOrigin="anonymous"
+              className="max-h-[75vh] max-w-full object-contain rounded-2xl shadow-2xl select-none"
+            />
+            {tx.receipt_url?.includes('drive.google.com') && (
+              <a
+                href={tx.receipt_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/15 hover:bg-white/25 text-white text-xs font-bold backdrop-blur-md transition-all active:scale-95 cursor-pointer shadow-lg border border-white/10"
+              >
+                <ExternalLink size={14} />
+                <span>Buka Berkas di Google Drive</span>
+              </a>
+            )}
+          </div>
         </div>
       ) : null}
     </Sheet>

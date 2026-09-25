@@ -23,7 +23,7 @@ import { getDriveThumbnailUrl } from './ReceiptPreviewWithDrive'
 
 function ThumbnailImage({ url, merchant }) {
   const [hasError, setHasError] = useState(false)
-  const thumbUrl = useMemo(() => getDriveThumbnailUrl(url, 200), [url])
+  const thumbUrl = useMemo(() => getDriveThumbnailUrl(url, 200, merchant), [url, merchant])
   const isPdf = typeof url === 'string' && (url.toLowerCase().endsWith('.pdf') || url.includes('application/pdf'))
 
   if (isPdf) {
@@ -37,7 +37,7 @@ function ThumbnailImage({ url, merchant }) {
 
   if (hasError || !url) {
     return (
-      <div className="w-full h-full flex items-center justify-center text-zinc-400 dark:text-zinc-500">
+      <div className="w-full h-full flex items-center justify-center text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-800">
         <ImageIcon size={22} strokeWidth={1.8} />
       </div>
     )
@@ -48,6 +48,8 @@ function ThumbnailImage({ url, merchant }) {
       src={thumbUrl}
       alt={merchant ? `Receipt for ${merchant}` : 'Receipt thumbnail'}
       className="w-full h-full object-cover"
+      referrerPolicy="no-referrer"
+      crossOrigin="anonymous"
       loading="lazy"
       onError={() => setHasError(true)}
     />
@@ -424,7 +426,7 @@ export default function ReceiptGallerySheet({ open, onClose, onOpenScanner }) {
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   haptic?.buttonPress?.()
-                                  setPreviewImage(getDriveThumbnailUrl(tx.receipt_url, 800))
+                                  setPreviewImage(getDriveThumbnailUrl(tx.receipt_url, 1200, merchantName))
                                 }}
                                 className="w-[52px] h-[52px] rounded-xl overflow-hidden shrink-0 bg-zinc-200/80 dark:bg-zinc-800/80 flex items-center justify-center relative cursor-zoom-in group/thumb"
                                 title="Click to enlarge"
@@ -490,6 +492,8 @@ export default function ReceiptGallerySheet({ open, onClose, onOpenScanner }) {
               <img
                 src={previewImage}
                 alt="Receipt preview"
+                referrerPolicy="no-referrer"
+                crossOrigin="anonymous"
                 className="max-h-[85vh] max-w-full object-contain rounded-xl select-none"
               />
             </div>

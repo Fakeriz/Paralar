@@ -1,22 +1,47 @@
 'use client'
 
-import { useState } from 'react'
-import { Eye, HardDrive, ExternalLink, Image as ImageIcon } from 'lucide-react'
+import { useState, useMemo, useEffect } from 'react'
+import { Eye, HardDrive, ExternalLink, Image as ImageIcon, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export function getDriveThumbnailUrl(url, size = 800) {
+export function extractDriveFileId(url) {
+  if (!url || typeof url !== 'string') return null
+  const matchD = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)
+  if (matchD?.[1]) return matchD[1]
+  const matchId = url.match(/[?&]id=([a-zA-Z0-9_-]+)/)
+  if (matchId?.[1]) return matchId[1]
+  return null
+}
+
+export function getDriveThumbnailUrl(url, size = 800, merchant = '') {
   if (!url || typeof url !== 'string') return url
+  // If already data URL or blob URL
+  if (url.startsWith('data:') || url.startsWith('blob:')) {
+    return url
+  }
+
+  // If it's a Google Drive link
   if (url.includes('drive.google.com')) {
-    // Extract fileId from /file/d/{fileId}/view or ?id={fileId}
-    const matchD = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)
-    if (matchD?.[1]) {
-      return `https://drive.google.com/thumbnail?id=${matchD[1]}&sz=w${size}`
-    }
-    const matchId = url.match(/[?&]id=([a-zA-Z0-9_-]+)/)
-    if (matchId?.[1]) {
-      return `https://drive.google.com/thumbnail?id=${matchId[1]}&sz=w${size}`
+    const fileId = extractDriveFileId(url)
+    if (fileId) {
+      // 1. Check local device cache first (instant local preview)
+      if (typeof localStorage !== 'undefined') {
+        try {
+          const cached =
+            localStorage.getItem(`paralar_receipt_cache_${fileId}`) ||
+            localStorage.getItem(`paralar_receipt_cache_${url}`)
+          if (cached && (cached.startsWith('data:image') || cached.startsWith('http'))) {
+            return cached
+          }
+        } catch {}
+      }
+
+      // 2. Route through 1st-party API proxy endpoint
+      const mParam = merchant ? `&merchant=${encodeURIComponent(merchant)}` : ''
+      return `/api/drive/thumbnail?id=${fileId}&sz=${size}${mParam}`
     }
   }
+
   return url
 }
 
@@ -27,50 +52,130 @@ export default function ReceiptPreviewWithDrive({
   onOpenFullImage,
 }) {
   const [imgError, setImgError] = useState(false)
-
-  if (!receiptUrl) return null
+  const [imgLoading, setImgLoading] = useState(true)
+  const [fallbackIndex, setFallbackIndex] = useState(0)
 
   const isGoogleDrive =
     storageProvider === 'google_drive' ||
     (typeof receiptUrl === 'string' && receiptUrl.includes('drive.google.com'))
 
-  const displayImageSrc = getDriveThumbnailUrl(receiptUrl)
+  const fileId = useMemo(() => extractDriveFileId(receiptUrl), [receiptUrl])
+
+  // Sequence of fallback image candidate sources
+  const candidateUrls = useMemo(() => {
+    if (!receiptUrl) return []
+    if (receiptUrl.startsWith('data:') || receiptUrl.startsWith('blob:')) {
+      return [receiptUrl]
+    }
+
+    const list = []
+
+    // 1. Local cached image data
+    if (typeof localStorage !== 'undefined' && fileId) {
+      try {
+        const cached =
+          localStorage.getItem(`paralar_receipt_cache_${fileId}`) ||
+          localStorage.getItem(`paralar_receipt_cache_${receiptUrl}`)
+        if (cached && (cached.startsWith('data:image') || cached.startsWith('http'))) {
+          list.push(cached)
+        }
+      } catch {}
+    }
+
+    if (fileId) {
+      const mParam = merchantName ? `&merchant=${encodeURIComponent(merchantName)}` : ''
+      // 2. 1st-party API Proxy route (no CORS, server cache)
+      list.push(`/api/drive/thumbnail?id=${fileId}&sz=800${mParam}`)
+      // 3. Google Usercontent CDN
+      list.push(`https://lh3.googleusercontent.com/d/${fileId}=w800`)
+      // 4. Google Drive direct thumbnail
+      list.push(`https://drive.google.com/thumbnail?id=${fileId}&sz=w800`)
+    } else {
+      list.push(receiptUrl)
+    }
+
+    return Array.from(new Set(list))
+  }, [receiptUrl, fileId, merchantName])
+
+  const currentImageSrc = candidateUrls[fallbackIndex] || receiptUrl
+
+  // Reset states when receiptUrl changes
+  useEffect(() => {
+    setImgError(false)
+    setImgLoading(true)
+    setFallbackIndex(0)
+  }, [receiptUrl])
+
+  if (!receiptUrl) return null
+
+  const handleImageError = () => {
+    if (fallbackIndex < candidateUrls.length - 1) {
+      // Try next candidate
+      setFallbackIndex((prev) => prev + 1)
+      setImgLoading(true)
+    } else {
+      setImgError(true)
+      setImgLoading(false)
+    }
+  }
 
   const handleEyeClick = (e) => {
     e.stopPropagation()
     if (onOpenFullImage) {
-      onOpenFullImage(receiptUrl)
-    } else if (typeof window !== 'undefined') {
+      onOpenFullImage(currentImageSrc || receiptUrl)
+    } else if (isGoogleDrive && receiptUrl.includes('drive.google.com') && typeof window !== 'undefined') {
       window.open(receiptUrl, '_blank', 'noopener,noreferrer')
+    } else if (typeof window !== 'undefined') {
+      window.open(currentImageSrc, '_blank', 'noopener,noreferrer')
     }
   }
 
   return (
     <div className="w-full space-y-3 mt-4" data-testid="receipt-preview-unified">
       {/* BAGIAN ATAS: Pratinjau Gambar */}
-      <div className="relative w-full h-56 rounded-2xl bg-zinc-100 dark:bg-white/5 border border-zinc-200 dark:border-white/10 overflow-hidden flex items-center justify-center">
-        {!imgError ? (
-          <img
-            src={displayImageSrc}
-            alt={merchantName ? `Struk ${merchantName}` : 'Receipt preview'}
-            className="w-full h-full object-contain p-2"
-            onError={() => setImgError(true)}
-            loading="lazy"
-          />
-        ) : (
-          <div className="flex flex-col items-center justify-center gap-2 text-zinc-400 dark:text-zinc-500">
-            <ImageIcon size={32} strokeWidth={1.5} />
-            <span className="text-xs font-medium">
-              {isGoogleDrive ? 'Tersimpan di Google Drive' : 'Pratinjau struk'}
-            </span>
+      <div className="relative w-full h-64 rounded-2xl bg-zinc-100 dark:bg-white/5 border border-zinc-200 dark:border-white/10 overflow-hidden flex items-center justify-center">
+        {imgLoading && !imgError && (
+          <div className="absolute inset-0 flex items-center justify-center bg-zinc-100/80 dark:bg-zinc-900/80 z-10 backdrop-blur-xs">
+            <RefreshCw size={20} className="animate-spin text-zinc-400" />
           </div>
         )}
 
+        {!imgError ? (
+          <img
+            src={currentImageSrc}
+            alt={merchantName ? `Struk ${merchantName}` : 'Receipt preview'}
+            className="w-full h-full object-contain p-2 select-none"
+            referrerPolicy="no-referrer"
+            crossOrigin="anonymous"
+            onLoad={() => {
+              setImgLoading(false)
+              setImgError(false)
+            }}
+            onError={handleImageError}
+            loading="lazy"
+          />
+        ) : (
+          <div className="flex flex-col items-center justify-center gap-2.5 p-6 text-center text-zinc-400 dark:text-zinc-500">
+            <div className="w-12 h-12 rounded-2xl bg-zinc-200/60 dark:bg-zinc-800/60 flex items-center justify-center text-zinc-600 dark:text-zinc-300">
+              <ImageIcon size={26} strokeWidth={1.8} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
+                {merchantName ? `Struk ${merchantName}` : 'Pratinjau Struk'}
+              </p>
+              <p className="text-[11px] text-zinc-500 mt-0.5">
+                {isGoogleDrive ? 'Tersimpan aman di Google Drive' : 'Foto struk belanja'}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Tombol Lihat Gambar Penuh */}
         <button
           type="button"
           onClick={handleEyeClick}
           aria-label="Lihat gambar penuh"
-          className="absolute bottom-2.5 right-2.5 w-9 h-9 rounded-full bg-black/75 hover:bg-black text-white flex items-center justify-center backdrop-blur-md shadow-md transition-all active:scale-95 cursor-pointer"
+          className="absolute bottom-2.5 right-2.5 w-9 h-9 rounded-full bg-black/75 hover:bg-black text-white flex items-center justify-center backdrop-blur-md shadow-md transition-all active:scale-95 cursor-pointer z-20"
           data-testid="receipt-preview-eye-btn"
         >
           <Eye size={16} strokeWidth={2} />
