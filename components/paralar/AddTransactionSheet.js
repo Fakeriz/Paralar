@@ -11,11 +11,13 @@ import { convert, getRate, formatRate } from '@/lib/rates'
 import { applyTxToBalances, evaluateExpression, toLocalDatetimeValue, fileToDataUrl } from '@/lib/ledger'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
+import { useHaptic } from '@/hooks/useHaptic'
 
 const KEYS = ['7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '−', '.', '0', '⌫', '+']
 
 export default function AddTransactionSheet({ open, onClose, initial }) {
   const { t, home, rates, accounts = [], store, refresh, fmt, transactions = [], open: openSheet, isAiAllowed, saveTransaction } = useApp()
+  const haptic = useHaptic()
   const [type, setType] = useState('expense')
   const [amount, setAmount] = useState('')
   const [currency, setCurrency] = useState(home)
@@ -102,6 +104,7 @@ export default function AddTransactionSheet({ open, onClose, initial }) {
   const canSave = num > 0 && (type !== 'transfer' || (accountId && toAccountId && accountId !== toAccountId))
 
   const pressKey = (k) => {
+    haptic?.buttonPress?.()
     if (k === '⌫') return setAmount((a) => a.slice(0, -1))
     if (k === '=') return setAmount(String(roundMoney(evaluateExpression(amount), currency)))
     setAmount((a) => a + k)
@@ -143,6 +146,9 @@ export default function AddTransactionSheet({ open, onClose, initial }) {
         date: new Date(date).toISOString(),
         transaction_date: new Date(date).toISOString(),
       }
+
+      // Trigger haptic feedback for successful transaction
+      haptic?.successfulTransaction?.()
 
       // Close immediately & notify for instantaneous UI feedback
       onClose?.()
