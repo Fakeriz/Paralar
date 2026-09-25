@@ -10,10 +10,14 @@ const manrope = Manrope({
 
 export const metadata = {
   title: 'Paralar — Personal & Business Finance',
-  description: 'Log money in seconds. Multi-currency personal and business finance tracker.',
+  description: 'Multi-currency personal and business finance tracker with AI receipt scanning, voice log, debts, and bills tracking.',
   manifest: '/manifest.json',
   appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Paralar' },
   icons: { icon: '/icon.svg', apple: '/icon.svg' },
+  openGraph: {
+    title: 'Paralar — Personal & Business Finance',
+    description: 'Multi-currency personal and business finance tracker with AI receipt scanning, voice log, debts, and bills tracking.',
+  },
 }
 
 export const viewport = {
