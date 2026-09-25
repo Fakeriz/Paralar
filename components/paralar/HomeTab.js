@@ -330,13 +330,7 @@ function QuickGrid() {
       id: 'receipts',
       label: t('receipts'),
       icon: Receipt,
-      onClick: () => {
-        if (!isAiAllowed) {
-          open('aiPremium')
-        } else {
-          open('scan')
-        }
-      },
+      onClick: () => open('receiptGallery'),
     },
     { id: 'split', label: t('bill_split'), icon: Users, onClick: () => open('split') },
     { id: 'analytics', label: t('analytics'), icon: PieChart, onClick: () => open('analytics') },

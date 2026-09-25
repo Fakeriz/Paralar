@@ -4,17 +4,17 @@ import { useState } from 'react'
 import { Eye, HardDrive, ExternalLink, Image as ImageIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export function getDriveThumbnailUrl(url) {
+export function getDriveThumbnailUrl(url, size = 800) {
   if (!url || typeof url !== 'string') return url
   if (url.includes('drive.google.com')) {
     // Extract fileId from /file/d/{fileId}/view or ?id={fileId}
     const matchD = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)
     if (matchD?.[1]) {
-      return `https://drive.google.com/thumbnail?id=${matchD[1]}&sz=w800`
+      return `https://drive.google.com/thumbnail?id=${matchD[1]}&sz=w${size}`
     }
     const matchId = url.match(/[?&]id=([a-zA-Z0-9_-]+)/)
     if (matchId?.[1]) {
-      return `https://drive.google.com/thumbnail?id=${matchId[1]}&sz=w800`
+      return `https://drive.google.com/thumbnail?id=${matchId[1]}&sz=w${size}`
     }
   }
   return url

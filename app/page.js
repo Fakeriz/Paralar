@@ -42,6 +42,7 @@ import ImportTransactionsSheet from '@/components/paralar/ImportTransactionsShee
 import AiPremiumSheet from '@/components/paralar/AiPremiumSheet'
 import PaywallSheet from '@/components/paralar/PaywallSheet'
 import CloudReceiptBackupSheet from '@/components/paralar/CloudReceiptBackupSheet'
+import ReceiptGallerySheet from '@/components/paralar/ReceiptGallerySheet'
 
 const GUEST_KEY = 'paralar_guest_mode'
 const ONBOARD_KEY = 'paralar_onboarded'
@@ -404,7 +405,7 @@ export default function App() {
         <ProfileSheet open={!!sheets.profile} onClose={() => close('profile')} />
         <NewAccountSheet open={!!sheets.newAccount} onClose={() => close('newAccount')} />
         <VoiceLogSheet open={!!sheets.voice} onClose={() => close('voice')} onResult={(data) => { close('voice'); setTimeout(() => open('addTx', data), 150) }} />
-        <ScanReceiptSheet open={!!sheets.scan} onClose={() => close('scan')} onUse={(data) => { close('scan'); setTimeout(() => open('addTx', data), 150) }} />
+        <ScanReceiptSheet open={Boolean(sheets?.scan || sheets?.scanReceipt)} onClose={() => { close('scan'); close('scanReceipt') }} onUse={(data) => { close('scan'); close('scanReceipt'); setTimeout(() => open('addTx', data), 150) }} />
         <TransactionDetailSheet open={!!sheets.txDetail} onClose={() => close('txDetail')} tx={sheets.txDetail && typeof sheets.txDetail === 'object' ? sheets.txDetail : null} onEdit={editTx} />
         <CoachSheet open={!!sheets.coach} onClose={() => close('coach')} />
         <SplitBillSheet open={!!sheets.split} onClose={() => close('split')} />
@@ -418,6 +419,20 @@ export default function App() {
         <DebtTrackerSheet open={!!sheets.debts} onClose={() => close('debts')} />
         <ExportTransactionsSheet open={!!sheets.exportTx} onClose={() => close('exportTx')} />
         <ImportTransactionsSheet open={!!sheets.importTx} onClose={() => close('importTx')} />
+        <ReceiptGallerySheet
+          open={Boolean(sheets?.receiptGallery)}
+          onClose={() => close('receiptGallery')}
+          onOpenScanner={() => {
+            close('receiptGallery')
+            setTimeout(() => {
+              if (!isAiAllowed) {
+                open('aiPremium')
+              } else {
+                open('scan')
+              }
+            }, 120)
+          }}
+        />
         <CurrencySheet
           open={!!sheets.currency}
           onClose={() => close('currency')}
