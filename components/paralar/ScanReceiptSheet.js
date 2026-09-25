@@ -128,7 +128,9 @@ export default function ScanReceiptSheet({ open, onClose, onUse }) {
           headers,
           body: JSON.stringify({
             imageBase64: preview,
-            name: `receipt_${(result.merchant || 'paralar').replace(/\s+/g, '_')}_${Date.now()}.jpg`,
+            merchant: result.merchant || 'Toko',
+            date: result.date || now.toISOString().split('T')[0],
+            name: `Struk_${(result.merchant || 'Toko').replace(/\s+/g, '_')}_${result.date || now.toISOString().split('T')[0]}.jpg`,
             google_token: gToken,
           }),
         })

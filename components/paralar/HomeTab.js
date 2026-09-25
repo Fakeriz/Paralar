@@ -1,6 +1,6 @@
 'use client'
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
-import { Bell, Eye, EyeOff, ArrowDownLeft, ArrowUpRight, Receipt, Users, PieChart, FileText, Plus, ChevronRight, Sparkles, Trash2 } from 'lucide-react'
+import { Bell, Eye, EyeOff, ArrowDownLeft, ArrowUpRight, Receipt, Users, PieChart, FileText, Plus, ChevronRight, Sparkles, Trash2, WifiOff, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
 import { Avatar, Card, SectionLabel, EmptyState } from './ui'
@@ -28,6 +28,28 @@ function Header() {
   const first = (profile?.full_name || '').trim().split(' ')[0]
 
   const [hasUnreadAnnouncements, setHasUnreadAnnouncements] = useState(false)
+  const [isOffline, setIsOffline] = useState(() => (typeof navigator !== 'undefined' ? !navigator.onLine : false))
+  const [isSyncing, setIsSyncing] = useState(false)
+
+  useEffect(() => {
+    const updateOnline = () => {
+      setIsOffline(typeof navigator !== 'undefined' ? !navigator.onLine : false)
+    }
+    const handleSyncState = (e) => {
+      if (e?.detail) {
+        if (e.detail.isOffline !== undefined) setIsOffline(e.detail.isOffline)
+        if (e.detail.isSyncing !== undefined) setIsSyncing(e.detail.isSyncing)
+      }
+    }
+    window.addEventListener('online', updateOnline)
+    window.addEventListener('offline', updateOnline)
+    window.addEventListener('paralar_sync_state', handleSyncState)
+    return () => {
+      window.removeEventListener('online', updateOnline)
+      window.removeEventListener('offline', updateOnline)
+      window.removeEventListener('paralar_sync_state', handleSyncState)
+    }
+  }, [])
 
   const checkUnreadAnnouncements = useCallback(async () => {
     try {
@@ -81,8 +103,27 @@ function Header() {
       <div className="flex items-center gap-3">
         <Avatar profile={profile} onClick={() => open('profile')} data-testid="avatar" />
         <div>
-          <p className="text-lg font-bold leading-tight text-zinc-950 dark:text-white" data-testid="greeting">{t('hi')}, {first || t('user')}</p>
-          {isGuest ? <p className="text-[11px] font-medium text-zinc-600 dark:text-zinc-400">{t('guest_mode')}</p> : null}
+          <div className="flex items-center gap-2">
+            <p className="text-lg font-bold leading-tight text-zinc-950 dark:text-white" data-testid="greeting">{t('hi')}, {first || t('user')}</p>
+            {isOffline ? (
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-white/10 shrink-0"
+                data-testid="offline-badge"
+              >
+                <WifiOff size={13} strokeWidth={2} />
+                <span>Offline Mode</span>
+              </span>
+            ) : isSyncing ? (
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-white/10 shrink-0"
+                data-testid="syncing-badge"
+              >
+                <RefreshCw size={13} strokeWidth={2} className="animate-spin" />
+                <span>Syncing...</span>
+              </span>
+            ) : null}
+          </div>
+          {isGuest ? <p className="text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mt-0.5">{t('guest_mode')}</p> : null}
         </div>
       </div>
       <button

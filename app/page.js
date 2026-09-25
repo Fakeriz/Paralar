@@ -8,6 +8,7 @@ import { translate, LOCALE_MAP } from '@/lib/i18n'
 import { formatMoney } from '@/lib/currencies'
 import { convert, FALLBACK_RATES } from '@/lib/rates'
 import { applyTxToBalances, computeBalanceDelta } from '@/lib/ledger'
+import { initSyncListener } from '@/lib/sync'
 import { AppContext } from '@/components/paralar/context'
 
 import Onboarding from '@/components/paralar/Onboarding'
@@ -170,6 +171,14 @@ export default function App() {
   }, [authed, store, session?.user?.id])
 
   useEffect(() => { if (authed) refresh() }, [authed, refresh])
+
+  useEffect(() => {
+    if (!authed) return
+    const cleanup = initSyncListener(supabase, () => {
+      refresh()
+    })
+    return cleanup
+  }, [authed, refresh])
 
   const setLang = useCallback((l) => {
     setLangState(l)

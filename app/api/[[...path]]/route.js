@@ -721,11 +721,48 @@ export async function POST(request, ctx) {
       }
 
       if (!base64) return err('Image data is required', 400)
-      const fileName = body?.name || body?.fileName || `Paralar_Receipt_${Date.now()}.jpg`
+      const merchant = (body?.merchant || 'Receipt').trim()
+      const date = body?.date || new Date().toISOString().split('T')[0]
+      const fileName = body?.name || body?.fileName || `Struk_${merchant.replace(/\s+/g, '_')}_${date}.jpg`
 
       if (token && token.length > 15 && token !== 'local' && !token.startsWith('dev-')) {
+        let folderId = null
+
+        // 1. Check or create "Paralar Receipts" folder
         try {
-          const metadata = { name: fileName, mimeType, description: 'Paralar Receipt Backup' }
+          const query = encodeURIComponent("name='Paralar Receipts' and mimeType='application/vnd.google-apps.folder' and trashed=false")
+          const findFolderRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`, {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          if (findFolderRes.ok) {
+            const folderData = await findFolderRes.json()
+            if (folderData?.files && folderData.files.length > 0) {
+              folderId = folderData.files[0].id
+            }
+          }
+
+          if (!folderId) {
+            const createFolderRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name: 'Paralar Receipts', mimeType: 'application/vnd.google-apps.folder' }),
+            })
+            if (createFolderRes.ok) {
+              const newFolder = await createFolderRes.json()
+              folderId = newFolder?.id || null
+            }
+          }
+        } catch (folderErr) {
+          console.warn('Google Drive folder resolution error (falling back to root):', folderErr)
+        }
+
+        try {
+          const metadata = {
+            name: fileName,
+            mimeType,
+            description: 'Paralar Receipt Backup',
+            ...(folderId ? { parents: [folderId] } : {}),
+          }
           const boundary = '-------314159265358979323846'
           const multipartRequestBody =
             `\r\n--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
@@ -735,7 +772,7 @@ export async function POST(request, ctx) {
             `\r\n--${boundary}--`
 
           const driveRes = await fetch(
-            'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink,webContentLink',
+            'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink,parents',
             {
               method: 'POST',
               headers: { Authorization: `Bearer ${token}`, 'Content-Type': `multipart/related; boundary=${boundary}` },
@@ -748,8 +785,9 @@ export async function POST(request, ctx) {
               success: true,
               provider: 'google_drive',
               fileId: driveData.id,
-              url: driveData.webViewLink || driveData.webContentLink || `https://drive.google.com/file/d/${driveData.id}/view`,
+              url: driveData.webViewLink || `https://drive.google.com/file/d/${driveData.id}/view`,
               name: fileName,
+              folderId: folderId || null,
             })
           }
         } catch (e) {
@@ -764,6 +802,7 @@ export async function POST(request, ctx) {
         fileId: mockFileId,
         url: `https://drive.google.com/file/d/${mockFileId}/view`,
         name: fileName,
+        folder: 'Paralar Receipts',
       })
     }
 
