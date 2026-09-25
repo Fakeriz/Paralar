@@ -124,16 +124,6 @@ export default function CloudReceiptBackupSheet({ open, onClose }) {
       open={open}
       onClose={onClose}
       title="Cloud Receipt Backup"
-      right={
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-          data-testid="cloud-backup-cancel"
-        >
-          Cancel
-        </button>
-      }
     >
       <div className="pt-2 pb-6 space-y-4 font-sans">
         {/* Subtitle Header */}

@@ -53,7 +53,7 @@ export default function BottomNav({ tab, onTab, onPlus }) {
     e?.stopPropagation?.()
     haptic?.buttonPress?.()
     if (open) {
-      open?.('addTx')
+      open?.('quickActions')
     } else if (onPlus) {
       onPlus?.()
     }
@@ -61,7 +61,10 @@ export default function BottomNav({ tab, onTab, onPlus }) {
 
   return (
     <nav className="fixed bottom-6 inset-x-0 z-50 flex items-center justify-center px-4 pointer-events-none select-none">
-      <div className="pointer-events-auto relative flex items-center justify-between w-full max-w-[340px] h-[58px] px-2 rounded-full bg-[#18181b]/80 dark:bg-[#121214]/85 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.45)]">
+      {/* 
+        KONTROL CONTAINER DOCK (Adaptif Light Mode & Dark Mode Obsidian)
+      */}
+      <div className="pointer-events-auto relative flex items-center justify-between w-full max-w-[340px] h-[60px] p-1.5 rounded-full bg-white/80 dark:bg-[#121214]/85 backdrop-blur-2xl border border-black/5 dark:border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.6)]">
         
         {/* 1. Home */}
         <button
@@ -69,18 +72,18 @@ export default function BottomNav({ tab, onTab, onPlus }) {
           onClick={() => handleTabClick('home')}
           data-testid="nav-home"
           aria-label={t?.('home') || 'Home'}
-          className="relative flex items-center justify-center flex-1 h-full rounded-full cursor-pointer focus:outline-none select-none active:scale-90 transition-transform duration-200"
+          className="relative flex items-center justify-center flex-1 h-full rounded-full cursor-pointer focus:outline-none select-none active:scale-95 transition-transform duration-200"
         >
           {tab === 'home' && (
             <motion.div
               layoutId="threadsActiveBubble"
               transition={{
                 type: 'spring',
-                stiffness: 420,
-                damping: 34,
-                mass: 0.8,
+                stiffness: 460,
+                damping: 32,
+                mass: 0.7,
               }}
-              className="absolute inset-y-1 inset-x-0.5 rounded-full bg-zinc-800/90 dark:bg-[#27272a]/90 border border-white/15 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_4px_12px_rgba(0,0,0,0.3)] pointer-events-none"
+              className="absolute inset-1 rounded-full bg-black/[0.06] dark:bg-[#26262a] border border-black/[0.04] dark:border-white/15 shadow-xs dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_4px_12px_rgba(0,0,0,0.3)] pointer-events-none"
             />
           )}
           <span className="relative z-10 flex items-center justify-center">
@@ -91,8 +94,8 @@ export default function BottomNav({ tab, onTab, onPlus }) {
               className={cn(
                 'transition-all duration-200',
                 tab === 'home'
-                  ? 'text-white scale-105 opacity-100'
-                  : 'stroke-[1.9] text-zinc-400 opacity-70 hover:opacity-100'
+                  ? 'text-zinc-950 dark:text-white scale-105 opacity-100'
+                  : 'text-zinc-400 hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-300 opacity-70'
               )}
             />
           </span>
@@ -104,18 +107,18 @@ export default function BottomNav({ tab, onTab, onPlus }) {
           onClick={() => handleTabClick('transactions')}
           data-testid="nav-transactions"
           aria-label={t?.('transactions') || 'Transactions'}
-          className="relative flex items-center justify-center flex-1 h-full rounded-full cursor-pointer focus:outline-none select-none active:scale-90 transition-transform duration-200"
+          className="relative flex items-center justify-center flex-1 h-full rounded-full cursor-pointer focus:outline-none select-none active:scale-95 transition-transform duration-200"
         >
           {tab === 'transactions' && (
             <motion.div
               layoutId="threadsActiveBubble"
               transition={{
                 type: 'spring',
-                stiffness: 420,
-                damping: 34,
-                mass: 0.8,
+                stiffness: 460,
+                damping: 32,
+                mass: 0.7,
               }}
-              className="absolute inset-y-1 inset-x-0.5 rounded-full bg-zinc-800/90 dark:bg-[#27272a]/90 border border-white/15 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_4px_12px_rgba(0,0,0,0.3)] pointer-events-none"
+              className="absolute inset-1 rounded-full bg-black/[0.06] dark:bg-[#26262a] border border-black/[0.04] dark:border-white/15 shadow-xs dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_4px_12px_rgba(0,0,0,0.3)] pointer-events-none"
             />
           )}
           <span className="relative z-10 flex items-center justify-center">
@@ -125,8 +128,8 @@ export default function BottomNav({ tab, onTab, onPlus }) {
               className={cn(
                 'transition-all duration-200',
                 tab === 'transactions'
-                  ? 'text-white scale-105 opacity-100'
-                  : 'stroke-[1.9] text-zinc-400 opacity-70 hover:opacity-100'
+                  ? 'text-zinc-950 dark:text-white scale-105 opacity-100'
+                  : 'text-zinc-400 hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-300 opacity-70'
               )}
             />
           </span>
@@ -141,7 +144,7 @@ export default function BottomNav({ tab, onTab, onPlus }) {
           className="relative flex items-center justify-center flex-1 h-full rounded-full cursor-pointer focus:outline-none select-none active:scale-90 transition-transform duration-200 group"
         >
           <span className="relative z-10 flex items-center justify-center">
-            <Plus className="w-6 h-6 stroke-[3.2] text-white transition-transform duration-200 group-hover:scale-110" />
+            <Plus className="w-6 h-6 stroke-[3.2] text-zinc-950 dark:text-white transition-transform duration-200 group-hover:scale-110" />
           </span>
         </button>
 
@@ -151,18 +154,18 @@ export default function BottomNav({ tab, onTab, onPlus }) {
           onClick={() => handleTabClick('goals')}
           data-testid="nav-goals"
           aria-label={t?.('goals') || 'Goals'}
-          className="relative flex items-center justify-center flex-1 h-full rounded-full cursor-pointer focus:outline-none select-none active:scale-90 transition-transform duration-200"
+          className="relative flex items-center justify-center flex-1 h-full rounded-full cursor-pointer focus:outline-none select-none active:scale-95 transition-transform duration-200"
         >
           {tab === 'goals' && (
             <motion.div
               layoutId="threadsActiveBubble"
               transition={{
                 type: 'spring',
-                stiffness: 420,
-                damping: 34,
-                mass: 0.8,
+                stiffness: 460,
+                damping: 32,
+                mass: 0.7,
               }}
-              className="absolute inset-y-1 inset-x-0.5 rounded-full bg-zinc-800/90 dark:bg-[#27272a]/90 border border-white/15 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_4px_12px_rgba(0,0,0,0.3)] pointer-events-none"
+              className="absolute inset-1 rounded-full bg-black/[0.06] dark:bg-[#26262a] border border-black/[0.04] dark:border-white/15 shadow-xs dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_4px_12px_rgba(0,0,0,0.3)] pointer-events-none"
             />
           )}
           <span className="relative z-10 flex items-center justify-center">
@@ -173,8 +176,8 @@ export default function BottomNav({ tab, onTab, onPlus }) {
               className={cn(
                 'transition-all duration-200',
                 tab === 'goals'
-                  ? 'text-white scale-105 opacity-100'
-                  : 'stroke-[1.9] text-zinc-400 opacity-70 hover:opacity-100'
+                  ? 'text-zinc-950 dark:text-white scale-105 opacity-100'
+                  : 'text-zinc-400 hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-300 opacity-70'
               )}
             />
           </span>
@@ -186,18 +189,18 @@ export default function BottomNav({ tab, onTab, onPlus }) {
           onClick={() => handleTabClick('more')}
           data-testid="nav-more"
           aria-label={t?.('profile') || t?.('more') || 'Profile'}
-          className="relative flex items-center justify-center flex-1 h-full rounded-full cursor-pointer focus:outline-none select-none active:scale-90 transition-transform duration-200"
+          className="relative flex items-center justify-center flex-1 h-full rounded-full cursor-pointer focus:outline-none select-none active:scale-95 transition-transform duration-200"
         >
           {tab === 'more' && (
             <motion.div
               layoutId="threadsActiveBubble"
               transition={{
                 type: 'spring',
-                stiffness: 420,
-                damping: 34,
-                mass: 0.8,
+                stiffness: 460,
+                damping: 32,
+                mass: 0.7,
               }}
-              className="absolute inset-y-1 inset-x-0.5 rounded-full bg-zinc-800/90 dark:bg-[#27272a]/90 border border-white/15 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_4px_12px_rgba(0,0,0,0.3)] pointer-events-none"
+              className="absolute inset-1 rounded-full bg-black/[0.06] dark:bg-[#26262a] border border-black/[0.04] dark:border-white/15 shadow-xs dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_4px_12px_rgba(0,0,0,0.3)] pointer-events-none"
             />
           )}
           <span className="relative z-10 flex items-center justify-center">
@@ -208,8 +211,8 @@ export default function BottomNav({ tab, onTab, onPlus }) {
               className={cn(
                 'transition-all duration-200',
                 tab === 'more'
-                  ? 'text-white scale-105 opacity-100'
-                  : 'stroke-[1.9] text-zinc-400 opacity-70 hover:opacity-100'
+                  ? 'text-zinc-950 dark:text-white scale-105 opacity-100'
+                  : 'text-zinc-400 hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-300 opacity-70'
               )}
             />
           </span>

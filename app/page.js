@@ -314,6 +314,35 @@ export default function App() {
     return { totalBalance, income, spending }
   }, [accounts, transactions, home, rates])
 
+  const editTx = useCallback((tx) => {
+    close('txDetail')
+    setTimeout(() => open('addTx', { ...tx, editId: tx.id }), 150)
+  }, [close, open])
+
+  const handleQuickAction = useCallback((action) => {
+    close('quickActions')
+    close('quick')
+    setTimeout(() => {
+      if (action === 'addTx') {
+        open('addTx')
+      } else if (action === 'scanReceipt') {
+        if (!isAiAllowed) {
+          open('aiPremium')
+        } else {
+          open('scan')
+        }
+      } else if (action === 'savings') {
+        setTab('goals')
+      } else if (action === 'voiceLog') {
+        if (!isAiAllowed) {
+          open('aiPremium')
+        } else {
+          open('voice')
+        }
+      }
+    }, 120)
+  }, [close, open, isAiAllowed, setTab])
+
   const ctx = {
     t, lang, setLang, fmt, home, rates, convertToHome,
     session, user: session?.user || null, isGuest, profile, updateProfile, signOut,
@@ -322,6 +351,7 @@ export default function App() {
     addTransaction: saveTransaction, saveTransaction, deleteTransaction,
     tab, setTab, sheets, open, close,
     hideBalance, setHideBalance,
+    editTx, handleQuickAction,
   }
 
   // ---- render gates ----
@@ -349,8 +379,6 @@ export default function App() {
     )
   }
 
-  const editTx = (tx) => { close('txDetail'); setTimeout(() => open('addTx', { ...tx, editId: tx.id }), 150) }
-
   return (
     <AppContext.Provider value={ctx}>
       <main className="min-h-dvh bg-background max-w-md mx-auto relative safe-top">
@@ -361,10 +389,17 @@ export default function App() {
           {tab === 'more' ? <MoreTab /> : null}
         </motion.div>
 
-        <BottomNav tab={tab} onTab={setTab} onPlus={() => open('addTx')} />
+        <BottomNav tab={tab} onTab={setTab} onPlus={() => open('quickActions')} />
 
         {/* Sheets */}
-        <QuickActionsSheet open={!!sheets.quick} onClose={() => close('quick')} />
+        <QuickActionsSheet
+          open={Boolean(sheets?.quickActions || sheets?.quick)}
+          onClose={() => {
+            close('quickActions')
+            close('quick')
+          }}
+          onSelectAction={handleQuickAction}
+        />
         <AddTransactionSheet open={!!sheets.addTx} onClose={() => close('addTx')} initial={sheets.addTx && typeof sheets.addTx === 'object' ? sheets.addTx : {}} />
         <ProfileSheet open={!!sheets.profile} onClose={() => close('profile')} />
         <NewAccountSheet open={!!sheets.newAccount} onClose={() => close('newAccount')} />
