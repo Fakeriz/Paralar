@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 import { applyTxToBalances } from '@/lib/ledger'
 import { deriveNotifications } from '@/lib/notifications'
 import { supabase } from '@/lib/supabase'
+import { APP_VERSION } from '@/lib/version'
 
 function Header() {
   const {
@@ -49,6 +50,16 @@ function Header() {
       window.removeEventListener('offline', updateOnline)
       window.removeEventListener('paralar_sync_state', handleSyncState)
     }
+  }, [])
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('paralar_app_version')
+      if (stored !== APP_VERSION) {
+        localStorage.setItem('paralar_app_version', APP_VERSION)
+        toast(`Paralar diperbarui ke ${APP_VERSION}`)
+      }
+    } catch {}
   }, [])
 
   const checkUnreadAnnouncements = useCallback(async () => {

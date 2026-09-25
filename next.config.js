@@ -1,5 +1,9 @@
 const nextConfig = {
   devIndicators: false,
+  env: {
+    NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA: process.env.VERCEL_GIT_COMMIT_SHA || '',
+    NEXT_PUBLIC_BUILD_DATE: new Date().toISOString().slice(0, 10),
+  },
   images: {
     unoptimized: true,
     remotePatterns: [

@@ -3,26 +3,43 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { FolderX, LogOut, Trash2, MessageSquareDot, ChevronRight, AlertTriangle, Bug, MessageSquare, HelpCircle, Download, Upload, Paperclip, Image as ImageIcon, X, Loader2, Sparkles, ExternalLink } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
-import { Sheet, Field, TextInput, Segmented, PrimaryButton } from './ui'
+import { Card, SectionLabel, Sheet, Field, TextInput, Segmented, PrimaryButton } from './ui'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import { sendTelegramSupportNotification } from '@/lib/telegram'
+import { FULL_VERSION_LABEL } from '@/lib/version'
 
 const uid = () => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `rp_${Date.now()}_${Math.random().toString(36).slice(2)}`)
 const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d } catch { return d } }
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch {} }
 
-function MenuRow({ icon: Icon, label, sub, onClick, danger, testId }) {
+function MenuRow({ icon: Icon, label, onClick, danger, testId }) {
   return (
-    <button type="button" onClick={onClick} className="w-full flex items-center justify-between p-4 hover:bg-muted/40 transition-colors text-left" data-testid={testId}>
-      <div className="flex items-center gap-3 min-w-0">
-        <Icon className={cn('w-5 h-5 shrink-0', danger && 'text-rose-500')} strokeWidth={1.75} />
-        <div className="min-w-0">
-          <p className={cn('font-medium text-[15px]', danger && 'text-rose-500')}>{label}</p>
-          {sub ? <p className="text-xs text-muted-foreground mt-0.5">{sub}</p> : null}
-        </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-zinc-100 dark:active:bg-zinc-800/60 transition"
+      data-testid={testId}
+    >
+      <div
+        className={cn(
+          'h-9 w-9 rounded-xl flex items-center justify-center shrink-0',
+          danger
+            ? 'bg-rose-500/10 text-rose-500 dark:bg-rose-500/20'
+            : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white'
+        )}
+      >
+        <Icon size={17} strokeWidth={1.75} />
       </div>
-      <ChevronRight className="w-4 h-4 text-muted-foreground/50 shrink-0" />
+      <span
+        className={cn(
+          'flex-1 font-semibold text-[15px]',
+          danger ? 'text-rose-500 dark:text-rose-400' : 'text-zinc-950 dark:text-white'
+        )}
+      >
+        {label}
+      </span>
+      <ChevronRight size={16} className="text-zinc-400 dark:text-zinc-500 shrink-0" />
     </button>
   )
 }
@@ -241,24 +258,28 @@ export default function AccountSupportSection() {
   return (
     <>
       {/* ACCOUNT */}
-      <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase mb-2 px-1 mt-7">{t('account_section')}</p>
-      <div className="rounded-2xl divide-y divide-border/40 border border-border/40 bg-card overflow-hidden">
-        <MenuRow icon={Download} label={t('export_transactions')} sub={t('export_transactions_sub')} onClick={() => open?.('exportTx')} testId="acc-export" />
-        <MenuRow icon={Upload} label={t('import_transactions')} sub={t('import_transactions_sub')} onClick={() => open?.('importTx')} testId="acc-import" />
-        <MenuRow icon={FolderX} label={t('clear_tx')} sub={t('clear_tx_sub')} onClick={openClear} testId="acc-clear-tx" />
-        <MenuRow icon={LogOut} label={t('sign_out')} sub={t('sign_out_sub')} onClick={() => setSignOutOpen(true)} testId="acc-signout" />
-        <MenuRow icon={Trash2} label={t('delete_account')} sub={t('delete_account_sub')} onClick={() => { setDeleteText(''); setDeleteOpen(true) }} danger testId="acc-delete" />
-      </div>
+      <SectionLabel className="text-xs font-semibold tracking-wider text-muted-foreground uppercase px-1 mb-2 mt-7">
+        {t('account_section')}
+      </SectionLabel>
+      <Card className="divide-y divide-zinc-200/60 dark:divide-white/5 overflow-hidden rounded-2xl">
+        <MenuRow icon={Download} label={t('export_transactions')} onClick={() => open?.('exportTx')} testId="acc-export" />
+        <MenuRow icon={Upload} label={t('import_transactions')} onClick={() => open?.('importTx')} testId="acc-import" />
+        <MenuRow icon={FolderX} label={t('clear_tx')} onClick={openClear} testId="acc-clear-tx" />
+        <MenuRow icon={LogOut} label={t('sign_out')} onClick={() => setSignOutOpen(true)} testId="acc-signout" />
+        <MenuRow icon={Trash2} label={t('delete_account')} onClick={() => { setDeleteText(''); setDeleteOpen(true) }} danger testId="acc-delete" />
+      </Card>
 
       {/* SUPPORT */}
-      <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase mb-2 px-1 mt-4">{t('support_section')}</p>
-      <div className="rounded-2xl border border-border/40 bg-card overflow-hidden">
-        <MenuRow icon={MessageSquareDot} label={t('reports_support')} sub={t('reports_support_sub')} onClick={() => setReportsOpen(true)} testId="acc-reports" />
-      </div>
+      <SectionLabel className="text-xs font-semibold tracking-wider text-muted-foreground uppercase px-1 mb-2 mt-4">
+        {t('support_section')}
+      </SectionLabel>
+      <Card className="divide-y divide-zinc-200/60 dark:divide-white/5 overflow-hidden rounded-2xl">
+        <MenuRow icon={MessageSquareDot} label={t('reports_support')} onClick={() => setReportsOpen(true)} testId="acc-reports" />
+      </Card>
 
       {/* Footer */}
-      <p className="text-center text-[11px] text-zinc-400 dark:text-zinc-600 mt-4 mb-2">
-        Paralar v1.0.0 · Finance app
+      <p className="text-center text-[11px] font-medium text-zinc-400 dark:text-zinc-600 mt-4 mb-2 select-none tracking-tight">
+        {FULL_VERSION_LABEL}
       </p>
 
       {/* Clear Transactions sheet */}

@@ -71,10 +71,11 @@ export default function BottomNav({ tab, onTab, onPlus }) {
             const Icon = it.icon
             const active = tab === it.id
             return (
-              <button
+              <motion.button
                 key={it.id}
                 type="button"
                 onClick={() => handleTabClick(it.id)}
+                whileTap={{ scale: 0.88 }}
                 data-testid={`nav-${it.id}`}
                 aria-label={it.label}
                 className="relative flex items-center justify-center w-11 h-11 rounded-full cursor-pointer focus:outline-none select-none"
@@ -90,13 +91,18 @@ export default function BottomNav({ tab, onTab, onPlus }) {
                   className={cn(
                     'relative z-10 flex items-center justify-center transition-all duration-200',
                     active
-                      ? 'text-white dark:text-zinc-950 fill-current stroke-[1.2]'
+                      ? 'text-white dark:text-zinc-950 scale-105'
                       : 'text-zinc-400 hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-200'
                   )}
                 >
-                  <Icon size={19} strokeWidth={active ? 2.6 : 2} />
+                  <Icon
+                    size={20}
+                    strokeWidth={active ? 2.5 : 1.8}
+                    fill={active ? 'currentColor' : 'none'}
+                    className="transition-all duration-150"
+                  />
                 </span>
-              </button>
+              </motion.button>
             )
           })}
         </div>
