@@ -1,6 +1,6 @@
 'use client'
 import { useMemo } from 'react'
-import { CreditCard, Wallet, Banknote, Landmark, Smartphone, BarChart3, Briefcase } from 'lucide-react'
+import { CreditCard, Wallet, Banknote, Landmark, Smartphone, BarChart3, Briefcase, GripVertical } from 'lucide-react'
 import { getTheme, ACCOUNT_TYPES } from '@/lib/categories'
 import { getCurrency } from '@/lib/currencies'
 import { LogoBadge } from './ui'

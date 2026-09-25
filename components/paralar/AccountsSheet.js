@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Reorder, motion, AnimatePresence } from 'framer-motion'
-import { Plus, Trash2, Pencil, Check, ArrowUpDown, CreditCard, X, ChevronRight } from 'lucide-react'
+import { Plus, Trash2, Pencil, Check, ArrowUpDown, CreditCard, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
 import { BankCard } from './BankCard'
@@ -30,6 +30,12 @@ export default function AccountsSheet({ open, onClose }) {
   const [expandedCardId, setExpandedCardId] = useState(null)
   const [draggingId, setDraggingId] = useState(null)
   const [sortIndex, setSortIndex] = useState(0)
+
+  // Ref to always track latest reordered accounts (avoids stale closures during onDragEnd)
+  const orderedAccountsRef = useRef(orderedAccounts)
+  useEffect(() => {
+    orderedAccountsRef.current = orderedAccounts
+  }, [orderedAccounts])
 
   // Modals inside full-page wallet
   const [editingAccount, setEditingAccount] = useState(null)
@@ -85,18 +91,27 @@ export default function AccountsSheet({ open, onClose }) {
     }
   }, [open])
 
-  // Save new order to localStorage and update state
+  // Lightweight reorder handler during active drag:
+  // ONLY updates local React state without triggering parent re-renders or synchronous disk I/O
   const handleReorder = useCallback((newOrder) => {
     setOrderedAccounts(newOrder)
-    try {
-      const ids = newOrder.map((a) => a.id)
-      localStorage.setItem(orderKey, JSON.stringify(ids))
-    } catch {}
+  }, [])
 
-    if (typeof setAccounts === 'function') {
-      setAccounts(newOrder)
-    }
-  }, [orderKey, setAccounts])
+  // Commit order to persistent storage and parent context when drag completes or sort finishes
+  const commitOrder = useCallback(
+    (finalOrder) => {
+      if (!Array.isArray(finalOrder)) return
+      try {
+        const ids = finalOrder.map((a) => a.id)
+        localStorage.setItem(orderKey, JSON.stringify(ids))
+      } catch {}
+
+      if (typeof setAccounts === 'function') {
+        setAccounts(finalOrder)
+      }
+    },
+    [orderKey, setAccounts]
+  )
 
   // Sort shortcut cycle
   const sortOptions = [
@@ -112,11 +127,14 @@ export default function AccountsSheet({ open, onClose }) {
     const opt = sortOptions[nextIdx]
     if (opt.fn) {
       const sorted = [...orderedAccounts].sort(opt.fn)
-      handleReorder(sorted)
+      setOrderedAccounts(sorted)
+      commitOrder(sorted)
       toast.success(`Diurutkan berdasarkan ${opt.label}`)
     } else {
       // Revert to initial accounts order
-      handleReorder([...accounts])
+      const original = [...accounts]
+      setOrderedAccounts(original)
+      commitOrder(original)
       toast.info('Urutan kartu dikembalikan semula')
     }
   }
@@ -162,7 +180,9 @@ export default function AccountsSheet({ open, onClose }) {
         await store.deleteAccount(id)
       }
       if (refresh) await refresh()
-      setOrderedAccounts((prev) => prev.filter((x) => x.id !== id))
+      const updated = orderedAccounts.filter((x) => x.id !== id)
+      setOrderedAccounts(updated)
+      commitOrder(updated)
       if (expandedCardId === id) setExpandedCardId(null)
       toast.success(t('deleted'))
     } catch (e) {
@@ -260,43 +280,48 @@ export default function AccountsSheet({ open, onClose }) {
             axis="y"
             values={orderedAccounts}
             onReorder={handleReorder}
-            className="relative flex flex-col px-5 pt-3 pb-36 overflow-y-auto flex-1 no-scrollbar touch-pan-y"
+            className="relative flex flex-col px-5 pt-3 pb-56 overflow-y-auto flex-1 no-scrollbar touch-pan-y"
           >
             {orderedAccounts.map((a, index) => {
-              const isExpanded = expandedCardId === a.id
-              const prevIsExpanded = index > 0 && orderedAccounts[index - 1]?.id === expandedCardId
+              const isExpanded = expandedCardId === a.id || orderedAccounts.length === 1
               const isDragging = draggingId === a.id
-
-              // Margin tumpukan: Kartu ke-2 dan seterusnya memiliki margin negatif (-mt-[180px]),
-              // KECUALI kartu yang tepat berada di bawah kartu yang sedang terbuka (prevIsExpanded),
-              // sehingga tidak menutupi Action Bar kartu di atasnya!
-              const stackMarginClass = index === 0
-                ? 'mt-0'
-                : prevIsExpanded
-                ? 'mt-4'
-                : isExpanded
-                ? 'mt-4'
-                : '-mt-[180px] sm:-mt-[195px]'
 
               return (
                 <Reorder.Item
                   key={a.id}
                   value={a}
                   layout
-                  onDragStart={() => setDraggingId(a.id)}
-                  onDragEnd={() => setDraggingId(null)}
+                  onDragStart={() => {
+                    setDraggingId(a.id)
+                    // Auto-collapse open card when dragging starts to preserve uniform deck math
+                    if (expandedCardId) setExpandedCardId(null)
+                  }}
+                  onDragEnd={() => {
+                    setDraggingId(null)
+                    // Smoothly commit the finalized order once drag finishes
+                    commitOrder(orderedAccountsRef.current)
+                  }}
                   whileDrag={{
                     scale: 1.03,
-                    zIndex: 50,
-                    boxShadow: '0 25px 35px -10px rgba(0,0,0,0.6)',
+                    cursor: 'grabbing',
                   }}
-                  transition={{ type: 'spring', stiffness: 350, damping: 30, mass: 0.8 }}
+                  transition={{
+                    type: 'spring',
+                    stiffness: 350,
+                    damping: 30,
+                    mass: 0.5,
+                  }}
                   style={{
-                    zIndex: isDragging ? 50 : isExpanded ? 40 : index + 1,
+                    zIndex: isDragging ? 60 : isExpanded ? 50 : index + 1,
                   }}
                   className={cn(
-                    'relative transform-gpu will-change-transform transition-all',
-                    stackMarginClass
+                    'relative select-none will-change-transform',
+                    // Clean Apple Wallet uniform slot height without negative margin jumps:
+                    // Each collapsed card occupies a fixed 64px header slot.
+                    // The rest of the card overflows down into the deck.
+                    // When expanded, height becomes auto to show full card + action bar.
+                    isExpanded ? 'h-auto mb-6' : 'h-[64px]',
+                    isDragging && 'shadow-2xl'
                   )}
                   data-testid={`wallet-card-item-${a.id}`}
                 >
@@ -313,10 +338,12 @@ export default function AccountsSheet({ open, onClose }) {
                     fmt={fmt}
                     isCollapsed={!isExpanded}
                     onClick={() => {
-                      setExpandedCardId(isExpanded ? null : a.id)
+                      if (orderedAccounts.length > 1) {
+                        setExpandedCardId(isExpanded ? null : a.id)
+                      }
                     }}
                     className={cn(
-                      'cursor-pointer transition-transform duration-200 active:scale-[0.99]',
+                      'cursor-pointer active:scale-[0.99]',
                       isExpanded && 'ring-2 ring-white/20'
                     )}
                   />
@@ -333,8 +360,8 @@ export default function AccountsSheet({ open, onClose }) {
                         initial={{ opacity: 0, height: 0, y: -6 }}
                         animate={{ opacity: 1, height: 'auto', y: 0 }}
                         exit={{ opacity: 0, height: 0, y: -6 }}
-                        transition={{ type: 'spring', stiffness: 350, damping: 30, mass: 0.8 }}
-                        className="mt-3.5 mb-6 px-1 flex items-center justify-between gap-2 z-20"
+                        transition={{ type: 'spring', stiffness: 350, damping: 30, mass: 0.6 }}
+                        className="mt-3.5 mb-2 px-1 flex items-center justify-between gap-2 z-20"
                       >
                         {/* Tombol Hapus Kartu */}
                         <button
@@ -365,19 +392,21 @@ export default function AccountsSheet({ open, onClose }) {
                             <span>{t('edit') || 'Ubah'}</span>
                           </button>
 
-                          {/* Tombol Selesai (Tutup Kartu Ini) */}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setExpandedCardId(null)
-                            }}
-                            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 text-xs font-bold active:scale-95 transition cursor-pointer shadow-xs"
-                            data-testid={`wallet-collapse-${a.id}`}
-                          >
-                            <Check size={14} strokeWidth={2.5} />
-                            <span>{t('done') || 'Selesai'}</span>
-                          </button>
+                          {/* Tombol Selesai (Tutup Kartu Ini jika lebih dari 1) */}
+                          {orderedAccounts.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setExpandedCardId(null)
+                              }}
+                              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 text-xs font-bold active:scale-95 transition cursor-pointer shadow-xs"
+                              data-testid={`wallet-collapse-${a.id}`}
+                            >
+                              <Check size={14} strokeWidth={2.5} />
+                              <span>{t('done') || 'Selesai'}</span>
+                            </button>
+                          )}
                         </div>
                       </motion.div>
                     )}
