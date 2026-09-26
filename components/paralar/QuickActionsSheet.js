@@ -34,7 +34,7 @@ export default function QuickActionsSheet({ open, onClose, onSelectAction }) {
     {
       id: 'addTx',
       title: t?.('add_transaction') || 'Add Transaction',
-      subtitle: 'Log income, expense, or transfer',
+      subtitle: t?.('add_tx_sub') || 'Income, expense, or transfer',
       icon: Pencil,
       badge: null,
       testId: 'qa-addTx',
@@ -42,7 +42,7 @@ export default function QuickActionsSheet({ open, onClose, onSelectAction }) {
     {
       id: 'scanReceipt',
       title: t?.('scan_receipt') || 'Scan Receipt',
-      subtitle: 'Instant AI-powered OCR capture',
+      subtitle: t?.('scan_receipt_sub') || 'Instant AI-powered OCR capture',
       icon: Camera,
       badge: 'AI',
       testId: 'qa-scanReceipt',
@@ -50,7 +50,7 @@ export default function QuickActionsSheet({ open, onClose, onSelectAction }) {
     {
       id: 'savings',
       title: t?.('add_to_savings') || 'Add to Savings',
-      subtitle: 'Allocate funds to your goals',
+      subtitle: t?.('add_to_savings_sub') || 'Allocate funds to your goals',
       icon: Flag,
       badge: null,
       testId: 'qa-savings',
@@ -58,7 +58,7 @@ export default function QuickActionsSheet({ open, onClose, onSelectAction }) {
     {
       id: 'voiceLog',
       title: t?.('voice_log') || 'Voice Log',
-      subtitle: 'Just speak your expenses naturally',
+      subtitle: t?.('voice_log_sub') || 'Just speak your expenses naturally',
       icon: Mic,
       badge: 'AI',
       testId: 'qa-voiceLog',

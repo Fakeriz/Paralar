@@ -413,14 +413,14 @@ export default function LoanModal({
       open={open}
       onClose={onClose}
       zIndex={70}
-      title={loan ? 'Edit Pinjaman & BNPL' : 'Pinjaman & BNPL'}
+      title={loan ? t('edit_loan', 'Edit Pinjaman & BNPL') : t('loans_bnpl', 'Pinjaman & BNPL')}
       left={
         <button
           type="button"
           onClick={onClose}
           className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
         >
-          Cancel
+          {t('cancel')}
         </button>
       }
       right={
@@ -430,7 +430,7 @@ export default function LoanModal({
           disabled={!isValid || isSubmitting}
           className="text-sm font-bold text-foreground hover:opacity-80 transition-opacity cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
         >
-          {isSubmitting ? 'Menyimpan...' : loan ? 'Simpan' : 'Tambah'}
+          {isSubmitting ? t('saving', 'Menyimpan...') : loan ? t('save', 'Simpan') : t('create', 'Tambah')}
         </button>
       }
     >
@@ -438,7 +438,7 @@ export default function LoanModal({
         {/* Input Nominal Utama (Jumlah Pinjaman / Limit) */}
         <div>
           <label className="text-xs text-muted-foreground font-medium mb-1 block">
-            Jumlah Pinjaman / Limit Total
+            {t('loan_principal_limit', 'Jumlah Pinjaman / Limit Total')}
           </label>
           <div className="relative rounded-2xl bg-muted/40 border border-border/30 p-4 flex items-center gap-2 focus-within:border-foreground/40 transition-colors">
             <span className="text-2xl font-extrabold text-foreground select-none shrink-0 pl-1">

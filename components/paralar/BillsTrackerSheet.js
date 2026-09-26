@@ -178,12 +178,12 @@ export default function BillsTrackerSheet({ open, onClose }) {
               rate: rate,
               category: cleanCategory,
               payment_method: b.payment_method || 'bank',
-              description: `Pembayaran Tagihan: ${billTitle}`,
+              description: `${t('bill_payment_prefix', 'Pembayaran Tagihan')}: ${billTitle}`,
               merchant: billTitle,
               transaction_date: currentIso,
               bill_id: b.id,
               billing_month: activeMonthKey,
-              note: `Pembayaran Tagihan: ${billTitle}`,
+              note: `${t('bill_payment_prefix', 'Pembayaran Tagihan')}: ${billTitle}`,
               date: currentIso,
             }
 

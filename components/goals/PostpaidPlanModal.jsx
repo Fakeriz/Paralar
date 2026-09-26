@@ -189,14 +189,14 @@ export default function PostpaidPlanModal({
       open={open}
       onClose={onClose}
       zIndex={70}
-      title={plan ? 'Edit Paket PayLater' : 'Paket PayLater Baru'}
+      title={plan ? t('edit_loan', 'Edit Paket PayLater') : t('loan_postpaid_title', 'Paket PayLater Baru')}
       left={
         <button
           type="button"
           onClick={onClose}
           className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
         >
-          Batal
+          {t('cancel')}
         </button>
       }
       right={
@@ -206,7 +206,7 @@ export default function PostpaidPlanModal({
           disabled={!isValid || isSubmitting}
           className="text-sm font-bold text-foreground hover:opacity-80 transition-opacity cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
         >
-          {isSubmitting ? 'Menyimpan...' : plan ? 'Simpan' : 'Tambah'}
+          {isSubmitting ? t('saving', 'Menyimpan...') : plan ? t('save', 'Simpan') : t('create', 'Tambah')}
         </button>
       }
     >

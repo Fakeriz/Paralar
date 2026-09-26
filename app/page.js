@@ -71,7 +71,7 @@ export default function App() {
   const store = useMemo(() => createStore(session), [session])
   const home = profile?.home_currency || 'USD'
 
-  const t = useCallback((key, vars) => translate(lang, key, vars), [lang])
+  const t = useCallback((key, vars, fallback) => translate(lang, key, vars, fallback), [lang])
   const fmt = useCallback((amount, code) => formatMoney(amount, code, { locale: LOCALE_MAP[lang] || 'en-US' }), [lang])
   const convertToHome = useCallback((amount, code) => convert(amount, code, home, rates), [home, rates])
 
