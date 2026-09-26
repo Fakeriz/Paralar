@@ -8,6 +8,7 @@ import SwipeBillRow from './SwipeBillRow'
 import { CATEGORIES } from '@/lib/categories'
 import { roundMoney } from '@/lib/currencies'
 import { applyTxToBalances } from '@/lib/ledger'
+import { convert, getRate } from '@/lib/rates'
 import { cn } from '@/lib/utils'
 
 const LOCALE = { en: 'en-GB', tr: 'tr-TR', ms: 'ms-MY', id: 'id-ID' }
@@ -162,11 +163,19 @@ export default function BillsTrackerSheet({ open, onClose }) {
           if (!isDuplicate) {
             const billTitle = b.name || b.title || 'Tagihan'
             const currentIso = new Date().toISOString()
+            const txCurrency = b.currency || home || 'USD'
+            const rate = getRate(txCurrency, home, rates)
+            const homeAmount = roundMoney(convert(billAmount, txCurrency, home, rates), home)
+
             const newTransaction = {
               user_id: user?.id || session?.user?.id || null,
               account_id: targetAccountId,
               amount: billAmount,
               type: 'expense',
+              currency: txCurrency,
+              home_currency: home,
+              home_currency_amount: homeAmount,
+              rate: rate,
               category: cleanCategory,
               payment_method: b.payment_method || 'bank',
               description: `Pembayaran Tagihan: ${billTitle}`,
@@ -174,7 +183,6 @@ export default function BillsTrackerSheet({ open, onClose }) {
               transaction_date: currentIso,
               bill_id: b.id,
               billing_month: activeMonthKey,
-              currency: b.currency || home || 'USD',
               note: `Pembayaran Tagihan: ${billTitle}`,
               date: currentIso,
             }

@@ -9,7 +9,9 @@ import { roundMoney } from '@/lib/currencies'
 import { applyTxToBalances } from '@/lib/ledger'
 import { cn } from '@/lib/utils'
 
-export default function TransactionDetailSheet({ open, onClose, tx, onEdit }) {
+export default function TransactionDetailSheet({ open, isOpen: propIsOpen, onClose, tx: propTx, transaction, onEdit }) {
+  const isOpen = open ?? propIsOpen
+  const activeTx = propTx ?? transaction
   const { t, fmt, home, accounts = [], store, refresh, rates, profile, lang, convertToHome, deleteTransaction } = useApp()
   const [subTab, setSubTab] = useState('items')
   const [viewImg, setViewImg] = useState(false)
@@ -22,11 +24,11 @@ export default function TransactionDetailSheet({ open, onClose, tx, onEdit }) {
   const [newPerson, setNewPerson] = useState('')
 
   useEffect(() => {
-    if (!open || !tx) return
+    if (!isOpen || !activeTx) return
     setSubTab('items')
     setEditingItems(false)
-    setItems(Array.isArray(tx.items) ? tx.items.map((it) => ({ ...it })) : [])
-    const saved = tx.split
+    setItems(Array.isArray(activeTx.items) ? activeTx.items.map((it) => ({ ...it })) : [])
+    const saved = activeTx.split
     if (saved?.people?.length) {
       setPeople(saved.people); setAssign(saved.assign || {}); setActivePerson(saved.people[0]?.id || null)
     } else {
@@ -34,7 +36,7 @@ export default function TransactionDetailSheet({ open, onClose, tx, onEdit }) {
       setPeople([me]); setAssign({}); setActivePerson('me')
     }
     setNewPerson('')
-  }, [open, tx]) // eslint-disable-line
+  }, [isOpen, activeTx]) // eslint-disable-line
 
   // per-person totals for split-by-items.
   // NOTE: declared BEFORE any conditional return so hook order stays constant (Rules of Hooks).
@@ -51,7 +53,9 @@ export default function TransactionDetailSheet({ open, onClose, tx, onEdit }) {
     return { totals, unassigned }
   }, [items, assign, people])
 
-  if (!open || !tx) return null
+  if (!isOpen || !activeTx) return null
+
+  const tx = activeTx
 
   const cur = tx?.currency || home
   const acc = (accounts || []).find((a) => a?.id === tx?.account_id)

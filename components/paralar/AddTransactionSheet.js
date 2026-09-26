@@ -16,7 +16,9 @@ import { getDriveThumbnailUrl } from './ReceiptPreviewWithDrive'
 
 const KEYS = ['7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '−', '.', '0', '⌫', '+']
 
-export default function AddTransactionSheet({ open, onClose, initial }) {
+export default function AddTransactionSheet({ open, isOpen: propIsOpen, onClose, initial, transaction }) {
+  const isOpen = open ?? propIsOpen
+  const init = initial ?? transaction
   const { t, home, rates, accounts = [], store, refresh, fmt, transactions = [], open: openSheet, isAiAllowed, saveTransaction } = useApp()
   const haptic = useHaptic()
   const [type, setType] = useState('expense')
@@ -42,11 +44,11 @@ export default function AddTransactionSheet({ open, onClose, initial }) {
   const [catSearch, setCatSearch] = useState('')
   const [saving, setSaving] = useState(false)
   const fileRef = useRef(null)
-  const editId = initial?.editId || null
+  const editId = init?.editId || null
 
   useEffect(() => {
-    if (!open) return
-    const ini = initial || {}
+    if (!isOpen) return
+    const ini = init || {}
     const pad = (n) => String(n).padStart(2, '0')
     const now = new Date()
     const defaultTime = `${pad(now.getHours())}:${pad(now.getMinutes())}`
@@ -104,7 +106,7 @@ export default function AddTransactionSheet({ open, onClose, initial }) {
     setFee(ini.fee ? String(ini.fee) : '')
     setShowFee(!!ini.fee)
     setShowCalc(false)
-  }, [open]) // eslint-disable-line
+  }, [isOpen]) // eslint-disable-line
 
   const num = useMemo(() => evaluateExpression(amount), [amount])
   const isForeign = currency !== home
@@ -210,7 +212,7 @@ export default function AddTransactionSheet({ open, onClose, initial }) {
   return (
     <>
       <Sheet
-        open={open}
+        open={isOpen}
         onClose={onClose}
         full
         title={title}
