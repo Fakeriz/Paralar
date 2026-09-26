@@ -14,7 +14,7 @@ import {
 import { toast } from 'sonner'
 import { getCurrency } from '@/lib/currencies'
 import { cn, triggerHaptic } from '@/lib/utils'
-import { Sheet } from '@/components/paralar/ui'
+import { Sheet, DatePickerInput } from '@/components/paralar/ui'
 
 // Indonesian Postpaid Providers
 const POSTPAID_PROVIDERS = [
@@ -38,6 +38,7 @@ export default function PostpaidPlanModal({
   const [selectedProvider, setSelectedProvider] = useState('spaylater')
   const [packageName, setPackageName] = useState('SPayLater Bulanan')
   const [dueDay, setDueDay] = useState('10')
+  const [firstPaymentDate, setFirstPaymentDate] = useState('')
   const [creditLimit, setCreditLimit] = useState('1000000')
   const [currentBillAmount, setCurrentBillAmount] = useState('')
   const [enableReminder, setEnableReminder] = useState(true)
@@ -51,6 +52,7 @@ export default function PostpaidPlanModal({
       setSelectedProvider(plan.provider_id || 'spaylater')
       setPackageName(plan.name || plan.title || 'SPayLater Bulanan')
       setDueDay(String(plan.due_day || 10))
+      setFirstPaymentDate(plan.first_payment_date || plan.start_date || '')
       setCreditLimit(String(plan.credit_limit || plan.total_amount || ''))
       setCurrentBillAmount(String(plan.installment_amount || plan.monthly_payment || ''))
       setEnableReminder(plan.enable_reminder !== false)
@@ -59,6 +61,7 @@ export default function PostpaidPlanModal({
       setSelectedProvider('spaylater')
       setPackageName('SPayLater Bulanan')
       setDueDay('10')
+      setFirstPaymentDate(new Date().toISOString().slice(0, 10))
       setCreditLimit('1000000')
       setCurrentBillAmount('')
       setEnableReminder(true)
@@ -113,6 +116,7 @@ export default function PostpaidPlanModal({
         monthly_payment: Number(currentBillAmount) || 0,
         due_day: dueDayNum,
         due_day_of_month: dueDayNum,
+        first_payment_date: firstPaymentDate || null,
         currency: home,
         type: 'postpaid',
         debt_type: 'postpaid',
@@ -257,6 +261,22 @@ export default function PostpaidPlanModal({
                   className="w-full bg-muted/40 rounded-2xl p-3.5 text-sm font-medium text-foreground outline-none border border-border/30 placeholder:text-muted-foreground/40 focus:border-foreground/40 transition-colors"
                 />
               </div>
+
+              {/* Field Form: Tanggal Pembayaran Pertama */}
+              <DatePickerInput
+                label="Tanggal Tagihan / Pembayaran Pertama"
+                value={firstPaymentDate}
+                onChange={(val) => {
+                  setFirstPaymentDate(val)
+                  if (val) {
+                    const parts = val.split('-')
+                    if (parts.length === 3) {
+                      const d = parseInt(parts[2], 10)
+                      if (d >= 1 && d <= 31) setDueDay(String(d))
+                    }
+                  }
+                }}
+              />
 
               {/* Field Form: Tanggal Jatuh Tempo (1–31) */}
               <div>

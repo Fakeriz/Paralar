@@ -21,7 +21,7 @@ import {
 import { toast } from 'sonner'
 import { getCurrency } from '@/lib/currencies'
 import { cn, triggerHaptic } from '@/lib/utils'
-import { Sheet } from '@/components/paralar/ui'
+import { Sheet, DatePickerInput } from '@/components/paralar/ui'
 
 // 12 Lucide icons arranged in 2 rows x 6 columns
 export const SAVINGS_GOAL_ICONS = [
@@ -437,45 +437,19 @@ export default function NewSavingsGoalModal({
               </div>
 
               {/* Field 4: Deadline (optional) */}
-              <div>
-                <label className="text-xs text-muted-foreground font-medium mb-1 block">
-                  Deadline (optional)
-                </label>
-                <div className="relative w-full h-12 rounded-2xl bg-[#F6F6F6] dark:bg-[#18181b] border border-border/70 dark:border-white/10 text-sm font-semibold text-foreground px-4 flex items-center gap-2.5 transition-colors cursor-pointer">
-                  <Calendar size={16} className="text-muted-foreground shrink-0" />
-                  <span
-                    className={cn(
-                      'text-sm font-semibold truncate flex-1 text-left',
-                      deadline ? 'text-foreground' : 'text-muted-foreground/60 font-medium'
-                    )}
-                  >
-                    {formattedDeadlineDisplay}
-                  </span>
-                  {deadline && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setDeadline('')
-                        setMonthlyTarget('')
-                      }}
-                      className="text-xs text-muted-foreground hover:text-foreground p-1 z-20 shrink-0 cursor-pointer"
-                    >
-                      Clear
-                    </button>
-                  )}
-                  <input
-                    type="date"
-                    value={deadline}
-                    onChange={(e) => {
-                      const val = e.target.value
-                      setDeadline(val)
-                      calculateMonthlyTarget(val, targetAmount, startingBalance)
-                    }}
-                    className="opacity-0 absolute inset-0 cursor-pointer w-full h-full z-10"
-                  />
-                </div>
-              </div>
+              <DatePickerInput
+                label="Deadline (optional)"
+                value={deadline}
+                onChange={(val) => {
+                  setDeadline(val)
+                  calculateMonthlyTarget(val, targetAmount, startingBalance)
+                }}
+                clearable
+                onClear={() => {
+                  setDeadline('')
+                  setMonthlyTarget('')
+                }}
+              />
 
               {/* Field 5: Monthly savings target (optional) */}
               <div>

@@ -7,7 +7,7 @@ import {
 import { toast } from 'sonner'
 import { useApp } from './context'
 import CurrencySheet from './CurrencySheet'
-import { Sheet, CategoryIcon } from './ui'
+import { Sheet, CategoryIcon, DatePickerInput } from './ui'
 import { CATEGORIES } from '@/lib/categories'
 import { getCurrency } from '@/lib/currencies'
 import { cn, triggerHaptic } from '@/lib/utils'
@@ -153,6 +153,7 @@ export default function SubscriptionSheet({
         cover_url: coverUrl || null,
         cycle,
         next_billing_date: nextBillingDate,
+        billing_date: nextBillingDate,
         due_day: dueDay,
         show_as_bill: showAsBill,
         auto_log_expense: autoLogExpense,
@@ -352,20 +353,11 @@ export default function SubscriptionSheet({
                 </div>
 
                 {/* Field 5 - Next Billing Date */}
-                <div className="space-y-1.5">
-                  <label className="text-xs text-muted-foreground font-medium block">
-                    Next billing date
-                  </label>
-                  <div className="w-full h-12 rounded-2xl bg-[#F6F6F6] dark:bg-[#18181b] border border-border/70 dark:border-white/10 text-sm font-semibold text-foreground px-4 flex items-center gap-2.5 transition-all focus-within:ring-2 focus-within:ring-foreground/15 focus-within:border-foreground">
-                    <Calendar size={16} className="text-muted-foreground shrink-0 pointer-events-none" />
-                    <input
-                      type="date"
-                      value={nextBillingDate}
-                      onChange={(e) => setNextBillingDate(e.target.value)}
-                      className="w-full h-full bg-transparent text-sm font-semibold text-foreground outline-none text-left cursor-pointer border-0 p-0 m-0 [color-scheme:light] dark:[color-scheme:dark]"
-                    />
-                  </div>
-                </div>
+                <DatePickerInput
+                  label="Next billing date"
+                  value={nextBillingDate}
+                  onChange={setNextBillingDate}
+                />
 
                 {/* Field 6 - Dua Sakelar Toggle Hijau (iOS Green Toggles) */}
                 <div className="bg-muted/30 rounded-2xl p-4 space-y-4 border border-border/30">

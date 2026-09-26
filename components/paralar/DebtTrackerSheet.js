@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ChevronRight, Plus, Check, Share2, HandCoins } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
-import { Sheet, Segmented, TextInput, Field } from './ui'
+import { Sheet, Segmented, TextInput, Field, DatePickerInput } from './ui'
 import CurrencySheet from './CurrencySheet'
 import { getCurrency, roundMoney } from '@/lib/currencies'
 import { cn } from '@/lib/utils'
@@ -150,7 +150,7 @@ export default function DebtTrackerSheet({ open, onClose }) {
               <TextInput type="number" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" className="flex-1 text-lg font-bold" data-testid="debt-amount" />
             </div>
           </Field>
-          <Field label="Due date"><TextInput type="date" value={due} onChange={(e) => setDue(e.target.value)} data-testid="debt-due" /></Field>
+          <DatePickerInput label="Due date" value={due} onChange={setDue} data-testid="debt-due" clearable />
           <Field label="Note"><TextInput value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" /></Field>
           <Field label={t('source_account')}>
             <div className="flex gap-2 overflow-x-auto no-scrollbar">

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Plus, Receipt, Info, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
-import { Sheet, TextInput, Field, PrimaryButton } from './ui'
+import { Sheet, TextInput, Field, PrimaryButton, DatePickerInput } from './ui'
 import SwipeBillRow from './SwipeBillRow'
 import { CATEGORIES } from '@/lib/categories'
 import { roundMoney } from '@/lib/currencies'
@@ -43,6 +43,8 @@ export default function BillsTrackerSheet({ open, onClose }) {
   const [title, setTitle] = useState('')
   const [amount, setAmount] = useState('')
   const [dueDay, setDueDay] = useState('1')
+  const [startsFrom, setStartsFrom] = useState('')
+  const [endsAfter, setEndsAfter] = useState('')
   const [category, setCategory] = useState('cat_bills')
   const [accountId, setAccountId] = useState(null)
   const [autoLogExpense, setAutoLogExpense] = useState(true)
@@ -52,6 +54,8 @@ export default function BillsTrackerSheet({ open, onClose }) {
   const [editTitle, setEditTitle] = useState('')
   const [editAmount, setEditAmount] = useState('')
   const [editDueDay, setEditDueDay] = useState('1')
+  const [editStartsFrom, setEditStartsFrom] = useState('')
+  const [editEndsAfter, setEditEndsAfter] = useState('')
   const [editCategory, setEditCategory] = useState('cat_bills')
   const [editAccountId, setEditAccountId] = useState(null)
   const [editAutoLog, setEditAutoLog] = useState(false)
@@ -247,6 +251,8 @@ export default function BillsTrackerSheet({ open, onClose }) {
     setTitle('')
     setAmount('')
     setDueDay('1')
+    setStartsFrom('')
+    setEndsAfter('')
     setCategory('cat_bills')
     setAccountId(accounts[0]?.id || null)
     setAutoLogExpense(true)
@@ -259,9 +265,12 @@ export default function BillsTrackerSheet({ open, onClose }) {
     try {
       await store.createBill({
         title: title.trim(),
+        name: title.trim(),
         amount: roundMoney(Number(amount), home),
         currency: home,
         due_day: Math.min(31, Math.max(1, Number(dueDay) || 1)),
+        starts_from: startsFrom || null,
+        ends_after: endsAfter || null,
         category,
         account_id: accountId,
         auto_log_expense: autoLogExpense,
@@ -278,9 +287,11 @@ export default function BillsTrackerSheet({ open, onClose }) {
 
   const openEdit = (b) => {
     setEditing(b)
-    setEditTitle(b.title || '')
+    setEditTitle(b.title || b.name || '')
     setEditAmount(String(b.amount || ''))
     setEditDueDay(String(b.due_day || '1'))
+    setEditStartsFrom(b.starts_from || '')
+    setEditEndsAfter(b.ends_after || '')
     setEditCategory(b.category || 'cat_bills')
     setEditAccountId(b.account_id || null)
     setEditAutoLog(!!b.auto_log_expense)
@@ -292,9 +303,12 @@ export default function BillsTrackerSheet({ open, onClose }) {
     try {
       await store.updateBill(editing.id, {
         title: editTitle.trim(),
+        name: editTitle.trim(),
         amount: roundMoney(Number(editAmount), home),
         currency: editing.currency || home,
         due_day: Math.min(31, Math.max(1, Number(editDueDay) || 1)),
+        starts_from: editStartsFrom || null,
+        ends_after: editEndsAfter || null,
         category: editCategory,
         account_id: editAccountId,
         auto_log_expense: editAutoLog,
@@ -624,6 +638,21 @@ export default function BillsTrackerSheet({ open, onClose }) {
             />
           </Field>
 
+          <div className="grid grid-cols-2 gap-3">
+            <DatePickerInput
+              label="Mulai Dari (Opsional)"
+              value={startsFrom}
+              onChange={setStartsFrom}
+              clearable
+            />
+            <DatePickerInput
+              label="Berakhir Setelah (Opsional)"
+              value={endsAfter}
+              onChange={setEndsAfter}
+              clearable
+            />
+          </div>
+
           <Field label={t('category')}>
             <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-5 px-5">
               {EXPENSE_CATS.map((c) => (
@@ -778,6 +807,21 @@ export default function BillsTrackerSheet({ open, onClose }) {
               data-testid="edit-bill-due"
             />
           </Field>
+
+          <div className="grid grid-cols-2 gap-3">
+            <DatePickerInput
+              label="Mulai Dari (Opsional)"
+              value={editStartsFrom}
+              onChange={setEditStartsFrom}
+              clearable
+            />
+            <DatePickerInput
+              label="Berakhir Setelah (Opsional)"
+              value={editEndsAfter}
+              onChange={setEditEndsAfter}
+              clearable
+            />
+          </div>
 
           <Field label={t('category')}>
             <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-5 px-5">

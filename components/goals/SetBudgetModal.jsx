@@ -2,8 +2,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { Calendar, HelpCircle, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { Sheet } from '@/components/paralar/ui'
-import { CategoryIcon } from '@/components/paralar/ui'
+import { Sheet, CategoryIcon, DatePickerInput } from '@/components/paralar/ui'
 import { useApp } from '@/components/paralar/context'
 import { CATEGORIES } from '@/lib/categories'
 import { getCurrency } from '@/lib/currencies'
@@ -437,39 +436,16 @@ export default function SetBudgetModal({
             </label>
             <div className="bg-muted/30 border border-border/40 rounded-2xl p-4 space-y-3">
               <div className="grid grid-cols-2 gap-3">
-                {/* Kolom From */}
-                <div className="space-y-1">
-                  <span className="text-xs text-muted-foreground font-medium">From</span>
-                  <div className="relative w-full h-12 rounded-2xl bg-[#F6F6F6] dark:bg-[#18181b] border border-border/70 dark:border-white/10 text-sm font-semibold text-foreground px-4 flex items-center gap-2.5 hover:bg-muted/20 transition-colors">
-                    <Calendar size={16} className="text-muted-foreground shrink-0" />
-                    <span className="text-xs font-semibold text-foreground truncate flex-1 text-left">
-                      {formatDateDisplay(fromDate)}
-                    </span>
-                    <input
-                      type="date"
-                      value={fromDate}
-                      onChange={(e) => setFromDate(e.target.value)}
-                      className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10"
-                    />
-                  </div>
-                </div>
-
-                {/* Kolom To */}
-                <div className="space-y-1">
-                  <span className="text-xs text-muted-foreground font-medium">To</span>
-                  <div className="relative w-full h-12 rounded-2xl bg-[#F6F6F6] dark:bg-[#18181b] border border-border/70 dark:border-white/10 text-sm font-semibold text-foreground px-4 flex items-center gap-2.5 hover:bg-muted/20 transition-colors">
-                    <Calendar size={16} className="text-muted-foreground shrink-0" />
-                    <span className="text-xs font-semibold text-foreground truncate flex-1 text-left">
-                      {formatDateDisplay(toDate)}
-                    </span>
-                    <input
-                      type="date"
-                      value={toDate}
-                      onChange={(e) => setToDate(e.target.value)}
-                      className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10"
-                    />
-                  </div>
-                </div>
+                <DatePickerInput
+                  label="From"
+                  value={fromDate}
+                  onChange={setFromDate}
+                />
+                <DatePickerInput
+                  label="To"
+                  value={toDate}
+                  onChange={setToDate}
+                />
               </div>
 
               {/* Baris Durasi Bawah */}

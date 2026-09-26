@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { ChevronRight, Plus, Trash2, Repeat } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
-import { Sheet, TextInput, Field, Segmented } from './ui'
+import { Sheet, TextInput, Field, Segmented, DatePickerInput } from './ui'
 import CurrencySheet from './CurrencySheet'
 import { getCurrency } from '@/lib/currencies'
 import { cn } from '@/lib/utils'
@@ -103,7 +103,7 @@ export default function RecurringSheet({ open, onClose }) {
             <Field label="Frequency">
               <Segmented value={freq} onChange={setFreq} options={[{ id: 'weekly', label: 'Weekly' }, { id: 'monthly', label: 'Monthly' }, { id: 'yearly', label: 'Yearly' }]} />
             </Field>
-            <Field label="Next due date"><TextInput type="date" value={due} onChange={(e) => setDue(e.target.value)} data-testid="recurring-due" /></Field>
+            <DatePickerInput label="Next due date" value={due} onChange={setDue} data-testid="recurring-due" />
             <Field label={t('source_account')}>
               <div className="flex gap-2 overflow-x-auto no-scrollbar">
                 <button type="button" onClick={() => setAccountId(null)} className={cn('shrink-0 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors', accountId === null ? 'bg-zinc-950 text-white border-zinc-950 dark:bg-white dark:text-zinc-950 dark:border-white' : 'bg-white dark:bg-[#1c1c1e] border-zinc-200 dark:border-white/10 text-zinc-950 dark:text-white')}>{t('no_account_opt')}</button>

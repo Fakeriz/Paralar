@@ -19,7 +19,7 @@ import {
 import { toast } from 'sonner'
 import { getCurrency } from '@/lib/currencies'
 import { cn, triggerHaptic } from '@/lib/utils'
-import { Sheet } from '@/components/paralar/ui'
+import { Sheet, DatePickerInput } from '@/components/paralar/ui'
 
 // Indonesian Providers for Cicilan Tetap
 const INDO_PROVIDERS = [
@@ -833,23 +833,11 @@ export default function LoanModal({
                 )}
 
                 {/* Tanggal Pembayaran Pertama */}
-                <div>
-                  <label className="text-xs text-muted-foreground font-medium mb-1 block">
-                    Tanggal Pembayaran Pertama
-                  </label>
-                  <div className="relative w-full h-12 rounded-2xl bg-[#F6F6F6] dark:bg-[#18181b] border border-border/70 dark:border-white/10 text-sm font-semibold text-foreground px-4 flex items-center gap-2.5">
-                    <Calendar size={16} className="text-muted-foreground shrink-0" />
-                    <span className="text-sm font-semibold text-foreground truncate flex-1 text-left">
-                      {firstPaymentDate || 'Pilih tanggal'}
-                    </span>
-                    <input
-                      type="date"
-                      value={firstPaymentDate}
-                      onChange={(e) => setFirstPaymentDate(e.target.value)}
-                      className="opacity-0 absolute inset-0 cursor-pointer w-full h-full z-10"
-                    />
-                  </div>
-                </div>
+                <DatePickerInput
+                  label="Tanggal Pembayaran Pertama"
+                  value={firstPaymentDate}
+                  onChange={setFirstPaymentDate}
+                />
 
                 {/* Unggah Foto Bukti/Cover (Opsional) */}
                 <div>

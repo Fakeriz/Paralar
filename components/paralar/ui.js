@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, Component } from 'react'
+import React, { useEffect, useMemo, Component } from 'react'
 import { AnimatePresence, motion, useDragControls } from 'framer-motion'
 import { cn, triggerHaptic } from '@/lib/utils'
 import { useApp } from './context'
@@ -155,19 +155,134 @@ export function Field({ label, children, className }) {
   )
 }
 
+export function formatDateLabel(val, placeholder = 'Pilih Tanggal') {
+  if (!val) return placeholder
+  try {
+    const raw = String(val).split('T')[0]
+    const parts = raw.split('-').map(Number)
+    if (parts.length === 3 && !parts.some(isNaN)) {
+      const [y, m, d] = parts
+      const dateObj = new Date(y, m - 1, d)
+      if (!isNaN(dateObj.getTime())) {
+        return dateObj.toLocaleDateString('id-ID', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        })
+      }
+    }
+    return val
+  } catch {
+    return val
+  }
+}
+
+export function DatePickerInput({
+  value,
+  onChange,
+  label,
+  className,
+  disabled = false,
+  placeholder = 'Pilih Tanggal',
+  min,
+  max,
+  clearable = false,
+  onClear,
+  id,
+  'data-testid': dataTestId,
+}) {
+  const displayDate = useMemo(() => {
+    return formatDateLabel(value, placeholder)
+  }, [value, placeholder])
+
+  return (
+    <div className={cn('space-y-1.5 w-full', className)}>
+      {label && (
+        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
+          {label}
+        </label>
+      )}
+      <div className="relative w-full">
+        {/* Invisible native input date yang mengisi seluruh area kotak */}
+        <input
+          id={id}
+          type="date"
+          value={value ? String(value).split('T')[0] : ''}
+          onChange={(e) => onChange?.(e.target.value)}
+          onClick={(e) => {
+            try {
+              if (typeof e.target.showPicker === 'function') e.target.showPicker()
+            } catch (_) {}
+          }}
+          disabled={disabled}
+          min={min}
+          max={max}
+          data-testid={dataTestId}
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed [color-scheme:light] dark:[color-scheme:dark]"
+        />
+        {/* Tampilan Visual Rata Kiri Konsisten */}
+        <div
+          className={cn(
+            'w-full h-12 rounded-2xl bg-[#F6F6F6] dark:bg-[#18181b] border border-border/70 dark:border-white/10 px-4 flex items-center gap-2.5 transition-all active:scale-[0.99]',
+            disabled && 'opacity-50 pointer-events-none'
+          )}
+        >
+          <Calendar className="text-muted-foreground shrink-0" size={16} />
+          <span
+            className={cn(
+              'text-sm font-semibold truncate flex-1 text-left',
+              value ? 'text-foreground' : 'text-muted-foreground/60 font-medium'
+            )}
+          >
+            {displayDate}
+          </span>
+          {clearable && value && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                if (onClear) onClear()
+                else onChange?.('')
+              }}
+              className="text-xs font-medium text-muted-foreground hover:text-foreground p-1 z-20 shrink-0 cursor-pointer"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function TextInput({ className, type, ...props }) {
   if (type === 'date' || type === 'datetime-local') {
+    const display = formatDateLabel(props.value, props.placeholder || 'Pilih tanggal')
     return (
       <div
         className={cn(
-          'w-full h-12 rounded-2xl bg-[#F6F6F6] dark:bg-[#18181b] border border-border/70 dark:border-white/10 text-sm font-semibold text-foreground px-4 flex items-center gap-2.5 transition-all focus-within:ring-2 focus-within:ring-foreground/15 focus-within:border-foreground',
+          'relative w-full h-12 rounded-2xl bg-[#F6F6F6] dark:bg-[#18181b] border border-border/70 dark:border-white/10 text-sm font-semibold text-foreground px-4 flex items-center gap-2.5 transition-all focus-within:ring-2 focus-within:ring-foreground/15 focus-within:border-foreground active:scale-[0.99]',
+          props.disabled && 'opacity-50 pointer-events-none',
           className
         )}
       >
         <Calendar size={16} className="text-muted-foreground shrink-0 pointer-events-none" />
+        <span
+          className={cn(
+            'text-sm font-semibold truncate flex-1 text-left pointer-events-none',
+            props.value ? 'text-foreground' : 'text-muted-foreground/60 font-medium'
+          )}
+        >
+          {display}
+        </span>
         <input
           type={type}
-          className="w-full h-full bg-transparent text-sm font-semibold text-foreground outline-none text-left cursor-pointer border-0 p-0 m-0 [color-scheme:light] dark:[color-scheme:dark]"
+          onClick={(e) => {
+            try {
+              if (typeof e.target.showPicker === 'function') e.target.showPicker()
+            } catch (_) {}
+          }}
+          className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10 disabled:cursor-not-allowed [color-scheme:light] dark:[color-scheme:dark]"
           {...props}
         />
       </div>
@@ -227,8 +342,13 @@ export function DateSelector({
         type={type}
         value={value || ''}
         onChange={onChange}
+        onClick={(e) => {
+          try {
+            if (typeof e.target.showPicker === 'function') e.target.showPicker()
+          } catch (_) {}
+        }}
         disabled={disabled}
-        className="opacity-0 absolute inset-0 cursor-pointer w-full h-full z-10"
+        className="opacity-0 absolute inset-0 cursor-pointer w-full h-full z-10 [color-scheme:light] dark:[color-scheme:dark]"
         {...props}
       />
     </div>
