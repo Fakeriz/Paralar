@@ -25,8 +25,9 @@ const safeDay = (dateStr) => {
   }
 }
 
-export default function TransactionRow({ tx, onClick, showDate = false }) {
-  const { t, fmt, accounts, home, lang, convertToHome } = useApp()
+export default function TransactionRow({ tx, onClick, showDate = false, hideBalance: propHideBalance }) {
+  const { t, fmt, accounts, home, lang, convertToHome, hideBalance: contextHideBalance } = useApp()
+  const isHidden = propHideBalance !== undefined ? propHideBalance : contextHideBalance
   if (!tx) return null
 
   const accList = Array.isArray(accounts) ? accounts : []
@@ -70,11 +71,11 @@ export default function TransactionRow({ tx, onClick, showDate = false }) {
       </div>
       <div className="text-right shrink-0">
         <p className={cn('font-bold text-[15px] tabular-nums', isExpense ? 'text-zinc-950 dark:text-white' : isTransfer ? 'text-zinc-600 dark:text-zinc-400' : 'text-emerald-600 dark:text-emerald-400')}>
-          {isExpense ? '-' : isTransfer ? '' : '+'}{safeFmt(tx?.amount, tx?.currency)}
+          {isHidden ? '••••••' : `${isExpense ? '-' : isTransfer ? '' : '+'}${safeFmt(tx?.amount, tx?.currency)}`}
         </p>
         {showHomeApprox ? (
           <span className="inline-block mt-0.5 text-[10px] font-semibold rounded-md bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 text-zinc-600 dark:text-zinc-400 tabular-nums">
-            ≈ {safeFmt(homeAmount, home)}
+            {isHidden ? '••••••' : `≈ ${safeFmt(homeAmount, home)}`}
           </span>
         ) : null}
       </div>

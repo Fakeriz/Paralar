@@ -420,7 +420,7 @@ export default function LoanModal({
           onClick={onClose}
           className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
         >
-          Batal
+          Cancel
         </button>
       }
       right={

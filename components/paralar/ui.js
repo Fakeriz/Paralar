@@ -167,7 +167,7 @@ export function TextInput({ className, type, ...props }) {
         <Calendar size={16} className="text-muted-foreground shrink-0 pointer-events-none" />
         <input
           type={type}
-          className="w-full h-full bg-transparent text-sm font-semibold text-foreground outline-none text-left cursor-pointer border-0 p-0 m-0"
+          className="w-full h-full bg-transparent text-sm font-semibold text-foreground outline-none text-left cursor-pointer border-0 p-0 m-0 [color-scheme:light] dark:[color-scheme:dark]"
           {...props}
         />
       </div>

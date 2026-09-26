@@ -243,7 +243,7 @@ export function BankCard({
   const waveCls = isCardLight ? 'text-zinc-700 opacity-80' : 'text-white/80'
 
   const formattedBalance = useMemo(() => {
-    if (hideBalance) return '••••••••'
+    if (hideBalance) return '••••••'
     if (fmt) return fmt(balance ?? 0, currency)
     return `${cur.symbol} ${Number(balance || 0).toLocaleString()}`
   }, [balance, currency, fmt, hideBalance, cur.symbol])
@@ -367,7 +367,7 @@ export function BankCard({
             </p>
             {approxHome ? (
               <p className={cn('text-[11px] font-medium mt-0.5 truncate', subCls)}>
-                {hideBalance ? '≈ ••••••' : `≈ ${approxHome}`}
+                {hideBalance ? '••••••' : (String(approxHome).startsWith('≈') ? approxHome : `≈ ${approxHome}`)}
               </p>
             ) : null}
           </div>

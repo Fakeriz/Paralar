@@ -39,10 +39,11 @@ export default function SwipeTransactionRow({
   onDelete,
   showDate = false,
   isGrouped = false,
+  hideBalance: propHideBalance,
 }) {
   const tx = transaction || propTx
-  // UBAH MENJADI (tambahkan hideBalance):
-  const { t, fmt, accounts, home, lang, convertToHome, hideBalance } = useApp()
+  const { t, fmt, accounts, home, lang, convertToHome, hideBalance: contextHideBalance } = useApp()
+  const isHidden = propHideBalance !== undefined ? propHideBalance : contextHideBalance
 
   const [internalOpen, setInternalOpen] = useState(false)
   const controls = useAnimation()
@@ -191,13 +192,13 @@ export default function SwipeTransactionRow({
         {/* Sisi Kanan: Nominal angka tebal + Subteks konversi sekunder */}
         <div className="text-right shrink-0 ml-3">
           <p className={cn('text-sm font-bold tabular-nums', isExpense ? 'text-foreground' : isTransfer ? 'text-muted-foreground' : 'text-emerald-600 dark:text-emerald-400')}>
-            {hideBalance 
+            {isHidden 
               ? '••••••' 
               : `${isExpense ? '-' : isTransfer ? '' : '+'}${safeFmt(tx?.amount, tx?.currency)}`}
           </p>
           {showHomeApprox ? (
             <span className="inline-block mt-0.5 text-[10px] font-semibold rounded-md bg-muted/60 dark:bg-zinc-800 px-1.5 py-0.5 text-muted-foreground tabular-nums">
-              {hideBalance ? '≈ ••••••' : `≈ ${safeFmt(homeAmount, home)}`}
+              {isHidden ? '••••••' : `≈ ${safeFmt(homeAmount, home)}`}
             </span>
           ) : null}
         </div>

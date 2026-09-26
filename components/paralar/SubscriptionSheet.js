@@ -356,16 +356,13 @@ export default function SubscriptionSheet({
                   <label className="text-xs text-muted-foreground font-medium block">
                     Next billing date
                   </label>
-                  <div className="relative w-full h-12 rounded-2xl bg-[#F6F6F6] dark:bg-[#18181b] border border-border/70 dark:border-white/10 text-sm font-semibold text-foreground px-4 flex items-center gap-2.5 hover:bg-muted/20 transition-colors">
-                    <Calendar size={16} className="text-muted-foreground shrink-0" />
-                    <span className="text-sm font-semibold text-foreground truncate flex-1 text-left">
-                      {formatDisplayDate(nextBillingDate)}
-                    </span>
+                  <div className="w-full h-12 rounded-2xl bg-[#F6F6F6] dark:bg-[#18181b] border border-border/70 dark:border-white/10 text-sm font-semibold text-foreground px-4 flex items-center gap-2.5 transition-all focus-within:ring-2 focus-within:ring-foreground/15 focus-within:border-foreground">
+                    <Calendar size={16} className="text-muted-foreground shrink-0 pointer-events-none" />
                     <input
                       type="date"
                       value={nextBillingDate}
                       onChange={(e) => setNextBillingDate(e.target.value)}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      className="w-full h-full bg-transparent text-sm font-semibold text-foreground outline-none text-left cursor-pointer border-0 p-0 m-0 [color-scheme:light] dark:[color-scheme:dark]"
                     />
                   </div>
                 </div>

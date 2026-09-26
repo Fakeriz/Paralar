@@ -312,7 +312,7 @@ function BalanceCarousel() {
         </div>
       </div>
 
-      {/* Synchronized Spring Carousel Dots: Solid black active & #E4E4E7 inactive */}
+      {/* Synchronized Spring Carousel Dots: Slide aktif w-5 h-1.5 bg-foreground, slide lainnya w-1.5 h-1.5 bg-muted-foreground/30 */}
       <div className="flex justify-center items-center gap-1.5 mt-3.5">
         {Array.from({ length: totalSlides }).map((_, i) => (
           <button
@@ -321,10 +321,10 @@ function BalanceCarousel() {
             onClick={() => scrollToSlide(i)}
             aria-label={`Go to slide ${i + 1}`}
             className={cn(
-              'h-1.5 rounded-full transition-all duration-300 cursor-pointer',
+              'transition-all duration-300 cursor-pointer',
               i === idx
-                ? 'w-6 bg-[#0c0c0e] dark:bg-white'
-                : 'w-1.5 bg-[#E4E4E7] dark:bg-zinc-700 hover:bg-zinc-400 dark:hover:bg-zinc-600'
+                ? 'w-5 h-1.5 rounded-full bg-foreground'
+                : 'w-1.5 h-1.5 rounded-full bg-muted-foreground/30 hover:bg-muted-foreground/50'
             )}
           />
         ))}
@@ -361,7 +361,7 @@ function QuickGrid() {
 }
 
 export default function HomeTab() {
-  const { t, transactions = [], setTab, open, isGuest, store, refresh, accounts = [], rates, deleteTransaction } = useApp()
+  const { t, transactions = [], setTab, open, isGuest, store, refresh, accounts = [], rates, deleteTransaction, hideBalance } = useApp()
   const [openRowId, setOpenRowId] = useState(null)
   const [deletingTx, setDeletingTx] = useState(null)
 
@@ -438,6 +438,7 @@ export default function HomeTab() {
                   onOpenDetail={() => open('txDetail', tx)}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
+                  hideBalance={hideBalance}
                 />
               </motion.div>
             ))}

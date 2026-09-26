@@ -52,13 +52,27 @@ export default function LoansSection({
   const [postpaidModalOpen, setPostpaidModalOpen] = useState(false)
   const [selectedPostpaid, setSelectedPostpaid] = useState(null)
 
+  // Strict filter: only items that are genuinely loans, debts, or installments
+  const validLoans = useMemo(() => {
+    return (loans || []).filter((l) => {
+      if (!l) return false
+      const type = String(l?.type || '').toLowerCase()
+      if (['loan', 'debt', 'bnpl', 'postpaid', 'installment', 'cicilan', 'pinjaman'].includes(type)) return true
+      if (l?.debt_type != null || l?.debt_mode != null || Boolean(l?.is_debt)) return true
+      if (l?.tenure != null || l?.tenure_months != null || l?.tenor_months != null || l?.remaining_tenor != null) return true
+      if (l?.interest != null || l?.interest_rate != null) return true
+      if (l?.installment_amount != null || l?.monthly_installment != null || l?.total_loan_amount != null) return true
+      return false
+    })
+  }, [loans])
+
   // Calculate total monthly installment
   const totalLoanInstallment = useMemo(() => {
-    return (loans || []).reduce((sum, l) => {
-      const amt = Number(l?.installment_amount || l?.monthly_payment || l?.amount) || 0
+    return validLoans.reduce((sum, l) => {
+      const amt = Number(l?.installment_amount || l?.monthly_payment || l?.monthly_installment || l?.amount) || 0
       return sum + amt
     }, 0)
-  }, [loans])
+  }, [validLoans])
 
   // Subtitle based on currency
   const bnplSubtitle = useMemo(() => {
@@ -106,7 +120,7 @@ export default function LoansSection({
       </p>
 
       {/* List or Empty State */}
-      {(!loans || loans.length === 0) ? (
+      {(!validLoans || validLoans.length === 0) ? (
         <button
           type="button"
           onClick={() => setTypeActionSheetOpen(true)}
@@ -116,7 +130,7 @@ export default function LoansSection({
         </button>
       ) : (
         <div className="space-y-2.5">
-          {loans.map((loan) => {
+          {validLoans.map((loan) => {
             // Pemetaan properti yang aman dan kompatibel dengan skema Supabase & modal
             const installmentAmt = Number(
               loan.monthly_installment || 

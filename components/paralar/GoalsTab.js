@@ -31,6 +31,17 @@ function formatCycle(cycle) {
   return cycle.charAt(0).toUpperCase() + cycle.slice(1)
 }
 
+export function isLoanOrDebt(item) {
+  if (!item) return false
+  const type = String(item?.type || '').toLowerCase()
+  if (['loan', 'debt', 'bnpl', 'postpaid', 'installment', 'cicilan', 'pinjaman'].includes(type)) return true
+  if (item?.debt_type != null || item?.debt_mode != null || Boolean(item?.is_debt)) return true
+  if (item?.tenure != null || item?.tenure_months != null || item?.tenor_months != null || item?.remaining_tenor != null) return true
+  if (item?.interest != null || item?.interest_rate != null) return true
+  if (item?.installment_amount != null || item?.monthly_installment != null || item?.total_loan_amount != null) return true
+  return false
+}
+
 export default function GoalsTab() {
   const { t, goals = [], transactions = [], accounts = [], fmt, home, rates, store, refresh, open: openSheet } = useApp()
 
@@ -74,20 +85,29 @@ export default function GoalsTab() {
     }
 
     try {
-      // 1. Cek langsung dari data goals Supabase yang bertipe pinjaman/paylater
-      const goalsFromSupabase = (goals || []).filter(
-        (g) => g?.type === 'loan' || g?.type === 'bnpl' || g?.type === 'postpaid' || g?.debt_type != null
-      )
+      // 1. Ambil data goals yang berstatus pinjaman/cicilan/tenure/interest
+      const loanGoalsFromApp = (goals || []).filter((g) => isLoanOrDebt(g))
 
-      if (goalsFromSupabase.length > 0) {
-        setLoans(goalsFromSupabase)
-      } else if (store?.listDebts) {
-        // 2. Jika di goals kosong, baru coba ambil dari store debts
+      let debtsFromStore = []
+      if (store?.listDebts) {
         const d = await store.listDebts()
-        setLoans(Array.isArray(d) ? d : [])
-      } else {
-        setLoans([])
+        debtsFromStore = Array.isArray(d) ? d : []
       }
+
+      // Gabungkan unik berdasarkan ID agar tidak dobel
+      const combined = [...loanGoalsFromApp]
+      const existingIds = new Set(loanGoalsFromApp.map((x) => x?.id).filter(Boolean))
+      for (const d of debtsFromStore) {
+        if (d?.id) {
+          if (!existingIds.has(d.id)) {
+            combined.push(d)
+            existingIds.add(d.id)
+          }
+        } else {
+          combined.push(d)
+        }
+      }
+      setLoans(combined)
     } catch {
       setLoans([])
     }
@@ -150,17 +170,14 @@ export default function GoalsTab() {
     return (budgets || []).reduce((sum, b) => sum + (Number(b?.limit_amount) || 0), 0)
   }, [budgets])
 
-  // 3. Savings Goals Total Saved
-  // 1. Deklarasikan savingsGoals LEBIH DULU
+  // 3. Savings Goals: Strictly isolate pure savings items (never render loans, debts, or installments)
   const savingsGoals = useMemo(() => {
-    return (goals || []).filter(
-      (g) =>
-        (!g?.type || g?.type === 'savings' || g?.type === 'saving' || g?.type === 'goal') &&
-        g?.type !== 'loan' &&
-        g?.type !== 'bnpl' &&
-        g?.type !== 'postpaid' &&
-        !g?.debt_type
-    )
+    return (goals || []).filter((g) => {
+      if (!g) return false
+      if (isLoanOrDebt(g)) return false
+      const type = String(g?.type || '').toLowerCase()
+      return !type || type === 'savings' || type === 'saving' || type === 'goal'
+    })
   }, [goals])
 
   // 2. Baru kemudian hitung totalSaved menggunakan savingsGoals di bawahnya

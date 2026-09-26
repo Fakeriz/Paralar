@@ -260,6 +260,15 @@ export default function NewSavingsGoalModal({
       onClose={onClose}
       zIndex={70}
       title="New Savings Goal"
+      left={
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+        >
+          Cancel
+        </button>
+      }
     >
       <div className="space-y-4">
         {/* ============================================================ */}
