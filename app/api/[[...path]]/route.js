@@ -10,6 +10,10 @@ export const dynamic = 'force-dynamic'
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
 // Urutkan varian Lite yang memiliki kuota harian longgar (500 RPD) pada urutan pertama
 const CANDIDATE_MODELS = [
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash',
+  'gemini-2.5-flash-lite',
   'gemini-3.5-flash-lite',
   'gemini-3.6-flash',
   'gemini-3.5-flash',
