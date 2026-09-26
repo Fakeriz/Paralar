@@ -51,13 +51,24 @@ export default function TransactionDetailSheet({ open, onClose, tx, onEdit }) {
     return { totals, unassigned }
   }, [items, assign, people])
 
-  if (!tx) return null
+  if (!open || !tx) return null
 
   const cur = tx?.currency || home
   const acc = (accounts || []).find((a) => a?.id === tx?.account_id)
-  const d = (tx?.date || tx?.transaction_date) ? new Date(tx?.date || tx?.transaction_date) : new Date()
   const isForeign = cur !== home
   const total = Number(tx.amount) || (items || []).reduce((s, i) => s + (Number(i?.price) || 0), 0)
+
+  const dateStr = tx?.date || tx?.transaction_date
+  const formattedDate = (() => {
+    if (!dateStr) return '—'
+    try {
+      const parsed = new Date(dateStr)
+      if (isNaN(parsed.getTime())) return '—'
+      return parsed.toLocaleDateString(lang === 'en' ? 'en-GB' : 'id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+    } catch {
+      return '—'
+    }
+  })()
 
   const remove = async () => {
     onClose?.()
@@ -112,7 +123,7 @@ export default function TransactionDetailSheet({ open, onClose, tx, onEdit }) {
       right={<div className="flex items-center gap-1"><button type="button" onClick={() => onEdit?.(tx)} className="p-2 text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white" data-testid="tx-edit"><Pencil size={18} /></button><button type="button" onClick={remove} className="p-2 text-rose-500 hover:text-rose-600" data-testid="tx-delete"><Trash2 size={18} /></button></div>}
     >
       <p className="text-center text-xs text-zinc-600 dark:text-zinc-400 font-medium">
-        {t('paid_by')} {profile?.full_name?.split(' ')[0] || t('user')} {t('on')} {d.toLocaleDateString(lang === 'en' ? 'en-GB' : 'id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+        {t('paid_by')} {profile?.full_name?.split(' ')[0] || t('user')} {t('on')} {formattedDate}
         {tx.receipt_number ? ` · ${t('receipt_no')} ${tx.receipt_number}` : ''}
       </p>
 

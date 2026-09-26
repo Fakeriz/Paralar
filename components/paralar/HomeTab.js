@@ -13,6 +13,17 @@ import { deriveNotifications } from '@/lib/notifications'
 import { supabase } from '@/lib/supabase'
 import { APP_VERSION } from '@/lib/version'
 
+export function safeFormatDate(d, locale = 'en-GB', options = { weekday: 'short', day: 'numeric', month: 'short' }) {
+  if (!d) return '—'
+  try {
+    const x = typeof d === 'string' || typeof d === 'number' ? new Date(d) : d
+    if (isNaN(x.getTime())) return '—'
+    return x.toLocaleDateString(locale, options)
+  } catch {
+    return '—'
+  }
+}
+
 function Header() {
   const {
     t,
@@ -74,7 +85,7 @@ function Header() {
         try {
           readIds = JSON.parse(localStorage.getItem('read_announcements') || '[]')
         } catch {}
-        const unread = data.some((a) => !readIds.includes(a.id))
+        const unread = (data || []).some((a) => !(readIds || []).includes(a?.id))
         setHasUnreadAnnouncements(unread)
       } else {
         setHasUnreadAnnouncements(false)
@@ -264,7 +275,7 @@ function BalanceCarousel() {
         </div>
 
         {/* Slide 2..N: Physical motif Bank Cards with flat styling (no shadow) */}
-        {accounts.map((a) => (
+        {(accounts || []).map((a) => (
           <div key={a.id} className="w-full aspect-[1.58/1] min-h-[185px] shrink-0 snap-center">
             <BankCard
               name={a.name}
@@ -380,7 +391,7 @@ export default function HomeTab() {
     }
   }
 
-  const recent = transactions.slice(0, 6)
+  const recent = (transactions || []).slice(0, 6)
   return (
     <div className="px-5 pb-28">
       <Header />
@@ -409,9 +420,9 @@ export default function HomeTab() {
       ) : (
         <div className="rounded-2xl border border-border/40 bg-card overflow-hidden divide-y divide-border/30 mb-4 touch-pan-y shadow-xs">
           <AnimatePresence mode="popLayout">
-            {recent.map((tx) => (
+            {(recent || []).map((tx) => (
               <motion.div
-                key={tx.id}
+                key={tx?.id || Math.random()}
                 layout
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -422,8 +433,8 @@ export default function HomeTab() {
                 <SwipeTransactionRow
                   transaction={tx}
                   isGrouped
-                  isOpen={openRowId === tx.id}
-                  onOpenChange={(v) => setOpenRowId(v ? tx.id : null)}
+                  isOpen={openRowId === tx?.id}
+                  onOpenChange={(v) => setOpenRowId(v ? tx?.id : null)}
                   onOpenDetail={() => open('txDetail', tx)}
                   onEdit={handleEdit}
                   onDelete={handleDelete}

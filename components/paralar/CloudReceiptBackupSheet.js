@@ -311,15 +311,7 @@ export default function CloudReceiptBackupSheet({ open, onClose }) {
         {/* Footer Note */}
         <div className="pt-3 px-2">
           <p className="text-[11px] text-muted-foreground leading-normal text-center">
-            This mirrors receipt images only. To back up transactions, settings and receipts together as a restorable file, go to{' '}
-            <button
-              type="button"
-              onClick={handleGoToAccountBackup}
-              className="font-bold underline text-foreground hover:text-foreground/80 cursor-pointer inline-flex items-center gap-0.5"
-            >
-              <span>More → Account Backup</span>
-            </button>
-            .
+            This backup receipt images only.
           </p>
         </div>
       </div>

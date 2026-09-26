@@ -28,6 +28,7 @@ export default function BillsTrackerSheet({ open, onClose }) {
     user,
     session,
     addTransaction,
+    deleteTransaction,
     rates,
   } = useApp()
   const [bills, setBills] = useState([])
@@ -140,17 +141,14 @@ export default function BillsTrackerSheet({ open, onClose }) {
       await store.updateBill(b.id, { paid_months: pm })
 
       if (isNowPaid) {
-        // 1. Periksa apakah opsi auto_log_expense aktif (atau default selalu catat jika setting tersebut true)
-        const isAutoLog = b.auto_log_expense !== false
-        const billAmount = Number(b.amount)
+        // Otomatis buat record pengeluaran baru di tabel transactions dan kurangi saldo akun terkait
+        const billAmount = Math.abs(Number(b.amount) || 0)
 
-        // 2. Pastikan nominal tagihan valid (bill.amount > 0)
-        if (isAutoLog && billAmount > 0) {
-          // 3. Tentukan account_id target:
-          // Gunakan b.account_id jika ada. Jika kosong/unassigned, otomatis arahkan ke akun utama pengguna (accounts[0]?.id).
+        if (billAmount > 0) {
           const targetAccountId = b.account_id || accounts[0]?.id || null
+          const cleanCategory = (b.category || 'bills').replace(/^cat_/, '')
 
-          // Cek duplikasi: berikan penanda agar bisa dilacak & mencegah duplikasi
+          // Cek duplikasi: berikan penanda agar bisa dilacak & mencegah duplikasi pada bulan aktif
           const isDuplicate = (transactions || []).some((tx) => {
             if (tx.bill_id && tx.bill_id === b.id && tx.billing_month === activeMonthKey) {
               return true
@@ -169,13 +167,13 @@ export default function BillsTrackerSheet({ open, onClose }) {
               account_id: targetAccountId,
               amount: billAmount,
               type: 'expense',
-              category: b.category || 'Bills & Utilities',
+              category: cleanCategory,
+              payment_method: b.payment_method || 'bank',
               description: `Pembayaran Tagihan: ${billTitle}`,
+              merchant: billTitle,
               transaction_date: currentIso,
-              // Berikan penanda agar bisa dilacak & mencegah duplikasi
               bill_id: b.id,
               billing_month: activeMonthKey,
-              // Field kompatibilitas tambahan untuk database & antarmuka
               currency: b.currency || home || 'USD',
               note: `Pembayaran Tagihan: ${billTitle}`,
               date: currentIso,
@@ -186,34 +184,42 @@ export default function BillsTrackerSheet({ open, onClose }) {
                 await addTransaction(newTransaction)
               } else if (store?.createTransaction) {
                 await store.createTransaction(newTransaction)
-                try {
-                  await applyTxToBalances(store, accounts, newTransaction, 1, rates)
-                } catch (balErr) {
-                  console.warn('Balance apply error:', balErr)
+                if (targetAccountId) {
+                  try {
+                    await applyTxToBalances(store, accounts, newTransaction, 1, rates)
+                  } catch (balErr) {
+                    console.warn('Balance apply error:', balErr)
+                  }
                 }
                 if (typeof refresh === 'function') await refresh()
               }
-              toast.success(t('bill_paid_logged'))
+              toast.success(t('bill_paid_logged') || 'Tagihan lunas & pengeluaran dicatat')
             } catch (txErr) {
               console.warn('Auto log bill payment transaction error:', txErr)
             }
           }
         }
       } else {
-        // Ketika di-uncheck (status berubah dari paid -> unpaid), cari dan revert transaksi terkait bila ada
+        // Ketika di-uncheck (status berubah dari paid -> unpaid), cari dan revert transaksi & saldo terkait
         const linkedTx = (transactions || []).find((tx) =>
           (tx.bill_id && tx.bill_id === b.id && tx.billing_month === activeMonthKey) ||
           (tx.note && (tx.note.includes(b.id) || tx.note.includes(b.title || b.name)) && tx.note.includes(activeMonthKey))
         )
-        if (linkedTx?.id && store?.deleteTransaction) {
+        if (linkedTx) {
           try {
-            await store.deleteTransaction(linkedTx.id)
-            try {
-              await applyTxToBalances(store, accounts, linkedTx, -1, rates)
-            } catch (revertBalErr) {
-              console.warn('Balance revert error:', revertBalErr)
+            if (typeof deleteTransaction === 'function') {
+              await deleteTransaction(linkedTx)
+            } else if (store?.deleteTransaction) {
+              await store.deleteTransaction(linkedTx.id)
+              if (linkedTx.account_id) {
+                try {
+                  await applyTxToBalances(store, accounts, linkedTx, -1, rates)
+                } catch (revertBalErr) {
+                  console.warn('Balance revert error:', revertBalErr)
+                }
+              }
+              if (typeof refresh === 'function') await refresh()
             }
-            if (typeof refresh === 'function') await refresh()
           } catch (revertErr) {
             console.warn('Revert bill payment transaction error:', revertErr)
           }

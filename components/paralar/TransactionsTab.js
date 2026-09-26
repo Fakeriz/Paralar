@@ -14,7 +14,7 @@ const LOCALE_BY_LANG = { en: 'en-GB', tr: 'tr-TR', ms: 'ms-MY', id: 'id-ID' }
 function dayKey(d) {
   if (!d) return 'unknown'
   try {
-    const x = new Date(d)
+    const x = typeof d === 'string' || typeof d === 'number' ? new Date(d) : d
     if (isNaN(x.getTime())) return 'unknown'
     return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`
   } catch {
@@ -22,9 +22,19 @@ function dayKey(d) {
   }
 }
 
+export function safeFormatDate(d, locale = 'en-GB', options = { weekday: 'short', day: 'numeric', month: 'short' }) {
+  if (!d) return '—'
+  try {
+    const x = typeof d === 'string' || typeof d === 'number' ? new Date(d) : d
+    if (isNaN(x.getTime())) return '—'
+    return x.toLocaleDateString(locale, options)
+  } catch {
+    return '—'
+  }
+}
+
 function TransactionsContent() {
-  // UBAH MENJADI (tambahkan hideBalance):
-  const { t, transactions, open, fmt, home, convertToHome, lang, store, refresh, accounts = [], rates, hideBalance, deleteTransaction } = useApp()
+  const { t, transactions = [], open, fmt, home, convertToHome, lang, store, refresh, accounts = [], rates, hideBalance, deleteTransaction } = useApp()
   const [filter, setFilter] = useState('all')
   const [q, setQ] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -84,13 +94,7 @@ function TransactionsContent() {
     if (!k || k === 'unknown') return t('recent') !== 'recent' ? t('recent') : 'Recent'
     if (k === today) return t('today')
     if (k === yesterday) return t('yesterday')
-    try {
-      const d = new Date(k)
-      if (isNaN(d.getTime())) return 'Recent'
-      return d.toLocaleDateString(LOCALE_BY_LANG[lang] || 'en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
-    } catch {
-      return 'Recent'
-    }
+    return safeFormatDate(k, LOCALE_BY_LANG[lang] || 'en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
   }
 
   // Safe multi-currency net: if conversion isn't ready, fall back to raw amount.
