@@ -64,7 +64,6 @@ const SPRING = {
 const clamp = (value, min, max) =>
   Math.min(max, Math.max(min, value))
 
-// Sesuaikan jika context aplikasi menggunakan struktur status modal lain.
 function isOpen(value) {
   if (!value) return false
 
@@ -85,16 +84,19 @@ function isOpen(value) {
 }
 
 /**
- * Props:
- * - tab, onTab, onPlus: tetap mendukung pemakaian komponen sebelumnya.
- * - scrollContainerRef: ref opsional untuk elemen scroll selain window.
- * - modalOpen: boolean opsional sebagai sumber utama status modal.
- * - onReselect: callback opsional saat tab aktif ditekan kembali.
+ * scrollContainerRef:
+ * Ref opsional jika halaman menggunakan elemen scroll selain window.
  *
- * Sisakan padding bawah halaman sekitar:
+ * modalOpen:
+ * Boolean opsional sebagai sumber utama status modal.
+ *
+ * onReselect:
+ * Callback opsional saat tab aktif ditekan kembali.
+ *
+ * Sisakan padding bawah pada halaman:
  * calc(100px + env(safe-area-inset-bottom, 0px))
  *
- * Efek kaca merupakan pendekatan visual CSS, bukan pembiasan optik native.
+ * Efek kaca merupakan pendekatan visual CSS.
  */
 export default function BottomNav({
   tab,
@@ -147,7 +149,6 @@ export default function BottomNav({
   const blocked = modalOpen ?? (sheetOpen || contextOpen)
   const visible = !blocked && scrollVisible
 
-  // Ukur lebar aktual agar posisi lensa tetap tepat pada setiap ukuran layar.
   useEffect(() => {
     const element = trackRef.current
     if (!element) return
@@ -164,14 +165,12 @@ export default function BottomNav({
     return () => observer.disconnect()
   }, [])
 
-  // Sinkronkan posisi lensa dengan tab dari parent.
   useEffect(() => {
     if (!gesture.current) {
       targetX.set(Math.max(0, selected) * cell)
     }
   }, [selected, cell, targetX])
 
-  // Sinkronisasi event sheet dan atribut body.
   useEffect(() => {
     const read = () => {
       const value = document.body.getAttribute(
@@ -210,7 +209,6 @@ export default function BottomNav({
     }
   }, [])
 
-  // Auto-hide menggunakan akumulasi jarak, termasuk saat scroll pelan.
   useEffect(() => {
     const container = scrollContainerRef?.current
     const source = container || window
@@ -292,7 +290,6 @@ export default function BottomNav({
     }
   }, [tab, blocked, scrollContainerRef])
 
-  // Bersihkan gesture dan fokus saat navbar disembunyikan.
   useEffect(() => {
     if (visible) return
 
@@ -376,7 +373,6 @@ export default function BottomNav({
     const dx = event.clientX - state.startX
     const dy = event.clientY - state.startY
 
-    // Biarkan gesture vertikal digunakan untuk scroll halaman.
     if (
       !state.dragging &&
       Math.abs(dy) > 10 &&
@@ -496,10 +492,74 @@ export default function BottomNav({
       }}
       className="fixed inset-x-0 z-50 flex select-none justify-center px-4"
     >
-      <div className="relative h-[60px] w-full max-w-[360px] rounded-full border border-black/10 bg-white/80 p-[5px] text-zinc-950 shadow-[0_8px_28px_rgba(0,0,0,0.14)] backdrop-blur-2xl dark:border-white/15 dark:bg-[#202020]/85 dark:text-white">
+      <div
+        className="
+          relative isolate h-[60px] w-full max-w-[360px]
+          rounded-full p-[5px]
+          text-zinc-950 dark:text-white
+        "
+      >
+        {/*
+          Background kaca dibuat terpisah dari ikon dan lensa.
+          Transparansi hanya diterapkan pada warna background.
+        */}
+        <div
+          aria-hidden="true"
+          className="
+            pointer-events-none absolute inset-0 z-0
+            overflow-hidden rounded-full
+            border border-white/80
+            bg-white/[0.75]
+            shadow-[0_12px_36px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.95),inset_0_-1px_1px_rgba(0,0,0,0.02)]
+            dark:border-white/[0.14]
+            dark:bg-[#121214]/[0.78]
+            dark:shadow-[0_14px_40px_rgba(0,0,0,0.55),inset_0_1px_1px_rgba(255,255,255,0.18)]
+          "
+          style={{
+            backdropFilter: 'blur(24px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+          }}
+        >
+          {/* Kilap lembut di bagian atas permukaan kaca. */}
+          <div
+            className="
+              absolute inset-0
+              opacity-[0.55] dark:opacity-[0.18]
+            "
+            style={{
+              background:
+                'linear-gradient(180deg, rgba(255,255,255,0.48) 0%, rgba(255,255,255,0.14) 32%, rgba(255,255,255,0) 62%)',
+            }}
+          />
+
+          {/* Pantulan tipis mengikuti lengkungan sisi atas. */}
+          <div
+            className="
+              absolute inset-x-[12%] top-0 h-px
+              opacity-80 dark:opacity-40
+            "
+            style={{
+              background:
+                'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.85) 35%, rgba(255,255,255,0.85) 65%, transparent 100%)',
+            }}
+          />
+
+          {/* Refleksi bawah dibuat sangat halus. */}
+          <div
+            className="
+              absolute inset-x-[20%] bottom-0 h-px
+              opacity-40 dark:opacity-20
+            "
+            style={{
+              background:
+                'linear-gradient(90deg, transparent, rgba(255,255,255,0.65), transparent)',
+            }}
+          />
+        </div>
+
         <div
           ref={trackRef}
-          className="relative flex h-full w-full"
+          className="relative z-10 flex h-full w-full"
         >
           {/* Lensa mengikuti jari, lalu kembali ke posisi tab aktif. */}
           <motion.div
@@ -599,7 +659,12 @@ export default function BottomNav({
                   ? 'fab-add'
                   : `nav-${item.id}`
               }
-              className="relative flex h-full min-w-0 flex-1 cursor-pointer items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"
+              className="
+                relative flex h-full min-w-0 flex-1
+                cursor-pointer items-center justify-center rounded-full
+                focus-visible:outline focus-visible:outline-2
+                focus-visible:outline-offset-2 focus-visible:outline-sky-500
+              "
               style={{
                 touchAction: 'pan-y',
                 WebkitTapHighlightColor: 'transparent',
