@@ -6,7 +6,7 @@
 // - Aset lain: stale-while-revalidate
 // - API (/api/*): selalu network-only (data jangan di-cache)
 
-const VERSION = 'paralar-v5';
+const VERSION = 'paralar-v6';
 
 // Cache khusus untuk Web Share Target: menampung file gambar yang di-share
 // dari aplikasi lain. Terpisah dari cache app shell agar tidak ikut terhapus
@@ -104,6 +104,9 @@ async function handleShareTarget(request) {
   } catch (e) {
     dbg.error = String((e && e.message) || e);
   }
+  // SEMENTARA (diagnosis): tampilkan halaman yang kelihatan sebagai response
+  // POST, untuk memastikan apakah Chrome menampilkan response POST atau
+  // mengabaikannya dan hanya membuka aplikasi.
   try {
     const cache = await caches.open(SHARE_CACHE);
     await cache.put(
@@ -112,10 +115,21 @@ async function handleShareTarget(request) {
         headers: { 'Content-Type': 'application/json' },
       })
     );
-  } catch (e) {
-    // Abaikan: page.js akan membuka sheet scan kosong sebagai fallback.
-  }
-  return done('/?sharedReceipt=1');
+  } catch (e) {}
+  const diagHtml = `<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Paralar - Diagnosis Share</title></head>
+<body style="margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#09090b;color:#fff;font-family:system-ui,sans-serif;padding:24px;text-align:center">
+<h1 style="font-size:20px">Share diterima HP! (diagnosis)</h1>
+<p>File: ${dbg.hadFile ? 'ADA (' + dbg.size + ' bytes)' : 'TIDAK ADA'}</p>
+<p>Body: ${dbg.rawBytes != null ? dbg.rawBytes + ' bytes' : '?'}</p>
+<p style="opacity:.7;font-size:14px">Kalau kamu baca ini, berarti Chrome menampilkan response POST.<br>Klik tombol untuk lanjut ke aplikasi.</p>
+<a href="/?sharedReceipt=1" style="margin-top:16px;padding:12px 24px;background:#fff;color:#000;border-radius:12px;text-decoration:none;font-weight:700">Buka Paralar</a>
+<script>setTimeout(function(){location.replace('/?sharedReceipt=1')},3000)</script>
+</body></html>`;
+  return new Response(diagHtml, {
+    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+  });
 }
 
 self.addEventListener('fetch', (event) => {
