@@ -6,7 +6,7 @@
 // - Aset lain: stale-while-revalidate
 // - API (/api/*): selalu network-only (data jangan di-cache)
 
-const VERSION = 'paralar-v6';
+const VERSION = 'paralar-v7';
 
 // Cache khusus untuk Web Share Target: menampung file gambar yang di-share
 // dari aplikasi lain. Terpisah dari cache app shell agar tidak ikut terhapus
@@ -104,9 +104,7 @@ async function handleShareTarget(request) {
   } catch (e) {
     dbg.error = String((e && e.message) || e);
   }
-  // SEMENTARA (diagnosis): tampilkan halaman yang kelihatan sebagai response
-  // POST, untuk memastikan apakah Chrome menampilkan response POST atau
-  // mengabaikannya dan hanya membuka aplikasi.
+  // Catat diagnosis ke Cache Storage (dibaca via ?swinfo=1).
   try {
     const cache = await caches.open(SHARE_CACHE);
     await cache.put(
@@ -116,18 +114,19 @@ async function handleShareTarget(request) {
       })
     );
   } catch (e) {}
-  const diagHtml = `<!doctype html>
+  // Halaman perantara: Chrome menampilkan response POST tapi tidak mengikuti
+  // redirect 303 dengan benar, jadi kita redirect sendiri via JavaScript
+  // (instant) ke aplikasi dengan flag ?sharedReceipt=1.
+  const bridgeHtml = `<!doctype html>
 <html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Paralar - Diagnosis Share</title></head>
-<body style="margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#09090b;color:#fff;font-family:system-ui,sans-serif;padding:24px;text-align:center">
-<h1 style="font-size:20px">Share diterima HP! (diagnosis)</h1>
-<p>File: ${dbg.hadFile ? 'ADA (' + dbg.size + ' bytes)' : 'TIDAK ADA'}</p>
-<p>Body: ${dbg.rawBytes != null ? dbg.rawBytes + ' bytes' : '?'}</p>
-<p style="opacity:.7;font-size:14px">Kalau kamu baca ini, berarti Chrome menampilkan response POST.<br>Klik tombol untuk lanjut ke aplikasi.</p>
-<a href="/?sharedReceipt=1" style="margin-top:16px;padding:12px 24px;background:#fff;color:#000;border-radius:12px;text-decoration:none;font-weight:700">Buka Paralar</a>
-<script>setTimeout(function(){location.replace('/?sharedReceipt=1')},3000)</script>
+<meta name="theme-color" content="#09090b"><title>Paralar</title>
+<script>location.replace("/?sharedReceipt=1");</script></head>
+<body style="margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#09090b;color:#fff;font-family:system-ui,sans-serif;gap:12px">
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none"><rect x="4" y="4" width="40" height="40" rx="12" stroke="#fff" stroke-width="3"/><path d="M17 30V18h8a6 6 0 0 1 0 12h-8" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>
+<p style="margin:0;font-size:15px;opacity:.85">Menerima gambar struk&hellip;</p>
+<noscript><a href="/?sharedReceipt=1" style="color:#fff">Buka Paralar</a></noscript>
 </body></html>`;
-  return new Response(diagHtml, {
+  return new Response(bridgeHtml, {
     headers: { 'Content-Type': 'text/html; charset=utf-8' },
   });
 }
@@ -139,7 +138,8 @@ self.addEventListener('fetch', (event) => {
   // Web Share Target: cegat POST /share langsung di service worker.
   // File gambar dibaca di perangkat dan disimpan ke Cache Storage — tidak
   // dikirim ke server, jadi tidak kena limit ukuran upload serverless (±4.5MB).
-  // Lalu redirect (303) ke aplikasi dengan flag ?sharedReceipt=1.
+  // Response-nya halaman perantara yang redirect sendiri via JS ke
+  // /?sharedReceipt=1 (Chrome tidak mengikuti redirect 303 dari SW).
   if (
     request.method === 'POST' &&
     url.origin === self.location.origin &&
