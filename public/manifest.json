@@ -1,13 +1,1 @@
-{
-  "name": "Paralar — Personal & Business Finance",
-  "short_name": "Paralar",
-  "description": "Log money in seconds. Multi-currency personal & business finance tracker.",
-  "start_url": "/",
-  "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#FFFFFF",
-  "theme_color": "#0A0A0B",
-  "icons": [
-    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
-  ]
-}
+{"background_color":"#FFFFFF","description":"Log money in seconds. Multi-currency personal & business finance tracker.","display":"standalone","icons":[{"sizes":"192x192","src":"/icon-192.png","type":"image/png"},{"sizes":"512x512","src":"/icon-512.png","type":"image/png"},{"purpose":"maskable","sizes":"512x512","src":"/icon-512-maskable.png","type":"image/png"}],"name":"Paralar — Personal & Business Finance","orientation":"portrait","short_name":"Paralar","start_url":"/","theme_color":"#0A0A0B"}

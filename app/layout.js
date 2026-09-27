@@ -13,7 +13,7 @@ export const metadata = {
   description: 'Multi-currency personal and business finance tracker with AI receipt scanning, voice log, debts, and bills tracking.',
   manifest: '/manifest.json',
   appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Paralar' },
-  icons: { icon: '/icon.svg', apple: '/icon.svg' },
+  icons: { icon: '/icon-192.png', apple: '/apple-touch-icon.png' },
   openGraph: {
     title: 'Paralar — Personal & Business Finance',
     description: 'Multi-currency personal and business finance tracker with AI receipt scanning, voice log, debts, and bills tracking.',
