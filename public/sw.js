@@ -6,7 +6,7 @@
 // - Aset lain: stale-while-revalidate
 // - API (/api/*): selalu network-only (data jangan di-cache)
 
-const VERSION = 'paralar-v3';
+const VERSION = 'paralar-v4';
 
 // Cache khusus untuk Web Share Target: menampung file gambar yang di-share
 // dari aplikasi lain. Terpisah dari cache app shell agar tidak ikut terhapus
@@ -55,10 +55,31 @@ async function handleShareTarget(request) {
     Response.redirect(new URL(location, self.location.origin).href, 303);
   // Penanda diagnosis: catat setiap share yang dicegat SW agar bisa dibaca
   // halaman lewat ?swinfo=1.
-  const dbg = { at: new Date().toISOString(), hadFile: false, size: 0, cached: false, error: null };
+  const dbg = { at: new Date().toISOString(), hadFile: false, size: 0, cached: false, error: null, fields: [] };
   try {
     const form = await request.formData();
-    const file = form.get('receipt');
+    // Catat semua field untuk diagnosis (nama, jenis, ukuran).
+    try {
+      for (const [name, value] of form.entries()) {
+        if (typeof value === 'string') {
+          dbg.fields.push({ name, kind: 'text', len: value.length, preview: value.slice(0, 60) });
+        } else {
+          dbg.fields.push({ name, kind: 'file', type: value.type || '?', size: value.size || 0, fname: value.name || '?' });
+        }
+      }
+    } catch (e) {}
+    let file = form.get('receipt');
+    // Fallback: kalau field 'receipt' kosong, ambil file gambar apapun yang ada.
+    if (!(file && typeof file !== 'string' && file.size > 0)) {
+      for (const [, value] of form.entries()) {
+        if (value && typeof value !== 'string' && value.size > 0 &&
+            String(value.type || '').startsWith('image/')) {
+          file = value;
+          dbg.fallbackField = true;
+          break;
+        }
+      }
+    }
     dbg.hadFile = !!(file && file.size > 0);
     dbg.size = file && file.size > 0 ? file.size : 0;
     if (file && file.size > 0 && file.size <= 25 * 1024 * 1024) {

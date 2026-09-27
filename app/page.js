@@ -273,7 +273,12 @@ export default function App() {
           if (res) {
             const j = await res.json()
             info.push('dicegat SW: YA (' + (j.at || '?') + ')')
-            info.push('file: ' + (j.hadFile ? j.size + ' bytes, tersimpan: ' + (j.cached ? 'ya' : 'TIDAK') : 'TIDAK ADA'))
+            info.push('file: ' + (j.hadFile ? j.size + ' bytes, tersimpan: ' + (j.cached ? 'ya' : 'TIDAK') + (j.fallbackField ? ' (fallback)' : '') : 'TIDAK ADA'))
+            if (j.fields && j.fields.length) {
+              info.push('field: ' + j.fields.map(f => f.kind === 'text' ? f.name + '=teks(' + f.len + ')' : f.name + '=file(' + f.type + ',' + f.size + 'b)').join(', '))
+            } else {
+              info.push('field: (kosong)')
+            }
             if (j.error) info.push('error SW: ' + j.error)
           } else {
             info.push('dicegat SW: BELUM PERNAH')
