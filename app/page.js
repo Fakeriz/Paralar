@@ -225,6 +225,32 @@ export default function App() {
     return () => clearTimeout(t)
   }, [authed, open])
 
+  // Deep link dari Web Share Target (?sharedReceipt=1). Gambar struk dititipkan
+  // di sessionStorage oleh route /share; di sini diambil lalu dibuka di sheet scan.
+  useEffect(() => {
+    if (!authed) return
+    let want = false
+    try { want = new URLSearchParams(window.location.search).get('sharedReceipt') === '1' } catch {}
+    if (!want) return
+    try {
+      const url = new URL(window.location.href)
+      url.searchParams.delete('sharedReceipt')
+      window.history.replaceState(null, '', url.pathname + url.search + url.hash)
+    } catch {}
+    let dataUrl = null
+    try {
+      dataUrl = sessionStorage.getItem('paralar_shared_receipt')
+      sessionStorage.removeItem('paralar_shared_receipt')
+    } catch {}
+    const t = setTimeout(() => {
+      // open('scan', { image }) -> ScanReceiptSheet menerima initialImage.
+      // Kalau gambar hilang (mis. sessionStorage penuh), buka sheet kosong saja.
+      if (dataUrl) open('scan', { image: dataUrl })
+      else open('scan')
+    }, 400)
+    return () => clearTimeout(t)
+  }, [authed, open])
+
   const signOut = useCallback(async () => {
     try { await supabase.auth.signOut() } catch {}
     try { localStorage.removeItem(GUEST_KEY) } catch {}
@@ -426,7 +452,7 @@ export default function App() {
         <ProfileSheet open={!!sheets.profile} onClose={() => close('profile')} />
         <NewAccountSheet open={!!sheets.newAccount} onClose={() => close('newAccount')} />
         <VoiceLogSheet open={!!sheets.voice} onClose={() => close('voice')} onResult={(data) => { close('voice'); setTimeout(() => open('addTx', data), 150) }} />
-        <ScanReceiptSheet open={Boolean(sheets?.scan || sheets?.scanReceipt)} onClose={() => { close('scan'); close('scanReceipt') }} onUse={(data) => { close('scan'); close('scanReceipt'); setTimeout(() => open('addTx', data), 150) }} />
+        <ScanReceiptSheet open={Boolean(sheets?.scan || sheets?.scanReceipt)} initialImage={sheets?.scan && typeof sheets.scan === 'object' ? sheets.scan.image || null : null} onClose={() => { close('scan'); close('scanReceipt') }} onUse={(data) => { close('scan'); close('scanReceipt'); setTimeout(() => open('addTx', data), 150) }} />
         <TransactionDetailSheet open={!!sheets.txDetail} onClose={() => close('txDetail')} tx={sheets.txDetail && typeof sheets.txDetail === 'object' ? sheets.txDetail : null} onEdit={editTx} />
         <CoachSheet open={!!sheets.coach} onClose={() => close('coach')} />
         <SplitBillSheet open={!!sheets.split} onClose={() => close('split')} />

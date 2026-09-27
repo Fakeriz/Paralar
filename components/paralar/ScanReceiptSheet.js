@@ -7,7 +7,7 @@ import { Sheet, PrimaryButton, SecondaryButton, Card } from './ui'
 import { QuotaBadge } from './QuotaBadge'
 import { fileToDataUrl } from '@/lib/ledger'
 
-export default function ScanReceiptSheet({ open, onClose, onUse }) {
+export default function ScanReceiptSheet({ open, onClose, onUse, initialImage }) {
   const { t, home, fmt, session, isAiAllowed, open: openSheet, profile } = useApp()
   const [preview, setPreview] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -36,6 +36,7 @@ export default function ScanReceiptSheet({ open, onClose, onUse }) {
     }
   }, [session?.access_token])
 
+  const initialRef = useRef(null)
   useEffect(() => {
     if (open) {
       if (!isAiAllowed) {
@@ -47,22 +48,23 @@ export default function ScanReceiptSheet({ open, onClose, onUse }) {
       setResult(null)
       setBusy(false)
       fetchQuota()
+      // Gambar dari Web Share Target: langsung diproses OCR, sekali per buka.
+      if (initialImage && initialRef.current !== initialImage) {
+        initialRef.current = initialImage
+        processDataUrl(initialImage)
+      }
+    } else {
+      initialRef.current = null
     }
-  }, [open, isAiAllowed, onClose, openSheet, fetchQuota])
+  }, [open, isAiAllowed, onClose, openSheet, fetchQuota, initialImage, processDataUrl])
 
-  const onFile = async (e) => {
-    if (!isAiAllowed) {
-      onClose?.()
-      openSheet?.('aiPremium')
-      return
-    }
-    const f = e.target.files?.[0]
-    if (!f) return
-    e.target.value = ''
+  // Inti pemrosesan gambar struk: dipakai upload manual (onFile) maupun
+  // gambar titipan dari Web Share Target (initialImage).
+  const processDataUrl = useCallback(async (dataUrl) => {
+    if (!dataUrl) return
     setBusy(true)
     setResult(null)
     try {
-      const dataUrl = await fileToDataUrl(f, 1600)
       setPreview(dataUrl)
       const headers = { 'Content-Type': 'application/json' }
       if (session?.access_token) {
@@ -100,6 +102,23 @@ export default function ScanReceiptSheet({ open, onClose, onUse }) {
     } catch (err) {
       toast.error(err?.message || t('error'))
     } finally { setBusy(false) }
+  }, [session?.access_token, t])
+
+  const onFile = async (e) => {
+    if (!isAiAllowed) {
+      onClose?.()
+      openSheet?.('aiPremium')
+      return
+    }
+    const f = e.target.files?.[0]
+    if (!f) return
+    e.target.value = ''
+    try {
+      const dataUrl = await fileToDataUrl(f, 1600)
+      await processDataUrl(dataUrl)
+    } catch (err) {
+      toast.error(err?.message || t('error'))
+    }
   }
 
   const useIt = async () => {
