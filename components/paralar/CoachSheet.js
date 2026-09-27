@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { useApp } from './context'
 import { Sheet } from './ui'
 import { QuotaBadge } from './QuotaBadge'
+import CoachMarkdown from './CoachMarkdown'
 import { convert } from '@/lib/rates'
 import { cn } from '@/lib/utils'
 
@@ -139,7 +140,7 @@ export default function CoachSheet({ open, onClose }) {
         <div ref={scrollRef} className="flex-1 overflow-y-auto no-scrollbar px-4 py-4 space-y-3">
           {messages.map((m, i) => (
             <div key={i} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
-              <div className={cn('max-w-[82%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap leading-relaxed', m.role === 'user' ? 'bg-foreground text-background rounded-br-md' : 'bg-card border border-border/50 rounded-bl-md')}>{m.content}</div>
+              <div className={cn('rounded-2xl px-4 py-2.5 text-sm leading-relaxed', m.role === 'user' ? 'max-w-[82%] bg-foreground text-background rounded-br-md whitespace-pre-wrap' : 'max-w-[92%] bg-card border border-border/50 rounded-bl-md')}>{m.role === 'user' ? m.content : <CoachMarkdown text={m.content} />}</div>
             </div>
           ))}
           {busy ? <div className="flex justify-start"><div className="bg-card border border-border/50 rounded-2xl rounded-bl-md px-4 py-3"><Loader2 size={16} className="animate-spin" /></div></div> : null}

@@ -684,8 +684,13 @@ async function handleCoach(request, quota = null) {
     const ctx = body?.context || {}
     const homeCurrency = ctx?.homeCurrency || 'IDR'
 
+    // Bahasa jawaban mengikuti bahasa pesan terakhir user (fallback: bahasa UI).
+    const langNames = { id: 'Bahasa Indonesia', ms: 'Bahasa Melayu', tr: 'Türkçe', en: 'English' }
+    const fallbackLang = langNames[body?.language] || 'Bahasa Indonesia'
+
     const systemInstruction = `Kamu adalah Paralar AI Financial Coach: asisten keuangan pribadi yang praktis, ringkas, dan solutif.
-Jawab dalam Bahasa Indonesia, gunakan poin-poin padat (maksimal 150 kata).
+ATURAN BAHASA (wajib dipatuhi): selalu jawab dalam bahasa yang SAMA dengan pesan terakhir dari user. Deteksi bahasanya dari pesan terakhir itu — contoh: user bertanya dalam English, jawab dalam English; user bertanya dalam Bahasa Melayu, jawab dalam Bahasa Melayu. Jika bahasanya tidak bisa dikenali, jawab dalam ${fallbackLang}.
+Gunakan poin-poin padat (maksimal 150 kata).
 Konteks keuangan user (Mata uang: ${homeCurrency}):
 ${JSON.stringify(ctx).slice(0, 3000)}`
 
