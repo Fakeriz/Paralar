@@ -6,7 +6,7 @@
 // - Aset lain: stale-while-revalidate
 // - API (/api/*): selalu network-only (data jangan di-cache)
 
-const VERSION = 'paralar-v4';
+const VERSION = 'paralar-v5';
 
 // Cache khusus untuk Web Share Target: menampung file gambar yang di-share
 // dari aplikasi lain. Terpisah dari cache app shell agar tidak ikut terhapus
@@ -56,6 +56,15 @@ async function handleShareTarget(request) {
   // Penanda diagnosis: catat setiap share yang dicegat SW agar bisa dibaca
   // halaman lewat ?swinfo=1.
   const dbg = { at: new Date().toISOString(), hadFile: false, size: 0, cached: false, error: null, fields: [] };
+  // Header mentah untuk diagnosis: apakah Chrome benar-benar mengirim body?
+  try {
+    dbg.contentType = request.headers.get('content-type') || '(tidak ada)';
+    dbg.contentLength = request.headers.get('content-length') || '(tidak ada)';
+    const raw = await request.clone().arrayBuffer();
+    dbg.rawBytes = raw.byteLength;
+  } catch (e) {
+    dbg.headerError = String((e && e.message) || e);
+  }
   try {
     const form = await request.formData();
     // Catat semua field untuk diagnosis (nama, jenis, ukuran).

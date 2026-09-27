@@ -279,6 +279,10 @@ export default function App() {
             } else {
               info.push('field: (kosong)')
             }
+            info.push('content-type: ' + (j.contentType || '?'))
+            info.push('content-length: ' + (j.contentLength || '?'))
+            info.push('body asli: ' + (j.rawBytes != null ? j.rawBytes + ' bytes' : '?'))
+            if (j.headerError) info.push('error header: ' + j.headerError)
             if (j.error) info.push('error SW: ' + j.error)
           } else {
             info.push('dicegat SW: BELUM PERNAH')
