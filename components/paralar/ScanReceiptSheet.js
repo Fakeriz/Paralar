@@ -7,7 +7,7 @@ import { Sheet, PrimaryButton, SecondaryButton, Card } from './ui'
 import { QuotaBadge } from './QuotaBadge'
 import { fileToDataUrl } from '@/lib/ledger'
 
-export default function ScanReceiptSheet({ open, onClose, onUse, initialImage }) {
+export default function ScanReceiptSheet({ open, onClose, onUse, initialImage, autoPick }) {
   const { t, home, fmt, session, isAiAllowed, open: openSheet, profile } = useApp()
   const [preview, setPreview] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -98,11 +98,16 @@ export default function ScanReceiptSheet({ open, onClose, onUse, initialImage })
       if (initialImage && initialRef.current !== initialImage) {
         initialRef.current = initialImage
         processDataUrl(initialImage)
+      } else if (autoPick && !initialImage) {
+        // Share tidak membawa gambar (Chrome tidak melampirkan file):
+        // langsung tawarkan pilih foto manual.
+        const t = setTimeout(() => { try { fileRef.current?.click() } catch {} }, 500)
+        return () => clearTimeout(t)
       }
     } else {
       initialRef.current = null
     }
-  }, [open, isAiAllowed, onClose, openSheet, fetchQuota, initialImage, processDataUrl])
+  }, [open, isAiAllowed, onClose, openSheet, fetchQuota, initialImage, autoPick, processDataUrl])
 
 
   const onFile = async (e) => {

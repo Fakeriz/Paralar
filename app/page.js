@@ -338,11 +338,12 @@ export default function App() {
       if (cancelled) return
       try { if (toastId) toast.dismiss(toastId) } catch {}
       // open('scan', { image }) -> ScanReceiptSheet menerima initialImage.
-      // Kalau gambar tidak ketemu, buka sheet kosong saja + kasih tahu user.
+      // Kalau gambar tidak ketemu (Chrome tidak melampirkan file),
+      // buka sheet dengan autoPick agar user bisa pilih foto manual.
       if (dataUrl) open('scan', { image: dataUrl })
       else {
-        try { toast.error('Gambar struk tidak ketemu — coba share ulang ya') } catch {}
-        open('scan')
+        try { toast.info('Gambar tidak terbawa — pilih foto struk ya') } catch {}
+        open('scan', { autoPick: true })
       }
     }, 400)
     return () => {
@@ -553,7 +554,7 @@ export default function App() {
         <ProfileSheet open={!!sheets.profile} onClose={() => close('profile')} />
         <NewAccountSheet open={!!sheets.newAccount} onClose={() => close('newAccount')} />
         <VoiceLogSheet open={!!sheets.voice} onClose={() => close('voice')} onResult={(data) => { close('voice'); setTimeout(() => open('addTx', data), 150) }} />
-        <ScanReceiptSheet open={Boolean(sheets?.scan || sheets?.scanReceipt)} initialImage={sheets?.scan && typeof sheets.scan === 'object' ? sheets.scan.image || null : null} onClose={() => { close('scan'); close('scanReceipt') }} onUse={(data) => { close('scan'); close('scanReceipt'); setTimeout(() => open('addTx', data), 150) }} />
+        <ScanReceiptSheet open={Boolean(sheets?.scan || sheets?.scanReceipt)} initialImage={sheets?.scan && typeof sheets.scan === 'object' ? sheets.scan.image || null : null} autoPick={sheets?.scan && typeof sheets.scan === 'object' ? Boolean(sheets.scan.autoPick) : false} onClose={() => { close('scan'); close('scanReceipt') }} onUse={(data) => { close('scan'); close('scanReceipt'); setTimeout(() => open('addTx', data), 150) }} />
         <TransactionDetailSheet open={!!sheets.txDetail} onClose={() => close('txDetail')} tx={sheets.txDetail && typeof sheets.txDetail === 'object' ? sheets.txDetail : null} onEdit={editTx} />
         <CoachSheet open={!!sheets.coach} onClose={() => close('coach')} />
         <SplitBillSheet open={!!sheets.split} onClose={() => close('split')} />
