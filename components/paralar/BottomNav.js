@@ -119,6 +119,11 @@ export default function BottomNav({
   const lensX = reduced ? targetX : springX
   const counterX = useTransform(lensX, value => -value)
 
+  // Specular sweep: kilau menyapu mengikuti lensa dengan parallax (0.5x —
+  // tertinggal dari lensa, memberi kesan kedalaman kaca). Murni transform,
+  // di-composite GPU, tanpa filter SVG.
+  const sheenX = useTransform(lensX, value => value * 0.5 - 50)
+
   const contextOpen = [
     app?.modal,
     app?.activeModal,
@@ -472,6 +477,32 @@ export default function BottomNav({
                 'linear-gradient(90deg, transparent, rgba(255,255,255,0.65), transparent)',
             }}
           />
+          {/* Dispersi irisdien — pelangi tipis di bawah edge light, tiruan
+              dispersi kaca. Statis & murah (satu layer blur kecil). */}
+          <div
+            className="absolute inset-x-[14%] top-[2px] h-px opacity-50 dark:opacity-30"
+            style={{
+              background:
+                'linear-gradient(90deg, transparent 0%, rgba(125,211,252,0.8) 30%, rgba(196,181,253,0.8) 50%, rgba(253,224,71,0.8) 70%, transparent 100%)',
+              filter: 'blur(1px)',
+            }}
+          />
+          {/* Specular sweep — kilau diagonal yang menyapu saat lensa
+              berpindah tab. Terpotong mengikuti bentuk pil. */}
+          <motion.div
+            aria-hidden="true"
+            className="absolute inset-y-[-25%] left-0 w-[140px] opacity-70 dark:opacity-40"
+            style={{ x: sheenX }}
+          >
+            <div
+              className="h-full w-full"
+              style={{
+                background:
+                  'linear-gradient(100deg, transparent 15%, rgba(255,255,255,0.5) 50%, transparent 85%)',
+                filter: 'blur(8px)',
+              }}
+            />
+          </motion.div>
         </div>
 
         <div ref={trackRef} className="relative z-10 flex h-full w-full">
@@ -485,7 +516,7 @@ export default function BottomNav({
             }}
           >
             <motion.div
-              className="absolute inset-[1px] rounded-full"
+              className="absolute inset-[1px] overflow-hidden rounded-full"
               initial={false}
               animate={{
                 opacity: active < 0 ? 0 : 1,
@@ -508,7 +539,19 @@ export default function BottomNav({
                   ? 'inset 0 1px 1px rgba(255,255,255,.65), inset 1px 0 1px rgba(120,205,255,.35), inset -1px -1px 1px rgba(235,223,130,.4), 0 3px 10px rgba(0,0,0,.12)'
                   : 'inset 0 1px 0 rgba(255,255,255,.08)',
               }}
-            />
+            >
+              {/* Aura irisdien di dalam lensa — cahaya yang dibiaskan lensa
+                  kaca, bergerak & terpotong otomatis mengikuti lensa. */}
+              <div
+                aria-hidden="true"
+                className="absolute inset-0 opacity-20 dark:opacity-25"
+                style={{
+                  background:
+                    'linear-gradient(115deg, rgba(125,211,252,0.55) 0%, rgba(196,181,253,0.45) 48%, rgba(253,224,71,0.4) 100%)',
+                  filter: 'blur(6px)',
+                }}
+              />
+            </motion.div>
 
             <motion.div
               className="absolute inset-y-0 left-0 overflow-hidden rounded-full"
