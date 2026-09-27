@@ -83,21 +83,6 @@ function isOpen(value) {
   return false
 }
 
-/**
- * scrollContainerRef:
- * Ref opsional jika halaman menggunakan elemen scroll selain window.
- *
- * modalOpen:
- * Boolean opsional sebagai sumber utama status modal.
- *
- * onReselect:
- * Callback opsional saat tab aktif ditekan kembali.
- *
- * Sisakan padding bawah pada halaman:
- * calc(100px + env(safe-area-inset-bottom, 0px))
- *
- * Efek kaca merupakan pendekatan visual CSS.
- */
 export default function BottomNav({
   tab,
   onTab,
@@ -173,15 +158,8 @@ export default function BottomNav({
 
   useEffect(() => {
     const read = () => {
-      const value = document.body.getAttribute(
-        'data-paralar-sheet-open'
-      )
-
-      setSheetOpen(
-        value !== null &&
-        value !== 'false' &&
-        value !== '0'
-      )
+      const value = document.body.getAttribute('data-paralar-sheet-open')
+      setSheetOpen(value !== null && value !== 'false' && value !== '0')
     }
 
     const toggle = event => {
@@ -195,7 +173,6 @@ export default function BottomNav({
     read()
 
     const observer = new MutationObserver(read)
-
     observer.observe(document.body, {
       attributes: true,
       attributeFilter: ['data-paralar-sheet-open'],
@@ -257,12 +234,7 @@ export default function BottomNav({
       if (Math.abs(delta) < 0.5) return
 
       const nextDirection = Math.sign(delta)
-
-      distance =
-        nextDirection === direction
-          ? distance + Math.abs(delta)
-          : Math.abs(delta)
-
+      distance = nextDirection === direction ? distance + Math.abs(delta) : Math.abs(delta)
       direction = nextDirection
 
       if (direction > 0 && y > 60 && distance >= 24) {
@@ -280,9 +252,7 @@ export default function BottomNav({
       }
     }
 
-    source.addEventListener('scroll', onScroll, {
-      passive: true,
-    })
+    source.addEventListener('scroll', onScroll, { passive: true })
 
     return () => {
       source.removeEventListener('scroll', onScroll)
@@ -299,7 +269,6 @@ export default function BottomNav({
     targetX.set(Math.max(0, selected) * cell)
 
     const focused = document.activeElement
-
     if (navRef.current?.contains(focused)) {
       focused?.blur?.()
     }
@@ -312,9 +281,7 @@ export default function BottomNav({
       } else if (typeof navigator !== 'undefined') {
         navigator.vibrate?.(8)
       }
-    } catch {
-      // Haptic bersifat opsional.
-    }
+    } catch {}
   }
 
   function activate(index) {
@@ -339,13 +306,7 @@ export default function BottomNav({
   }
 
   function pointerDown(event, index) {
-    if (
-      !visible ||
-      !event.isPrimary ||
-      event.button !== 0
-    ) {
-      return
-    }
+    if (!visible || !event.isPrimary || event.button !== 0) return
 
     suppressClick.current = false
 
@@ -367,17 +328,12 @@ export default function BottomNav({
 
   function pointerMove(event) {
     const state = gesture.current
-
     if (!state || state.id !== event.pointerId) return
 
     const dx = event.clientX - state.startX
     const dy = event.clientY - state.startY
 
-    if (
-      !state.dragging &&
-      Math.abs(dy) > 10 &&
-      Math.abs(dy) > Math.abs(dx)
-    ) {
+    if (!state.dragging && Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) {
       finish(event, true)
       return
     }
@@ -386,19 +342,10 @@ export default function BottomNav({
 
     state.dragging = true
 
-    const x = clamp(
-      event.clientX - state.rect.left - cell / 2,
-      0,
-      width - cell
-    )
-
+    const x = clamp(event.clientX - state.rect.left - cell / 2, 0, width - cell)
     targetX.set(x)
 
-    const index = clamp(
-      Math.round(x / cell),
-      0,
-      ITEMS.length - 1
-    )
+    const index = clamp(Math.round(x / cell), 0, ITEMS.length - 1)
 
     if (index !== state.index) {
       state.index = index
@@ -409,7 +356,6 @@ export default function BottomNav({
 
   function finish(event, cancelled = false) {
     const state = gesture.current
-
     if (!state || state.id !== event.pointerId) return
 
     gesture.current = null
@@ -418,9 +364,7 @@ export default function BottomNav({
 
     suppressClick.current = cancelled || state.dragging
 
-    if (
-      event.currentTarget.hasPointerCapture?.(event.pointerId)
-    ) {
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId)
     }
 
@@ -432,10 +376,7 @@ export default function BottomNav({
   }
 
   const iconLayers = (item, index) => (
-    <span
-      className="relative block h-[24px] w-[24px]"
-      aria-hidden="true"
-    >
+    <span className="relative block h-[24px] w-[24px]" aria-hidden="true">
       <motion.span
         className="absolute inset-0"
         initial={false}
@@ -471,9 +412,7 @@ export default function BottomNav({
       aria-hidden={!visible}
       initial={false}
       animate={{
-        y: visible
-          ? 0
-          : 'calc(100% + 40px + env(safe-area-inset-bottom, 0px))',
+        y: visible ? 0 : 'calc(100% + 40px + env(safe-area-inset-bottom, 0px))',
         opacity: visible ? 1 : 0,
       }}
       transition={
@@ -487,10 +426,10 @@ export default function BottomNav({
             }
       }
       style={{
-        bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+        bottom: 'max(14px, env(safe-area-inset-bottom, 14px))',
         pointerEvents: visible ? 'auto' : 'none',
       }}
-      className="fixed inset-x-0 z-50 flex select-none justify-center px-4"
+      className="fixed inset-x-0 z-50 flex select-none justify-center px-4 transform-gpu"
     >
       <div
         className="
@@ -499,10 +438,7 @@ export default function BottomNav({
           text-zinc-950 dark:text-white
         "
       >
-        {/*
-          Background kaca dibuat terpisah dari ikon dan lensa.
-          Transparansi hanya diterapkan pada warna background.
-        */}
+        {/* Background kaca */}
         <div
           aria-hidden="true"
           className="
@@ -520,36 +456,22 @@ export default function BottomNav({
             WebkitBackdropFilter: 'blur(24px) saturate(180%)',
           }}
         >
-          {/* Kilap lembut di bagian atas permukaan kaca. */}
           <div
-            className="
-              absolute inset-0
-              opacity-[0.55] dark:opacity-[0.18]
-            "
+            className="absolute inset-0 opacity-[0.55] dark:opacity-[0.18]"
             style={{
               background:
                 'linear-gradient(180deg, rgba(255,255,255,0.48) 0%, rgba(255,255,255,0.14) 32%, rgba(255,255,255,0) 62%)',
             }}
           />
-
-          {/* Pantulan tipis mengikuti lengkungan sisi atas. */}
           <div
-            className="
-              absolute inset-x-[12%] top-0 h-px
-              opacity-80 dark:opacity-40
-            "
+            className="absolute inset-x-[12%] top-0 h-px opacity-80 dark:opacity-40"
             style={{
               background:
                 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.85) 35%, rgba(255,255,255,0.85) 65%, transparent 100%)',
             }}
           />
-
-          {/* Refleksi bawah dibuat sangat halus. */}
           <div
-            className="
-              absolute inset-x-[20%] bottom-0 h-px
-              opacity-40 dark:opacity-20
-            "
+            className="absolute inset-x-[20%] bottom-0 h-px opacity-40 dark:opacity-20"
             style={{
               background:
                 'linear-gradient(90deg, transparent, rgba(255,255,255,0.65), transparent)',
@@ -557,11 +479,8 @@ export default function BottomNav({
           />
         </div>
 
-        <div
-          ref={trackRef}
-          className="relative z-10 flex h-full w-full"
-        >
-          {/* Lensa mengikuti jari, lalu kembali ke posisi tab aktif. */}
+        <div ref={trackRef} className="relative z-10 flex h-full w-full">
+          {/* Lensa penanda tab aktif */}
           <motion.div
             aria-hidden="true"
             className="pointer-events-none absolute inset-y-0 left-0 z-20"
@@ -596,19 +515,14 @@ export default function BottomNav({
               }}
             />
 
-            {/* Duplikasi ikon terpotong untuk pendekatan efek pembesaran. */}
             <motion.div
               className="absolute inset-y-0 left-0 overflow-hidden rounded-full"
-              style={{
-                width: cell,
-              }}
+              style={{ width: cell }}
               initial={false}
               animate={{
                 opacity: pressed && !reduced ? 1 : 0,
               }}
-              transition={{
-                duration: 0.1,
-              }}
+              transition={{ duration: 0.1 }}
             >
               <motion.div
                 className="flex h-full"
@@ -621,15 +535,12 @@ export default function BottomNav({
                   <div
                     key={item.id}
                     className="flex h-full shrink-0 items-center justify-center"
-                    style={{
-                      width: cell,
-                    }}
+                    style={{ width: cell }}
                   >
                     <span
                       style={{
                         transform: 'scale(1.12)',
-                        filter:
-                          'drop-shadow(1px 1px 0 rgba(213,222,90,.45))',
+                        filter: 'drop-shadow(1px 1px 0 rgba(213,222,90,.45))',
                       }}
                     >
                       {iconLayers(item, index)}
@@ -646,19 +557,9 @@ export default function BottomNav({
               type="button"
               disabled={!visible}
               tabIndex={visible ? 0 : -1}
-              aria-current={
-                item.id === tab ? 'page' : undefined
-              }
-              aria-label={
-                t?.(
-                  item.id === 'more' ? 'profile' : item.id
-                ) || item.label
-              }
-              data-testid={
-                item.id === 'add'
-                  ? 'fab-add'
-                  : `nav-${item.id}`
-              }
+              aria-current={item.id === tab ? 'page' : undefined}
+              aria-label={t?.(item.id === 'more' ? 'profile' : item.id) || item.label}
+              data-testid={item.id === 'add' ? 'fab-add' : `nav-${item.id}`}
               className="
                 relative flex h-full min-w-0 flex-1
                 cursor-pointer items-center justify-center rounded-full
@@ -669,27 +570,18 @@ export default function BottomNav({
                 touchAction: 'pan-y',
                 WebkitTapHighlightColor: 'transparent',
               }}
-              whileTap={
-                reduced ? undefined : { scale: 0.94 }
-              }
+              whileTap={reduced ? undefined : { scale: 0.94 }}
               transition={{
                 type: 'spring',
                 ...SPRING,
               }}
-              onPointerDown={event =>
-                pointerDown(event, index)
-              }
+              onPointerDown={event => pointerDown(event, index)}
               onPointerMove={pointerMove}
               onPointerUp={event => finish(event)}
               onPointerCancel={event => finish(event, true)}
-              onLostPointerCapture={event =>
-                finish(event, true)
-              }
+              onLostPointerCapture={event => finish(event, true)}
               onClick={event => {
-                if (
-                  suppressClick.current &&
-                  event.detail !== 0
-                ) {
+                if (suppressClick.current && event.detail !== 0) {
                   suppressClick.current = false
                   return
                 }

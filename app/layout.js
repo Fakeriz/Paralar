@@ -24,7 +24,8 @@ export const viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  viewportFit: 'cover',
+  userScalable: false,
+  viewportFit: 'cover', // <-- Wajib ada untuk iOS
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#F6F6F6' },
     { media: '(prefers-color-scheme: dark)', color: '#09090b' },
