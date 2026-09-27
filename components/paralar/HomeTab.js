@@ -1,7 +1,7 @@
 'use client'
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Bell, Eye, EyeOff, ArrowDownLeft, ArrowUpRight, Receipt, Users, PieChart, FileText, Plus, ChevronLeft, ChevronRight, Sparkles, Trash2, WifiOff, RefreshCw } from 'lucide-react'
+import { Bell, Eye, EyeOff, ArrowDownLeft, ArrowUpRight, Receipt, Users, PieChart, FileText, Plus, ChevronRight, Sparkles, Trash2, WifiOff, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
 import { Avatar, Card, SectionLabel, EmptyState } from './ui'
@@ -305,17 +305,9 @@ function BalanceCarousel() {
         regionLabel={t('accounts')}
       />
 
-      {/* Indikator + navigasi presisi: dots untuk lompat, panah untuk keyboard */}
-      <div className="flex justify-center items-center gap-1.5 mt-3.5">
-        <button
-          type="button"
-          onClick={() => goTo(idx - 1)}
-          disabled={idx === 0}
-          aria-label={t('previous', 'Previous card')}
-          className="mr-1 flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:text-foreground disabled:opacity-30"
-        >
-          <ChevronLeft size={18} />
-        </button>
+      {/* Indikator halaman: dots saja. Navigasi utama via swipe;
+          keyboard tetap bisa via fokus ke deck (panah/Home/End). */}
+      <div className="flex justify-center items-center gap-1.5 mt-3">
         {slides.map((s, i) => (
           <button
             key={s.id}
@@ -331,15 +323,6 @@ function BalanceCarousel() {
             )}
           />
         ))}
-        <button
-          type="button"
-          onClick={() => goTo(idx + 1)}
-          disabled={idx === slides.length - 1}
-          aria-label={t('next', 'Next card')}
-          className="ml-1 flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:text-foreground disabled:opacity-30"
-        >
-          <ChevronRight size={18} />
-        </button>
       </div>
     </div>
   )

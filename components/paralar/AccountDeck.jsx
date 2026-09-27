@@ -174,8 +174,15 @@ export default function AccountDeck({ slides, index, onIndexChange, regionLabel,
             aria-roledescription="slide"
             aria-label={`${active.label} (${visual + 1} dari ${total})`}
             drag="x"
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.08}
+            // 1:1 mengikuti jari dalam batas wajar (±170px, threshold 90px ada di dalam).
+            // Di luar batas ada rubber-band lembut, bukan tembok kaku.
+            // dragElastic 0.08 + constraints 0 dulu bikin kartu cuma gerak 8% dari
+            // jari → terasa tersendat/ketinggalan.
+            dragConstraints={{ left: -170, right: 170 }}
+            dragElastic={0.35}
+            // Tanpa momentum: perilaku saat lepas sepenuhnya dikontrol
+            // commit()/settle(), tidak rebutan dengan inertia framer.
+            dragMomentum={false}
             onDragEnd={onDragEnd}
           >
             {active.node}
