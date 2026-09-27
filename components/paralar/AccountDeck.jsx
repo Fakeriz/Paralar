@@ -8,7 +8,7 @@ const COMMIT_X = 90 // px — jarak geser minimum untuk pindah kartu
 const COMMIT_V = 550 // px/s — atau velocity cukup tinggi (flick)
 const EXIT_MS = 0.22 // durasi kartu keluar, sinkron dengan pola triage
 const SPRING = { type: 'spring', stiffness: 480, damping: 34, mass: 0.9 }
-const PEEK_Y = 13 // offset vertikal tiap kartu di belakang
+const PEEK_Y = 11 // offset vertikal tiap kartu di belakang (rapat agar hero tidak renggang)
 const PEEK_SCALE = 0.05 // susut skala tiap kartu di belakang
 
 function haptic(ms = 8) {
@@ -46,7 +46,11 @@ export default function AccountDeck({ slides, index, onIndexChange, regionLabel,
   const x = useMotionValue(0)
   const cardOpacity = useMotionValue(1)
   const rotate = useTransform(x, [-280, 280], [-3.5, 3.5])
-  const behindX = useTransform(x, (v) => v * 0.05) // parallax halus kartu belakang
+  // firstMount: kartu pertama tampil instan, tanpa animasi masuk.
+  const firstMount = useRef(true)
+  React.useEffect(() => {
+    firstMount.current = false
+  }, [])
 
   const announce = React.useCallback(
     (i) => {
@@ -143,7 +147,7 @@ export default function AccountDeck({ slides, index, onIndexChange, regionLabel,
         aria-label={regionLabel}
         tabIndex={0}
         onKeyDown={onKeyDown}
-        className="relative rounded-2xl pt-7 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="relative rounded-2xl pt-6 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         {/* Kartu belakang: mengintip dari atas sebagai affordance tumpukan */}
         {[2, 1].map((k) => {
@@ -153,11 +157,12 @@ export default function AccountDeck({ slides, index, onIndexChange, regionLabel,
             <motion.div
               key={s.id}
               aria-hidden="true"
-              className="pointer-events-none absolute inset-x-0 top-7 h-[calc(100%-1.75rem)]"
-              initial={false}
-              animate={{ y: -PEEK_Y * k, scale: 1 - PEEK_SCALE * k }}
+              className="pointer-events-none absolute inset-x-0 top-6 h-[calc(100%-1.5rem)]"
+              // fade-in lembut saat kartu baru masuk ke tumpukan belakang
+              initial={{ opacity: 0 }}
+              animate={{ y: -PEEK_Y * k, scale: 1 - PEEK_SCALE * k, opacity: 1 }}
               transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 32 }}
-              style={{ x: behindX, zIndex: 10 - k }}
+              style={{ zIndex: 10 - k }}
             >
               {s.node}
             </motion.div>
@@ -167,9 +172,15 @@ export default function AccountDeck({ slides, index, onIndexChange, regionLabel,
         {/* Kartu aktif: satu-satunya yang bisa di-drag horizontal */}
         {active && (
           <motion.div
-            key={active.id}
+            // Key dibedakan dari peek agar selalu remount saat jadi kartu depan:
+            // kartu baru mulai persis dari pose peek (tempatnya sebelum naik),
+            // lalu spring ke pose depan. Tanpa ini, kartu belakang "pop" instan.
+            key={`front-${active.id}`}
             className="relative aspect-[1.58/1] min-h-[185px] cursor-grab active:cursor-grabbing"
             style={{ x, rotate, opacity: cardOpacity, zIndex: 20, touchAction: 'pan-y' }}
+            initial={firstMount.current ? false : { y: -PEEK_Y, scale: 1 - PEEK_SCALE, opacity: 0.92 }}
+            animate={{ y: 0, scale: 1, opacity: 1 }}
+            transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 34 }}
             role="group"
             aria-roledescription="slide"
             aria-label={`${active.label} (${visual + 1} dari ${total})`}

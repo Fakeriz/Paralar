@@ -297,7 +297,7 @@ function BalanceCarousel() {
   )
 
   return (
-    <div className="mt-5">
+    <div className="mt-3">
       <AccountDeck
         slides={slides}
         index={idx}
