@@ -6,7 +6,13 @@
 // - Aset lain: stale-while-revalidate
 // - API (/api/*): selalu network-only (data jangan di-cache)
 
-const VERSION = 'paralar-v1';
+const VERSION = 'paralar-v2';
+
+// Cache khusus untuk Web Share Target: menampung file gambar yang di-share
+// dari aplikasi lain. Terpisah dari cache app shell agar tidak ikut terhapus
+// saat versi SW diperbarui.
+const SHARE_CACHE = 'paralar-share-v1';
+const SHARE_KEY = '/__paralar_shared_receipt__';
 
 const APP_SHELL = [
   '/',
@@ -32,7 +38,7 @@ self.addEventListener('activate', (event) => {
     caches
       .keys()
       .then((keys) =>
-        Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k)))
+        Promise.all(keys.filter((k) => k !== VERSION && k !== SHARE_CACHE).map((k) => caches.delete(k)))
       )
       .then(() => self.clients.claim())
   );
@@ -44,9 +50,43 @@ function putInCache(request, response) {
   caches.open(VERSION).then((cache) => cache.put(request, copy));
 }
 
+async function handleShareTarget(request) {
+  const done = (location) =>
+    Response.redirect(new URL(location, self.location.origin).href, 303);
+  try {
+    const form = await request.formData();
+    const file = form.get('receipt');
+    if (file && file.size > 0 && file.size <= 25 * 1024 * 1024) {
+      const cache = await caches.open(SHARE_CACHE);
+      await cache.put(
+        SHARE_KEY,
+        new Response(file, {
+          headers: { 'Content-Type': file.type || 'image/jpeg' },
+        })
+      );
+    }
+  } catch (e) {
+    // Abaikan: page.js akan membuka sheet scan kosong sebagai fallback.
+  }
+  return done('/?sharedReceipt=1');
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
+
+  // Web Share Target: cegat POST /share langsung di service worker.
+  // File gambar dibaca di perangkat dan disimpan ke Cache Storage — tidak
+  // dikirim ke server, jadi tidak kena limit ukuran upload serverless (±4.5MB).
+  // Lalu redirect (303) ke aplikasi dengan flag ?sharedReceipt=1.
+  if (
+    request.method === 'POST' &&
+    url.origin === self.location.origin &&
+    url.pathname === '/share'
+  ) {
+    event.respondWith(handleShareTarget(request));
+    return;
+  }
 
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
   if (url.pathname.startsWith('/api/')) return; // API: network-only

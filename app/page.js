@@ -7,7 +7,7 @@ import { createStore, DEFAULT_PROFILE } from '@/lib/store'
 import { translate, LOCALE_MAP } from '@/lib/i18n'
 import { formatMoney } from '@/lib/currencies'
 import { convert, FALLBACK_RATES } from '@/lib/rates'
-import { applyTxToBalances, computeBalanceDelta } from '@/lib/ledger'
+import { applyTxToBalances, computeBalanceDelta, fileToDataUrl } from '@/lib/ledger'
 import { initSyncListener } from '@/lib/sync'
 import { AppContext } from '@/components/paralar/context'
 
@@ -225,8 +225,10 @@ export default function App() {
     return () => clearTimeout(t)
   }, [authed, open])
 
-  // Deep link dari Web Share Target (?sharedReceipt=1). Gambar struk dititipkan
-  // di sessionStorage oleh route /share; di sini diambil lalu dibuka di sheet scan.
+  // Deep link dari Web Share Target (?sharedReceipt=1).
+  // Gambar diambil dari Cache Storage (ditulis service worker saat mencegat
+  // POST /share — jadi file tidak lewat server dan tidak kena limit upload),
+  // fallback ke sessionStorage (jalur server /share untuk gambar kecil).
   useEffect(() => {
     if (!authed) return
     let want = false
@@ -237,18 +239,39 @@ export default function App() {
       url.searchParams.delete('sharedReceipt')
       window.history.replaceState(null, '', url.pathname + url.search + url.hash)
     } catch {}
-    let dataUrl = null
-    try {
-      dataUrl = sessionStorage.getItem('paralar_shared_receipt')
-      sessionStorage.removeItem('paralar_shared_receipt')
-    } catch {}
-    const t = setTimeout(() => {
+    let cancelled = false
+    const readSharedImage = async () => {
+      try {
+        if ('caches' in window) {
+          const cache = await caches.open('paralar-share-v1')
+          const res = await cache.match('/__paralar_shared_receipt__')
+          if (res) {
+            const blob = await res.blob()
+            await cache.delete('/__paralar_shared_receipt__')
+            if (blob && blob.size > 0) {
+              // samakan dengan pipeline upload manual: downscale max 1600px
+              const file = new File([blob], 'shared-receipt.jpg', { type: blob.type || 'image/jpeg' })
+              return await fileToDataUrl(file, 1600)
+            }
+          }
+        }
+      } catch {}
+      try {
+        const v = sessionStorage.getItem('paralar_shared_receipt')
+        sessionStorage.removeItem('paralar_shared_receipt')
+        return v || null
+      } catch {}
+      return null
+    }
+    const t = setTimeout(async () => {
+      const dataUrl = await readSharedImage()
+      if (cancelled) return
       // open('scan', { image }) -> ScanReceiptSheet menerima initialImage.
-      // Kalau gambar hilang (mis. sessionStorage penuh), buka sheet kosong saja.
+      // Kalau gambar tidak ketemu, buka sheet kosong saja.
       if (dataUrl) open('scan', { image: dataUrl })
       else open('scan')
     }, 400)
-    return () => clearTimeout(t)
+    return () => { cancelled = true; clearTimeout(t) }
   }, [authed, open])
 
   const signOut = useCallback(async () => {
