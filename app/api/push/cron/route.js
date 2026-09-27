@@ -6,6 +6,11 @@ import { createClient } from '@supabase/supabase-js'
 import webpush from 'web-push'
 import { SUPABASE_URL } from '@/lib/supabase'
 import { deriveNotifications } from '@/lib/notifications'
+import {
+  initWebPush,
+  isExpiredOrInvalidSubscription,
+  formatPushError,
+} from '@/lib/push-server'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -19,37 +24,6 @@ function getAdminSupabase() {
   return createClient(SUPABASE_URL, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   })
-}
-
-function b64urlDecode(s) {
-  s = s.replace(/-/g, '+').replace(/_/g, '/')
-  while (s.length % 4) s += '='
-  return Buffer.from(s, 'base64')
-}
-
-function initWebPush() {
-  const priv = (process.env.VAPID_PRIVATE_KEY || '').trim()
-  if (!priv) throw new Error('VAPID_PRIVATE_KEY belum diset')
-  // Public key di-hardcode (sama persis dengan yang dipakai client untuk subscribe).
-  // Jangan pakai env var — rawan typo satu huruf yang bikin VAPID auth gagal.
-  const VAPID_PUBLIC_KEY = 'BLJFYLWaspuB9gzdmzKai492UwIUpP4FIxmf-sqt11j0nH9kai24zu_xXitKfpZ-yS2qZ0LxAUFjYio0Xaac2WQ'
-  // Validasi keypair
-  try {
-    const crypto = require('crypto')
-    const privKey = b64urlDecode(priv)
-    const ecdh = crypto.createECDH('prime256v1')
-    ecdh.setPrivateKey(privKey)
-    if (!ecdh.getPublicKey().equals(b64urlDecode(VAPID_PUBLIC_KEY))) {
-      throw new Error('VAPID private key tidak cocok dengan public key (typo?)')
-    }
-  } catch (e) {
-    throw new Error('VAPID key tidak valid: ' + e.message)
-  }
-  webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT || 'mailto:admin@paralar.app',
-    VAPID_PUBLIC_KEY,
-    priv
-  )
 }
 
 // Format rupiah sederhana untuk push (tanpa dependensi client)
@@ -192,12 +166,11 @@ export async function POST(request) {
           )
         )
 
-        // Hapus subscription yang expired atau tidak valid (410 Gone, 404 Not Found, 401 Unauthorized)
+        // Hapus subscription yang expired atau tidak valid dari database
         for (let i = 0; i < results.length; i++) {
           const r = results[i]
           if (r.status === 'rejected') {
-            const sc = r.reason?.statusCode
-            if (sc === 410 || sc === 404 || sc === 401) {
+            if (isExpiredOrInvalidSubscription(r.reason)) {
               await sb.from('push_subscriptions').delete().eq('endpoint', subs[i].endpoint)
             }
           }
