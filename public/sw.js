@@ -6,7 +6,7 @@
 // - Aset lain: stale-while-revalidate
 // - API (/api/*): selalu network-only (data jangan di-cache)
 
-const VERSION = 'paralar-v7';
+const VERSION = 'paralar-v8';
 
 // Cache khusus untuk Web Share Target: menampung file gambar yang di-share
 // dari aplikasi lain. Terpisah dari cache app shell agar tidak ikut terhapus
@@ -51,32 +51,8 @@ function putInCache(request, response) {
 }
 
 async function handleShareTarget(request) {
-  const done = (location) =>
-    Response.redirect(new URL(location, self.location.origin).href, 303);
-  // Penanda diagnosis: catat setiap share yang dicegat SW agar bisa dibaca
-  // halaman lewat ?swinfo=1.
-  const dbg = { at: new Date().toISOString(), hadFile: false, size: 0, cached: false, error: null, fields: [] };
-  // Header mentah untuk diagnosis: apakah Chrome benar-benar mengirim body?
-  try {
-    dbg.contentType = request.headers.get('content-type') || '(tidak ada)';
-    dbg.contentLength = request.headers.get('content-length') || '(tidak ada)';
-    const raw = await request.clone().arrayBuffer();
-    dbg.rawBytes = raw.byteLength;
-  } catch (e) {
-    dbg.headerError = String((e && e.message) || e);
-  }
   try {
     const form = await request.formData();
-    // Catat semua field untuk diagnosis (nama, jenis, ukuran).
-    try {
-      for (const [name, value] of form.entries()) {
-        if (typeof value === 'string') {
-          dbg.fields.push({ name, kind: 'text', len: value.length, preview: value.slice(0, 60) });
-        } else {
-          dbg.fields.push({ name, kind: 'file', type: value.type || '?', size: value.size || 0, fname: value.name || '?' });
-        }
-      }
-    } catch (e) {}
     let file = form.get('receipt');
     // Fallback: kalau field 'receipt' kosong, ambil file gambar apapun yang ada.
     if (!(file && typeof file !== 'string' && file.size > 0)) {
@@ -84,13 +60,10 @@ async function handleShareTarget(request) {
         if (value && typeof value !== 'string' && value.size > 0 &&
             String(value.type || '').startsWith('image/')) {
           file = value;
-          dbg.fallbackField = true;
           break;
         }
       }
     }
-    dbg.hadFile = !!(file && file.size > 0);
-    dbg.size = file && file.size > 0 ? file.size : 0;
     if (file && file.size > 0 && file.size <= 25 * 1024 * 1024) {
       const cache = await caches.open(SHARE_CACHE);
       await cache.put(
@@ -99,21 +72,10 @@ async function handleShareTarget(request) {
           headers: { 'Content-Type': file.type || 'image/jpeg' },
         })
       );
-      dbg.cached = true;
     }
   } catch (e) {
-    dbg.error = String((e && e.message) || e);
+    // Abaikan: page.js akan membuka sheet scan kosong sebagai fallback.
   }
-  // Catat diagnosis ke Cache Storage (dibaca via ?swinfo=1).
-  try {
-    const cache = await caches.open(SHARE_CACHE);
-    await cache.put(
-      '__share_debug__',
-      new Response(JSON.stringify(dbg), {
-        headers: { 'Content-Type': 'application/json' },
-      })
-    );
-  } catch (e) {}
   // Halaman perantara: Chrome menampilkan response POST tapi tidak mengikuti
   // redirect 303 dengan benar, jadi kita redirect sendiri via JavaScript
   // (instant) ke aplikasi dengan flag ?sharedReceipt=1.

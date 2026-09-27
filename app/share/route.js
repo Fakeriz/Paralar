@@ -14,13 +14,11 @@ const MAX_BYTES = 8 * 1024 * 1024
 
 export async function POST(req) {
   let dataUrl = ''
-  let fileSize = 0
   try {
     const form = await req.formData()
     const file = form.get('receipt')
     if (file && typeof file.arrayBuffer === 'function' && String(file.type || '').startsWith('image/')) {
       const buf = Buffer.from(await file.arrayBuffer())
-      fileSize = buf.length
       if (buf.length > 0 && buf.length <= MAX_BYTES) {
         // Alfabet base64 tidak mengandung kutip/backslash/<, jadi aman di-embed di string JS.
         dataUrl = `data:${file.type};base64,${buf.toString('base64')}`
@@ -50,11 +48,6 @@ location.replace("/?sharedReceipt=1");
 </html>`
 
   return new Response(html, {
-    headers: {
-      'Content-Type': 'text/html; charset=utf-8',
-      // Penanda diagnosis: kalau POST sampai ke server (tidak dicegat SW),
-      // cookie ini terbaca oleh halaman. Nilai = timestamp_ukuranFile.
-      'Set-Cookie': `paralar_share_server=${Date.now()}_${fileSize}; Path=/; Max-Age=3600; SameSite=Lax`,
-    },
+    headers: { 'Content-Type': 'text/html; charset=utf-8' },
   })
 }
