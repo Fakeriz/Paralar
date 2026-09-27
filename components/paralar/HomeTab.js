@@ -1,7 +1,8 @@
 'use client'
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Bell, Eye, EyeOff, ArrowDownLeft, ArrowUpRight, Receipt, Users, PieChart, FileText, Plus, ChevronRight, Sparkles, Trash2, WifiOff, RefreshCw } from 'lucide-react'
+import { Bell, Eye, EyeOff, ArrowDownLeft, ArrowUpRight, Receipt, Plus, ChevronRight, Sparkles, Trash2, WifiOff, RefreshCw } from 'lucide-react'
+import { DocumentOutline, ReceiptOutline, Profile2userOutline, ChartPieOutline } from './ReiconIcons'
 import { toast } from 'sonner'
 import { useApp } from './context'
 import { Avatar, Card, SectionLabel, EmptyState } from './ui'
@@ -344,7 +345,7 @@ export function QuickGrid() {
     {
       id: 'bills',
       label: t('bills'),
-      icon: FileText,
+      icon: DocumentOutline,
       onClick: () => open('bills'),
       badge: unpaidBills.length,
       // Tile yang menuntut perhatian dapat aksen: overdue (rose) > due (amber).
@@ -353,13 +354,13 @@ export function QuickGrid() {
     {
       id: 'receipts',
       label: t('receipts'),
-      icon: Receipt,
+      icon: ReceiptOutline,
       onClick: () => open('receiptGallery'),
       badge: receiptCount,
       tone: 'quiet',
     },
-    { id: 'split', label: t('bill_split'), icon: Users, onClick: () => open('split'), tone: 'idle' },
-    { id: 'analytics', label: t('analytics'), icon: PieChart, onClick: () => open('analytics'), tone: 'idle' },
+    { id: 'split', label: t('bill_split'), icon: Profile2userOutline, onClick: () => open('split'), tone: 'idle' },
+    { id: 'analytics', label: t('analytics'), icon: ChartPieOutline, onClick: () => open('analytics'), tone: 'idle' },
   ]
   return (
     <div className="grid grid-cols-4 gap-3 mt-4">
@@ -381,7 +382,8 @@ export function QuickGrid() {
                 'bg-white border-border/70 text-foreground dark:bg-[#121214] dark:border-white/10 dark:text-white group-hover:border-foreground/40'
             )}
           >
-            <it.icon size={24} strokeWidth={it.tone === 'idle' || it.tone === 'quiet' ? 2 : 2.25} />
+            {/* Ikon Reicon: fill/stroke bawaan dari reicon.dev, tidak perlu strokeWidth */}
+            <it.icon size={24} />
             {it.badge > 0 && (
               <span
                 className={cn(
