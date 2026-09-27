@@ -218,8 +218,11 @@ export default function AccountDeck({
         haptic()
         const targetX = -trackWidth - 60
         animate(dragX, targetX, {
-          duration: reduceMotion ? 0 : 0.22,
-          ease: [0.22, 1, 0.36, 1],
+          duration: reduceMotion ? 0 : 0.32,
+          // easeOutCubic — kartu terlihat MELUNCUR keluar, bukan njepret.
+          // [0.22,1,0.36,1] (quint) menuntaskan ~95% jarak dalam ~100ms
+          // sehingga terbaca sebagai potongan instan (glitch).
+          ease: [0.33, 1, 0.68, 1],
           onComplete: () => {
             const next = activeIdx + 1
             setActiveIdx(next)
@@ -236,8 +239,9 @@ export default function AccountDeck({
         setIsCommitting(true)
         haptic()
         animate(dragX, trackWidth * 0.7, {
-          duration: reduceMotion ? 0 : 0.22,
-          ease: [0.22, 1, 0.36, 1],
+          duration: reduceMotion ? 0 : 0.32,
+          // easeOutCubic — sama seperti di atas: glide yang kebaca.
+          ease: [0.33, 1, 0.68, 1],
           onComplete: () => {
             const prev = activeIdx - 1
             setActiveIdx(prev)
