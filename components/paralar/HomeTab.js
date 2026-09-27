@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { useApp } from './context'
 import { Avatar, Card, SectionLabel, EmptyState } from './ui'
 import SwipeTransactionRow from './SwipeTransactionRow'
-import { BankCard, EmvChip, ContactlessWave } from './BankCard'
+import { BankCard } from './BankCard'
 import AccountDeck from './AccountDeck'
 import { cn } from '@/lib/utils'
 import { applyTxToBalances } from '@/lib/ledger'
@@ -169,6 +169,93 @@ function Header() {
   )
 }
 
+/**
+ * TotalBalanceCard — kartu "Total" di deck Home. Diekstrak dari BalanceCarousel
+ * agar bisa di-preview/diuji terpisah (dan dipakai ulang).
+ *
+ * Desain (comfort-first):
+ *  - Hierarki tipe: caption kecil "TOTAL BALANCE" -> simbol mata uang kecil
+ *    + digit besar tabular (bukan satu string raksasa).
+ *  - Depth monokrom: gradient dasar + sheen diagonal + hairline highlight
+ *    atas + dua cahaya radial — kartu terasa "fisik" tanpa warna norak.
+ *  - Eye toggle jadi target sentuh 32px yang proper (sebelumnya ikon telanjang).
+ *  - Pill income/spending: padding & tipe sedikit dibesarkan, border dilembutkan.
+ */
+export function TotalBalanceCard() {
+  const { t, fmt, home, stats, hideBalance, setHideBalance } = useApp()
+
+  const mask = (v) => (hideBalance ? '\u2022\u2022\u2022\u2022\u2022\u2022' : v)
+
+  // formatMoney selalu "<simbol> <digit>" (minus opsional di depan),
+  // mis. "RM 1,121.32" -> simbol "RM", nominal "1,121.32".
+  const raw = String(fmt(stats?.totalBalance || 0, home))
+  const m = !hideBalance && raw.match(/^(-?)([^\d\s]+)\s+(.+)$/)
+  const balCcy = m ? m[2] : null
+  const balMain = m ? `${m[1]}${m[3]}` : raw
+
+  return (
+    <div
+      className="h-full w-full rounded-2xl p-5 sm:p-6 relative overflow-hidden flex flex-col justify-between select-none text-white border border-white/10 bg-gradient-to-br from-[#151518] via-[#0c0c0e] to-[#08080a]"
+      data-testid="balance-card"
+    >
+      {/* Depth: sheen diagonal + cahaya radial + hairline highlight atas */}
+      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.03] to-white/[0.07] pointer-events-none" />
+      <div className="absolute -right-10 -top-10 w-52 h-52 rounded-full bg-white/[0.05] blur-2xl pointer-events-none" />
+      <div className="absolute -left-8 -bottom-14 w-44 h-44 rounded-full bg-white/[0.03] blur-2xl pointer-events-none" />
+      <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+
+      {/* Baris atas: caption + eye toggle di sampingnya */}
+      <div className="flex items-center gap-2 relative z-10">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/40">
+          {t('balance')}
+        </p>
+        <button
+          type="button"
+          onClick={() => setHideBalance(!hideBalance)}
+          className="h-6 w-6 rounded-full bg-white/[0.06] border border-white/10 text-white/60 hover:text-white flex items-center justify-center transition-all active:scale-95"
+          aria-label="toggle balance"
+        >
+          {hideBalance ? <EyeOff size={13} /> : <Eye size={13} />}
+        </button>
+      </div>
+
+      {/* Saldo: nominal */}
+      <div className="relative z-10 mt-2">
+        <p className="mt-1.5 flex items-baseline gap-1.5 tabular-nums" data-testid="total-balance">
+          {balCcy && (
+            <span className="text-base sm:text-lg font-bold text-white/65 shrink-0">{balCcy}</span>
+          )}
+          <span className="text-[32px] sm:text-4xl font-extrabold tracking-tight text-white leading-none truncate">
+            {mask(balMain)}
+          </span>
+        </p>
+      </div>
+
+      {/* Income & Spending */}
+      <div className="grid grid-cols-2 gap-2.5 relative z-10 mt-3">
+        <div className="rounded-xl bg-white/[0.05] border border-white/[0.08] px-3 py-2.5">
+          <div className="flex items-center gap-1.5 text-white/50 text-[10px] font-semibold uppercase tracking-[0.12em]">
+            <ArrowDownLeft size={12} className="text-emerald-400 shrink-0" strokeWidth={2.5} />
+            <span>{t('income')}</span>
+          </div>
+          <p className="font-bold text-sm tabular-nums text-white/90 mt-1 truncate">
+            {mask(fmt(stats?.income || 0, home))}
+          </p>
+        </div>
+        <div className="rounded-xl bg-white/[0.05] border border-white/[0.08] px-3 py-2.5">
+          <div className="flex items-center gap-1.5 text-white/50 text-[10px] font-semibold uppercase tracking-[0.12em]">
+            <ArrowUpRight size={12} className="text-rose-400 shrink-0" strokeWidth={2.5} />
+            <span>{t('spending')}</span>
+          </div>
+          <p className="font-bold text-sm tabular-nums text-white/90 mt-1 truncate">
+            {mask(fmt(stats?.spending || 0, home))}
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function BalanceCarousel() {
   const { t, fmt, home, stats, accounts = [], hideBalance, setHideBalance, open, convertToHome } = useApp()
   const [idx, setIdx] = useState(0)
@@ -181,8 +268,6 @@ function BalanceCarousel() {
 
   const goTo = useCallback((i) => setIdx(Math.max(0, Math.min(i, totalSlides - 1))), [totalSlides])
 
-  const mask = (v) => (hideBalance ? '••••••' : v)
-
   // Slide di-memo agar identitas stabil. AccountDeck menyinkronkan berbasis ID,
   // bukan identitas array — re-render parent tidak me-reset posisi kartu.
   const slides = useMemo(
@@ -190,67 +275,7 @@ function BalanceCarousel() {
       {
         id: 'total',
         label: t('total_balance'),
-        node: (
-          <div
-            className="h-full w-full rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between select-none bg-[#0c0c0e] text-white border border-white/10"
-            data-testid="balance-card"
-          >
-            {/* Background subtle monochrome depth */}
-            <div className="absolute -right-8 -top-8 w-48 h-48 rounded-full bg-white/[0.04] blur-2xl pointer-events-none" />
-            <div className="absolute right-12 -bottom-12 w-36 h-36 rounded-full bg-white/[0.02] pointer-events-none" />
-
-            {/* Top row: Chip EMV + Wave & Eye toggle */}
-            <div className="flex items-center justify-between relative z-10">
-              <div className="flex items-center gap-2.5">
-                <EmvChip isLight={false} />
-                <ContactlessWave className="w-4 h-4 text-white/70" />
-              </div>
-              <button
-                type="button"
-                onClick={() => setHideBalance(!hideBalance)}
-                className="text-white/60 hover:text-white p-1 rounded-lg transition-colors active:scale-95"
-                aria-label="toggle balance"
-              >
-                {hideBalance ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-
-            {/* Middle row: Nominal Saldo (tanpa label teks di atasnya) */}
-            <div className="relative z-10 my-auto py-1 flex flex-col">
-              <p
-                className="text-[28px] sm:text-3xl font-extrabold tabular-nums tracking-tight text-white truncate"
-                data-testid="total-balance"
-              >
-                {mask(fmt(stats?.totalBalance || 0, home))}
-              </p>
-            </div>
-
-            {/* Bottom row: Income & Spending Pills */}
-            <div className="grid grid-cols-2 gap-2 relative z-10 pt-1">
-              {/* Kotak Pemasukan */}
-              <div className="rounded-xl bg-white/[0.08] border border-white/10 p-2.5 flex flex-col justify-between">
-                <div className="flex items-center gap-1 text-white/70 text-[9px] font-semibold uppercase tracking-wider">
-                  <ArrowDownLeft size={10} className="text-emerald-400 stroke-[2.5] shrink-0" />
-                  <span>{t('income')}</span>
-                </div>
-                <p className="font-bold text-[11px] sm:text-xs tabular-nums text-white mt-0.5">
-                  {mask(fmt(stats?.income || 0, home))}
-                </p>
-              </div>
-
-              {/* Kotak Pengeluaran */}
-              <div className="rounded-xl bg-white/[0.08] border border-white/10 p-2.5 flex flex-col justify-between">
-                <div className="flex items-center gap-1 text-white/70 text-[9px] font-semibold uppercase tracking-wider">
-                  <ArrowUpRight size={10} className="text-rose-400 stroke-[2.5] shrink-0" />
-                  <span>{t('spending')}</span>
-                </div>
-                <p className="font-bold text-[11px] sm:text-xs tabular-nums text-white mt-0.5">
-                  {mask(fmt(stats?.spending || 0, home))}
-                </p>
-              </div>
-            </div>
-          </div>
-        ),
+        node: <TotalBalanceCard />,
       },
       // Kartu akun: motif fisik BankCard
       ...(accounts || []).map((a) => ({
