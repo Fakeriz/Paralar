@@ -35,10 +35,12 @@ function PrevCard({ slide, dragX, trackWidth, reduceMotion }) {
     [-trackWidth - 40, 0],
     { clamp: true }
   )
+  // Tilt DIMATIKAN (0°): kartu yang miring saat di-swipe terbaca sebagai
+  // glitch, bukan desain. Kartu bank meluncur lurus seperti Apple Wallet.
   const rotate = useTransform(
     dragX,
     [0, Math.max(1, trackWidth * 0.7)],
-    [-5, 0],
+    [0, 0],
     { clamp: true }
   )
   const opacity = useTransform(dragX, [0, 30], [0, 1], { clamp: true })
@@ -77,7 +79,8 @@ function ActiveCard({ slide, dragX, isCommitting, reduceMotion, onDragEnd }) {
   // clamp:true — tanpa ini, transform berekstrapolasi keluar rentang:
   // swipe kiri bikin kartu AMBLES (+) & MEMBESAR, commit kanan bikin
   // kartu overshoot lalu POP saat handoff. Itu glitch-nya.
-  const rotate = useTransform(dragX, [-280, 0], [-5, 0], { clamp: true })
+  // Tilt DIMATIKAN (0°): lihat komentar di PrevCard — miring = glitch.
+  const rotate = useTransform(dragX, [-280, 0], [0, 0], { clamp: true })
   const y = useTransform(dragX, [0, 160], [0, -PEEK_Y], { clamp: true })
   const scale = useTransform(dragX, [0, 160], [1.0, 1 - PEEK_SCALE], {
     clamp: true,
