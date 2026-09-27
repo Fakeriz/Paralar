@@ -425,7 +425,7 @@ export default function BottomNav({
               mass: 0.5,
             }
       }
-      className="fixed inset-x-0 bottom-0 z-50 flex select-none justify-center px-4 pb-[max(8px,calc(env(safe-area-inset-bottom)-12px))] pointer-events-none transform-gpu"
+      className="fixed inset-x-0 bottom-0 z-50 flex select-none justify-center px-4 pb-[max(8px,calc(env(safe-area-inset-bottom)-10px))] pointer-events-none transform-gpu"
     >
       <div
         style={{ pointerEvents: visible ? 'auto' : 'none' }}
@@ -441,16 +441,14 @@ export default function BottomNav({
           className="
             pointer-events-none absolute inset-0 z-0
             overflow-hidden rounded-full
-            border border-white/80
-            bg-white/[0.75]
-            shadow-[0_12px_36px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.95),inset_0_-1px_1px_rgba(0,0,0,0.02)]
-            dark:border-white/[0.14]
-            dark:bg-[#121214]/[0.78]
-            dark:shadow-[0_14px_40px_rgba(0,0,0,0.55),inset_0_1px_1px_rgba(255,255,255,0.18)]
+            bg-white/[0.72] dark:bg-[#121214]/[0.75]
+            border border-white/[0.45] dark:border-white/[0.08]
+            shadow-[0_10px_32px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.65),inset_0_-1px_1px_rgba(0,0,0,0.04)]
+            dark:shadow-[0_12px_40px_rgba(0,0,0,0.65),inset_0_1px_1px_rgba(255,255,255,0.12),inset_0_-1px_1px_rgba(0,0,0,0.3)]
           "
           style={{
-            backdropFilter: 'blur(24px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+            backdropFilter: 'blur(48px) saturate(200%)',
+            WebkitBackdropFilter: 'blur(48px) saturate(200%)',
           }}
         >
           <div
