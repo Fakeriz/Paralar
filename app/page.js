@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { supabase } from '@/lib/supabase'
 import { createStore, DEFAULT_PROFILE } from '@/lib/store'
@@ -203,6 +203,27 @@ export default function App() {
     setSheets((s) => ({ ...s, [name]: payload }))
   }, [isAiAllowed])
   const close = useCallback((name) => setSheets((s) => ({ ...s, [name]: null })), [])
+
+  // Deep link dari PWA app shortcuts (?shortcut=add-expense / scan-receipt).
+  // Shortcut selalu buka URL baru; efek ini menerjemahkannya jadi sheet yang tepat.
+  const shortcutHandled = useRef(false)
+  useEffect(() => {
+    if (!authed || shortcutHandled.current) return
+    shortcutHandled.current = true
+    let q = null
+    try { q = new URLSearchParams(window.location.search).get('shortcut') } catch {}
+    if (!q) return
+    const t = setTimeout(() => {
+      if (q === 'add-expense') open('addTx')
+      else if (q === 'scan-receipt') open('scan')
+      try {
+        const url = new URL(window.location.href)
+        url.searchParams.delete('shortcut')
+        window.history.replaceState(null, '', url.pathname + url.search + url.hash)
+      } catch {}
+    }, 400)
+    return () => clearTimeout(t)
+  }, [authed, open])
 
   const signOut = useCallback(async () => {
     try { await supabase.auth.signOut() } catch {}
