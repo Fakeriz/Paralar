@@ -560,28 +560,40 @@ export default function AnalyticsSheet({ open, onClose }) {
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 px-1">
               TOP CATEGORIES
             </p>
-            <div className="space-y-3 rounded-3xl bg-muted/20 border border-border/40 p-4">
+            <div className="space-y-4 rounded-3xl bg-muted/20 border border-border/40 p-4">
               {catRows.map(([cat, val]) => {
                 const pct = Math.round((val / Math.max(1, periodExpense)) * 100)
                 return (
-                  <div key={cat}>
-                    <div className="flex items-center gap-3">
+                  <div key={cat} className="flex items-center gap-3.5">
+                    {/* 1. Ikon Badge Kategori Squircle Presisi di Sumbu Vertikal */}
+                    <div className="shrink-0 flex items-center justify-center">
                       <CategoryBadge id={cat} size="sm" />
-                      <span className="flex-1 font-semibold text-sm text-foreground truncate">
-                        {t(`cat_${cat}`) || cat}
-                      </span>
-                      <span className="text-sm font-bold tabular-nums text-foreground">
-                        {fmt(val, home)}
-                      </span>
-                      <span className="text-xs text-muted-foreground font-medium w-9 text-right tabular-nums">
-                        {pct}%
-                      </span>
                     </div>
-                    <div className="h-2 rounded-full bg-muted mt-1.5 ml-12 overflow-hidden">
-                      <div
-                        className="h-full bg-foreground rounded-full transition-all"
-                        style={{ width: `${pct}%` }}
-                      />
+
+                    {/* 2. Kolom Informasi: Baris 1 (Teks & Angka), Baris 2 (Progress Bar) */}
+                    <div className="flex-1 min-w-0 flex flex-col justify-center gap-1.5">
+                      {/* Baris Atas: Nama Kategori (kiri) + Nominal & % (kanan) */}
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-sm text-foreground truncate">
+                          {t(`cat_${cat}`) || cat}
+                        </span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-sm font-bold tabular-nums text-foreground">
+                            {fmt(val, home)}
+                          </span>
+                          <span className="text-xs font-semibold tabular-nums text-muted-foreground w-9 text-right">
+                            {pct}%
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Baris Bawah: Bar Progres Ramping Menyatu di Bawah Teks */}
+                      <div className="h-1.5 w-full rounded-full bg-muted/60 overflow-hidden">
+                        <div
+                          className="h-full bg-foreground rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
+                        />
+                      </div>
                     </div>
                   </div>
                 )

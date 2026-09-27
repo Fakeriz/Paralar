@@ -425,7 +425,7 @@ export default function BottomNav({
               mass: 0.5,
             }
       }
-      className="fixed inset-x-0 bottom-0 z-50 flex select-none justify-center px-4 pb-[max(8px,calc(env(safe-area-inset-bottom)+2px))] pointer-events-none transform-gpu"
+      className="fixed inset-x-0 bottom-0 z-50 flex select-none justify-center px-4 pb-[max(0px,calc(env(safe-area-inset-bottom)+8px))] pointer-events-none transform-gpu"
     >
       <div
         style={{ pointerEvents: visible ? 'auto' : 'none' }}
