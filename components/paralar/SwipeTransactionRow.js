@@ -191,7 +191,7 @@ export default function SwipeTransactionRow({
 
         {/* Sisi Kanan: Nominal angka tebal + Subteks konversi sekunder */}
         <div className="text-right shrink-0 ml-3">
-          <p className={cn('text-sm font-bold tabular-nums', isExpense ? 'text-foreground' : isTransfer ? 'text-muted-foreground' : 'text-emerald-600 dark:text-emerald-400')}>
+          <p className={cn('text-sm font-bold tabular-nums', isTransfer ? 'text-muted-foreground' : 'text-foreground')}>
             {isHidden 
               ? '••••••' 
               : `${isExpense ? '-' : isTransfer ? '' : '+'}${safeFmt(tx?.amount, tx?.currency)}`}

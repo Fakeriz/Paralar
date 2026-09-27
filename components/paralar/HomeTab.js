@@ -1,7 +1,7 @@
 'use client'
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Bell, Eye, EyeOff, ArrowDownLeft, ArrowUpRight, Receipt, Plus, ChevronRight, Sparkles, Trash2, WifiOff, RefreshCw } from 'lucide-react'
+import { Bell, Eye, EyeOff, Receipt, Plus, ChevronRight, Sparkles, Trash2, WifiOff, RefreshCw } from 'lucide-react'
 import { DocumentOutline, ReceiptOutline, Profile2userOutline, ChartPieOutline } from './ReiconIcons'
 import { toast } from 'sonner'
 import { useApp } from './context'
@@ -234,20 +234,18 @@ export function TotalBalanceCard() {
       {/* Income & Spending */}
       <div className="grid grid-cols-2 gap-2 relative z-10 mt-2.5">
         <div className="rounded-xl bg-white/[0.05] border border-white/[0.08] px-2.5 py-2">
-          <div className="flex items-center gap-1 text-white/50 text-[9px] font-semibold uppercase tracking-[0.12em]">
-            <ArrowDownLeft size={12} className="text-emerald-400 shrink-0" strokeWidth={2.5} />
-            <span>{t('income')}</span>
+          <div className="text-white/50 text-[9px] font-semibold uppercase tracking-[0.12em]">
+            {t('income')}
           </div>
-          <p className="font-bold text-[13px] tabular-nums text-white/90 mt-0.5 truncate">
+          <p className="font-bold text-[11px] tabular-nums text-white/90 mt-0.5 truncate">
             {mask(fmt(stats?.income || 0, home))}
           </p>
         </div>
         <div className="rounded-xl bg-white/[0.05] border border-white/[0.08] px-2.5 py-2">
-          <div className="flex items-center gap-1 text-white/50 text-[9px] font-semibold uppercase tracking-[0.12em]">
-            <ArrowUpRight size={12} className="text-rose-400 shrink-0" strokeWidth={2.5} />
-            <span>{t('spending')}</span>
+          <div className="text-white/50 text-[9px] font-semibold uppercase tracking-[0.12em]">
+            {t('spending')}
           </div>
-          <p className="font-bold text-[13px] tabular-nums text-white/90 mt-0.5 truncate">
+          <p className="font-bold text-[11px] tabular-nums text-white/90 mt-0.5 truncate">
             {mask(fmt(stats?.spending || 0, home))}
           </p>
         </div>
