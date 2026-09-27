@@ -17,6 +17,20 @@ export const metadata = {
   openGraph: {
     title: 'Paralar — Personal & Business Finance',
     description: 'Multi-currency personal and business finance tracker with AI receipt scanning, voice log, debts, and bills tracking.',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Paralar — Personal & Business Finance',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Paralar — Personal & Business Finance',
+    description: 'Multi-currency personal and business finance tracker with AI receipt scanning, voice log, debts, and bills tracking.',
+    images: ['/og-image.png'],
   },
 }
 
