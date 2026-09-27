@@ -1,12 +1,13 @@
 'use client'
-import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Bell, Eye, EyeOff, ArrowDownLeft, ArrowUpRight, Receipt, Users, PieChart, FileText, Plus, ChevronRight, Sparkles, Trash2, WifiOff, RefreshCw } from 'lucide-react'
+import { Bell, Eye, EyeOff, ArrowDownLeft, ArrowUpRight, Receipt, Users, PieChart, FileText, Plus, ChevronLeft, ChevronRight, Sparkles, Trash2, WifiOff, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
 import { Avatar, Card, SectionLabel, EmptyState } from './ui'
 import SwipeTransactionRow from './SwipeTransactionRow'
 import { BankCard, EmvChip, ContactlessWave } from './BankCard'
+import AccountDeck from './AccountDeck'
 import { cn } from '@/lib/utils'
 import { applyTxToBalances } from '@/lib/ledger'
 import { deriveNotifications } from '@/lib/notifications'
@@ -169,52 +170,28 @@ function Header() {
 
 function BalanceCarousel() {
   const { t, fmt, home, stats, accounts = [], hideBalance, setHideBalance, open, convertToHome } = useApp()
-  const ref = useRef(null)
   const [idx, setIdx] = useState(0)
   const totalSlides = 1 + accounts.length + 1 // [Total, ...accounts, Add]
 
-  const onScroll = useCallback(() => {
-    const el = ref.current
-    if (!el) return
-    const w = el.clientWidth
-    const scrollLeft = el.scrollLeft
-    const newIdx = Math.round(scrollLeft / Math.max(1, w))
-    setIdx(Math.max(0, Math.min(newIdx, totalSlides - 1)))
+  // Clamp posisi aktif bila jumlah kartu berubah (mis. akun dihapus)
+  useEffect(() => {
+    setIdx((i) => Math.max(0, Math.min(i, totalSlides - 1)))
   }, [totalSlides])
 
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    el.addEventListener('scroll', onScroll, { passive: true })
-    return () => el.removeEventListener('scroll', onScroll)
-  }, [onScroll])
-
-  const scrollToSlide = (i) => {
-    const el = ref.current
-    if (!el) return
-    const child = el.children[i]
-    if (child) {
-      child.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
-    } else {
-      const w = el.clientWidth
-      el.scrollTo({ left: i * w, behavior: 'smooth' })
-    }
-  }
+  const goTo = useCallback((i) => setIdx(Math.max(0, Math.min(i, totalSlides - 1))), [totalSlides])
 
   const mask = (v) => (hideBalance ? '••••••' : v)
 
-  return (
-    <div className="mt-5">
-      {/* Elastic spring-paging horizontal container */}
-      <div
-        ref={ref}
-        className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar -mx-5 px-5 gap-3.5 scroll-px-5 touch-pan-x"
-        style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}
-      >
-        {/* Slide 1: Total Balance Card — standardized aspect-[1.58/1] min-h-[185px] (Finsight Obsidian Luxury) */}
-        <div className="w-full aspect-[1.58/1] min-h-[185px] shrink-0 snap-center">
+  // Slide di-memo agar identitas stabil. AccountDeck menyinkronkan berbasis ID,
+  // bukan identitas array — re-render parent tidak me-reset posisi kartu.
+  const slides = useMemo(
+    () => [
+      {
+        id: 'total',
+        label: t('total_balance'),
+        node: (
           <div
-            className="w-full h-full rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between select-none bg-[#0c0c0e] text-white border border-white/10"
+            className="h-full w-full rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between select-none bg-[#0c0c0e] text-white border border-white/10"
             data-testid="balance-card"
           >
             {/* Background subtle monochrome depth */}
@@ -272,32 +249,36 @@ function BalanceCarousel() {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Slide 2..N: Physical motif Bank Cards with flat styling (no shadow) */}
-        {(accounts || []).map((a) => (
-          <div key={a.id} className="w-full aspect-[1.58/1] min-h-[185px] shrink-0 snap-center">
-            <BankCard
-              name={a.name}
-              balance={a.balance}
-              currency={a.currency}
-              theme={a.theme}
-              logo={a.logo}
-              icon={a.icon}
-              type={a.type}
-              id={a.id}
-              fmt={fmt}
-              hideBalance={hideBalance}
-              flat={true}
-              showOcclusionShadow={false}
-              approxHome={a.currency !== home ? fmt(convertToHome(a.balance, a.currency), home) : null}
-              className="h-full shadow-none"
-            />
-          </div>
-        ))}
-
-        {/* Slide N+1: Add Account Card — pure flat monochrome dashed card */}
-        <div className="w-full aspect-[1.58/1] min-h-[185px] shrink-0 snap-center">
+        ),
+      },
+      // Kartu akun: motif fisik BankCard
+      ...(accounts || []).map((a) => ({
+        id: `account-${a.id}`,
+        label: a.name,
+        node: (
+          <BankCard
+            name={a.name}
+            balance={a.balance}
+            currency={a.currency}
+            theme={a.theme}
+            logo={a.logo}
+            icon={a.icon}
+            type={a.type}
+            id={a.id}
+            fmt={fmt}
+            hideBalance={hideBalance}
+            flat={true}
+            showOcclusionShadow={false}
+            approxHome={a.currency !== home ? fmt(convertToHome(a.balance, a.currency), home) : null}
+            className="h-full w-full shadow-none"
+          />
+        ),
+      })),
+      // Tambah akun
+      {
+        id: 'add',
+        label: t('new_account'),
+        node: (
           <button
             type="button"
             onClick={() => open('newAccount')}
@@ -309,17 +290,39 @@ function BalanceCarousel() {
             </div>
             <span className="text-sm font-bold text-foreground group-hover:text-foreground transition-colors">{t('new_account')}</span>
           </button>
-        </div>
-      </div>
+        ),
+      },
+    ],
+    [t, fmt, home, stats, accounts, hideBalance, setHideBalance, open, convertToHome]
+  )
 
-      {/* Synchronized Spring Carousel Dots: Slide aktif w-5 h-1.5 bg-foreground, slide lainnya w-1.5 h-1.5 bg-muted-foreground/30 */}
+  return (
+    <div className="mt-5">
+      <AccountDeck
+        slides={slides}
+        index={idx}
+        onIndexChange={setIdx}
+        regionLabel={t('accounts')}
+      />
+
+      {/* Indikator + navigasi presisi: dots untuk lompat, panah untuk keyboard */}
       <div className="flex justify-center items-center gap-1.5 mt-3.5">
-        {Array.from({ length: totalSlides }).map((_, i) => (
+        <button
+          type="button"
+          onClick={() => goTo(idx - 1)}
+          disabled={idx === 0}
+          aria-label={t('previous', 'Previous card')}
+          className="mr-1 flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:text-foreground disabled:opacity-30"
+        >
+          <ChevronLeft size={18} />
+        </button>
+        {slides.map((s, i) => (
           <button
-            key={i}
+            key={s.id}
             type="button"
-            onClick={() => scrollToSlide(i)}
-            aria-label={`Go to slide ${i + 1}`}
+            onClick={() => goTo(i)}
+            aria-label={`${s.label} (${i + 1} dari ${slides.length})`}
+            aria-current={i === idx ? 'true' : undefined}
             className={cn(
               'transition-all duration-300 cursor-pointer',
               i === idx
@@ -328,6 +331,15 @@ function BalanceCarousel() {
             )}
           />
         ))}
+        <button
+          type="button"
+          onClick={() => goTo(idx + 1)}
+          disabled={idx === slides.length - 1}
+          aria-label={t('next', 'Next card')}
+          className="ml-1 flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:text-foreground disabled:opacity-30"
+        >
+          <ChevronRight size={18} />
+        </button>
       </div>
     </div>
   )
