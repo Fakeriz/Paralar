@@ -7,7 +7,6 @@ import {
   useReducedMotion,
   useSpring,
   useTransform,
-  useVelocity,
 } from 'framer-motion'
 import { useHaptic } from '@/hooks/useHaptic'
 import { useApp } from './context'
@@ -56,8 +55,11 @@ const ITEMS = [
   },
 ]
 
-// Diameter bubble lensa indikator aktif
-const BUBBLE = 56
+const SPRING = {
+  stiffness: 460,
+  damping: 34,
+  mass: 0.65,
+}
 
 const clamp = (value, min, max) =>
   Math.min(max, Math.max(min, value))
@@ -96,35 +98,26 @@ export default function BottomNav({
 
   const navRef = useRef(null)
   const trackRef = useRef(null)
-  const btnRefs = useRef([])
+  const gesture = useRef(null)
+  const suppressClick = useRef(false)
 
+  const [width, setWidth] = useState(328)
   const [scrollVisible, setScrollVisible] = useState(true)
   const [sheetOpen, setSheetOpen] = useState(false)
-  const [centers, setCenters] = useState([])
+  const [pressed, setPressed] = useState(false)
+  const [preview, setPreview] = useState(null)
 
   const selected = ITEMS.findIndex(
     item => item.id === tab && item.id !== 'add'
   )
 
-  // Bubble mengikuti target dengan pegas — overshoot halus ala cairan
-  const bubbleTarget = useMotionValue(0)
-  const bubbleX = useSpring(bubbleTarget, {
-    stiffness: 420,
-    damping: 32,
-    mass: 0.7,
-  })
+  const active = preview ?? selected
+  const cell = width / ITEMS.length
 
-  // Stretch & chromatic fringe diturunkan dari velocity bubble:
-  // makin cepat bergerak → makin melar + fringe makin kuat,
-  // otomatis kembali ke 1 saat settle. Murni transform/opacity.
-  const velocity = useVelocity(bubbleX)
-  const stretchX = useTransform(velocity, v =>
-    reduced ? 1 : 1 + Math.min(Math.abs(v) / 4500, 0.38)
-  )
-  const squashY = useTransform(stretchX, s => 1 - (s - 1) * 0.55)
-  const fringe = useTransform(velocity, v =>
-    reduced ? 0 : Math.min(Math.abs(v) / 2200, 0.85)
-  )
+  const targetX = useMotionValue(0)
+  const springX = useSpring(targetX, SPRING)
+  const lensX = reduced ? targetX : springX
+  const counterX = useTransform(lensX, value => -value)
 
   const contextOpen = [
     app?.modal,
@@ -141,43 +134,27 @@ export default function BottomNav({
   const blocked = modalOpen ?? (sheetOpen || contextOpen)
   const visible = !blocked && scrollVisible
 
-  // Ukur titik tengah tiap tab untuk posisi bubble
   useEffect(() => {
-    const track = trackRef.current
-    if (!track) return
+    const element = trackRef.current
+    if (!element) return
 
     const measure = () => {
-      const rect = track.getBoundingClientRect()
-      setCenters(
-        btnRefs.current.map(element => {
-          if (!element) return 0
-          const r = element.getBoundingClientRect()
-          return r.left - rect.left + r.width / 2
-        })
-      )
+      setWidth(element.getBoundingClientRect().width)
     }
 
     measure()
 
     const observer = new ResizeObserver(measure)
-    observer.observe(track)
-    window.addEventListener('resize', measure)
+    observer.observe(element)
 
-    return () => {
-      observer.disconnect()
-      window.removeEventListener('resize', measure)
-    }
+    return () => observer.disconnect()
   }, [])
 
-  // Pindahkan bubble ke tab aktif
   useEffect(() => {
-    const center = centers[selected]
-    if (center == null) return
-
-    const target = center - BUBBLE / 2
-    bubbleTarget.set(target)
-    if (reduced) bubbleX.set(target)
-  }, [selected, centers, reduced, bubbleTarget, bubbleX])
+    if (!gesture.current) {
+      targetX.set(Math.max(0, selected) * cell)
+    }
+  }, [selected, cell, targetX])
 
   useEffect(() => {
     const read = () => {
@@ -243,7 +220,7 @@ export default function BottomNav({
         navRef.current?.contains(document.activeElement) &&
         document.activeElement?.matches(':focus-visible')
 
-      if (blocked || keyboardFocus) {
+      if (blocked || gesture.current || keyboardFocus) {
         distance = 0
         return
       }
@@ -286,11 +263,16 @@ export default function BottomNav({
   useEffect(() => {
     if (visible) return
 
+    gesture.current = null
+    setPressed(false)
+    setPreview(null)
+    targetX.set(Math.max(0, selected) * cell)
+
     const focused = document.activeElement
     if (navRef.current?.contains(focused)) {
       focused?.blur?.()
     }
-  }, [visible])
+  }, [visible, selected, cell, targetX])
 
   function feedback(kind) {
     try {
@@ -323,46 +305,105 @@ export default function BottomNav({
     }
   }
 
-  const iconLayers = (item, index) => {
-    const isActive = selected === index
+  function pointerDown(event, index) {
+    if (!visible || !event.isPrimary || event.button !== 0) return
 
-    return (
-      <span
-        className={
-          isActive
-            ? 'relative z-10 block h-[26px] w-[26px] text-zinc-950 dark:text-white'
-            : 'relative z-10 block h-[26px] w-[26px] text-zinc-800 dark:text-zinc-300'
-        }
-        aria-hidden="true"
-      >
-        <motion.span
-          className="absolute inset-0"
-          initial={false}
-          animate={{
-            opacity: isActive ? 0 : 1,
-          }}
-          transition={{
-            duration: reduced ? 0 : 0.15,
-          }}
-        >
-          <item.Outline className="h-full w-full" />
-        </motion.span>
+    suppressClick.current = false
 
-        <motion.span
-          className="absolute inset-0"
-          initial={false}
-          animate={{
-            opacity: isActive ? 1 : 0,
-          }}
-          transition={{
-            duration: reduced ? 0 : 0.15,
-          }}
-        >
-          <item.Filled className="h-full w-full" />
-        </motion.span>
-      </span>
-    )
+    gesture.current = {
+      id: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      index,
+      dragging: false,
+      rect: trackRef.current.getBoundingClientRect(),
+    }
+
+    setPressed(true)
+    setPreview(index)
+    targetX.set(index * cell)
+
+    event.currentTarget.setPointerCapture(event.pointerId)
   }
+
+  function pointerMove(event) {
+    const state = gesture.current
+    if (!state || state.id !== event.pointerId) return
+
+    const dx = event.clientX - state.startX
+    const dy = event.clientY - state.startY
+
+    if (!state.dragging && Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) {
+      finish(event, true)
+      return
+    }
+
+    if (!state.dragging && Math.abs(dx) < 5) return
+
+    state.dragging = true
+
+    const x = clamp(event.clientX - state.rect.left - cell / 2, 0, width - cell)
+    targetX.set(x)
+
+    const index = clamp(Math.round(x / cell), 0, ITEMS.length - 1)
+
+    if (index !== state.index) {
+      state.index = index
+      setPreview(index)
+      feedback('toggleTab')
+    }
+  }
+
+  function finish(event, cancelled = false) {
+    const state = gesture.current
+    if (!state || state.id !== event.pointerId) return
+
+    gesture.current = null
+    setPressed(false)
+    setPreview(null)
+
+    suppressClick.current = cancelled || state.dragging
+
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+
+    targetX.set(Math.max(0, selected) * cell)
+
+    if (!cancelled && state.dragging) {
+      activate(state.index)
+    }
+  }
+
+  const iconLayers = (item, index) => (
+    <span className="relative block h-[24px] w-[24px]" aria-hidden="true">
+      <motion.span
+        className="absolute inset-0"
+        initial={false}
+        animate={{
+          opacity: active === index ? 0 : 1,
+        }}
+        transition={{
+          duration: reduced ? 0 : 0.1,
+        }}
+      >
+        <item.Outline className="h-full w-full" />
+      </motion.span>
+
+      <motion.span
+        className="absolute inset-0"
+        initial={false}
+        animate={{
+          opacity: active === index ? 1 : 0,
+        }}
+        transition={{
+          duration: reduced ? 0 : 0.1,
+        }}
+      >
+        <item.Filled className="h-full w-full" />
+      </motion.span>
+    </span>
+  )
 
   return (
     <motion.nav
@@ -384,87 +425,130 @@ export default function BottomNav({
               mass: 0.5,
             }
       }
-      className="fixed inset-x-0 bottom-0 z-50 flex select-none justify-center px-4 pb-[max(12px,env(safe-area-inset-bottom))] pointer-events-none transform-gpu"
+      className="fixed inset-x-0 bottom-0 z-50 flex select-none justify-center px-4 pb-[max(8px,calc(env(safe-area-inset-bottom)-10px))] pointer-events-none transform-gpu"
     >
       <div
         style={{ pointerEvents: visible ? 'auto' : 'none' }}
-        className="relative h-[64px] w-full max-w-[400px] rounded-full"
+        className="
+          relative isolate h-[60px] w-full max-w-[360px]
+          rounded-full p-[5px]
+          text-zinc-950 dark:text-white
+        "
       >
-        {/* Kaca bar */}
+        {/* Background kaca */}
         <div
           aria-hidden="true"
           className="
-            pointer-events-none absolute inset-0
+            pointer-events-none absolute inset-0 z-0
             overflow-hidden rounded-full
-            bg-white/[0.6] dark:bg-[#1c1c1e]/[0.7]
-            border border-black/[0.06] dark:border-white/[0.08]
-            shadow-[0_8px_28px_rgba(0,0,0,0.10)]
-            dark:shadow-[0_10px_32px_rgba(0,0,0,0.55)]
+            bg-white/[0.72] dark:bg-[#121214]/[0.75]
+            border border-white/[0.45] dark:border-white/[0.08]
+            shadow-[0_10px_32px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.65),inset_0_-1px_1px_rgba(0,0,0,0.04)]
+            dark:shadow-[0_12px_40px_rgba(0,0,0,0.65),inset_0_1px_1px_rgba(255,255,255,0.12),inset_0_-1px_1px_rgba(0,0,0,0.3)]
           "
           style={{
-            backdropFilter: 'blur(36px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(36px) saturate(180%)',
+            backdropFilter: 'blur(48px) saturate(200%)',
+            WebkitBackdropFilter: 'blur(48px) saturate(200%)',
           }}
         >
           <div
-            className="absolute inset-x-[16%] top-0 h-px opacity-40 dark:opacity-25"
+            className="absolute inset-0 opacity-[0.55] dark:opacity-[0.18]"
             style={{
               background:
-                'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.7) 50%, transparent 100%)',
+                'linear-gradient(180deg, rgba(255,255,255,0.48) 0%, rgba(255,255,255,0.14) 32%, rgba(255,255,255,0) 62%)',
+            }}
+          />
+          <div
+            className="absolute inset-x-[12%] top-0 h-px opacity-80 dark:opacity-40"
+            style={{
+              background:
+                'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.85) 35%, rgba(255,255,255,0.85) 65%, transparent 100%)',
+            }}
+          />
+          <div
+            className="absolute inset-x-[20%] bottom-0 h-px opacity-40 dark:opacity-20"
+            style={{
+              background:
+                'linear-gradient(90deg, transparent, rgba(255,255,255,0.65), transparent)',
             }}
           />
         </div>
 
         <div ref={trackRef} className="relative z-10 flex h-full w-full">
-          {/* Bubble lensa cair — melar mengikuti velocity, fringe pelangi
-              hanya muncul saat bergerak */}
+          {/* Lensa penanda tab aktif */}
           <motion.div
             aria-hidden="true"
-            className="absolute top-1/2 left-0 z-0"
+            className="pointer-events-none absolute inset-y-0 left-0 z-20"
             style={{
-              x: bubbleX,
-              y: '-50%',
-              width: BUBBLE,
-              height: BUBBLE,
-              scaleX: stretchX,
-              scaleY: squashY,
+              width: cell,
+              x: lensX,
             }}
           >
-            <div
-              className="
-                absolute inset-0 rounded-full
-                bg-white/[0.45] dark:bg-white/[0.14]
-                border border-white/[0.6] dark:border-white/[0.22]
-              "
-              style={{
-                boxShadow:
-                  'inset 0 2px 4px rgba(255,255,255,0.55), inset 0 -3px 6px rgba(0,0,0,0.06), 0 6px 16px rgba(0,0,0,0.10)',
-                backdropFilter: 'blur(12px) saturate(160%)',
-                WebkitBackdropFilter: 'blur(12px) saturate(160%)',
-              }}
-            />
             <motion.div
-              aria-hidden="true"
-              className="absolute -inset-[3px] rounded-full"
+              className="absolute inset-[1px] rounded-full"
+              initial={false}
+              animate={{
+                opacity: active < 0 ? 0 : 1,
+                scaleX: pressed && !reduced ? 1.16 : 1,
+                scaleY: pressed && !reduced ? 1.36 : 1,
+              }}
+              transition={
+                reduced
+                  ? { duration: 0 }
+                  : {
+                      type: 'spring',
+                      ...SPRING,
+                    }
+              }
               style={{
-                opacity: fringe,
-                boxShadow:
-                  'inset 3px 0 4px -2px rgba(34,211,238,0.9), inset -3px 0 4px -2px rgba(251,191,36,0.9)',
+                background: pressed
+                  ? 'rgba(128,128,128,0.08)'
+                  : 'rgba(128,128,128,0.18)',
+                boxShadow: pressed
+                  ? 'inset 0 1px 1px rgba(255,255,255,.65), inset 1px 0 1px rgba(120,205,255,.35), inset -1px -1px 1px rgba(235,223,130,.4), 0 3px 10px rgba(0,0,0,.12)'
+                  : 'inset 0 1px 0 rgba(255,255,255,.08)',
               }}
             />
-            <div
-              aria-hidden="true"
-              className="absolute inset-x-3 bottom-1 h-3 rounded-full bg-amber-300/[0.85] dark:bg-amber-300/[0.7]"
-              style={{ filter: 'blur(6px)' }}
-            />
+
+            <motion.div
+              className="absolute inset-y-0 left-0 overflow-hidden rounded-full"
+              style={{ width: cell }}
+              initial={false}
+              animate={{
+                opacity: pressed && !reduced ? 1 : 0,
+              }}
+              transition={{ duration: 0.1 }}
+            >
+              <motion.div
+                className="flex h-full"
+                style={{
+                  width,
+                  x: counterX,
+                }}
+              >
+                {ITEMS.map((item, index) => (
+                  <div
+                    key={item.id}
+                    className="flex h-full shrink-0 items-center justify-center"
+                    style={{ width: cell }}
+                  >
+                    <span
+                      style={{
+                        transform: 'scale(1.12)',
+                        filter: 'drop-shadow(1px 1px 0 rgba(213,222,90,.45))',
+                      }}
+                    >
+                      {iconLayers(item, index)}
+                    </span>
+                  </div>
+                ))}
+              </motion.div>
+            </motion.div>
           </motion.div>
 
           {ITEMS.map((item, index) => (
             <motion.button
               key={item.id}
-              ref={element => {
-                btnRefs.current[index] = element
-              }}
               type="button"
               disabled={!visible}
               tabIndex={visible ? 0 : -1}
@@ -478,17 +562,28 @@ export default function BottomNav({
                 focus-visible:outline-offset-2 focus-visible:outline-sky-500
               "
               style={{
-                touchAction: 'manipulation',
+                touchAction: 'pan-y',
                 WebkitTapHighlightColor: 'transparent',
               }}
-              whileTap={reduced ? undefined : { scale: 0.9 }}
+              whileTap={reduced ? undefined : { scale: 0.94 }}
               transition={{
                 type: 'spring',
-                stiffness: 500,
-                damping: 30,
-                mass: 0.6,
+                ...SPRING,
               }}
-              onClick={() => activate(index)}
+              onPointerDown={event => pointerDown(event, index)}
+              onPointerMove={pointerMove}
+              onPointerUp={event => finish(event)}
+              onPointerCancel={event => finish(event, true)}
+              onLostPointerCapture={event => finish(event, true)}
+              onClick={event => {
+                if (suppressClick.current && event.detail !== 0) {
+                  suppressClick.current = false
+                  return
+                }
+
+                suppressClick.current = false
+                activate(index)
+              }}
             >
               {iconLayers(item, index)}
             </motion.button>
