@@ -226,6 +226,38 @@ export default function App() {
     return () => clearTimeout(t)
   }, [authed, open])
 
+  // Diagnosis service worker: buka /?swinfo=1 untuk lihat status SW di perangkat.
+  // (Alat bantu sementara untuk memastikan SW share-target aktif.)
+  useEffect(() => {
+    let show = false
+    try { show = new URLSearchParams(window.location.search).get('swinfo') === '1' } catch {}
+    if (!show) return
+    try {
+      const u = new URL(window.location.href)
+      u.searchParams.delete('swinfo')
+      window.history.replaceState(null, '', u.pathname + u.search + u.hash)
+    } catch {}
+    ;(async () => {
+      const info = []
+      try {
+        if (!('serviceWorker' in navigator)) info.push('SW: tidak didukung browser')
+        else {
+          const reg = await navigator.serviceWorker.getRegistration()
+          info.push('terdaftar: ' + (reg ? 'ya' : 'TIDAK'))
+          info.push('mengontrol halaman: ' + (navigator.serviceWorker.controller ? 'ya' : 'TIDAK'))
+          if (reg && reg.active) info.push('status: ' + reg.active.state)
+        }
+      } catch (e) { info.push('cek SW gagal') }
+      try {
+        const r = await fetch('/sw.js?v=' + Date.now(), { cache: 'no-store' })
+        const t = await r.text()
+        const m = t.match(/VERSION = '([^']+)'/)
+        info.push('versi file sw.js: ' + (m ? m[1] : '?'))
+      } catch (e) { info.push('versi file: ?') }
+      try { alert('Info Service Worker:\n\n' + info.join('\n')) } catch {}
+    })()
+  }, [])
+
   // Deep link dari Web Share Target (?sharedReceipt=1).
   // Gambar diambil dari Cache Storage (ditulis service worker saat mencegat
   // POST /share — jadi file tidak lewat server dan tidak kena limit upload),
