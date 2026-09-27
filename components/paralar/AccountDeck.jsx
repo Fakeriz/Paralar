@@ -69,11 +69,20 @@ function PrevCard({ slide, dragX, trackWidth, reduceMotion }) {
  * Semua React Hooks ditempatkan tanpa syarat di baris teratas komponen.
  */
 function ActiveCard({ slide, dragX, isCommitting, reduceMotion, onDragEnd }) {
-  const x = useTransform(dragX, (v) => (v <= 0 ? v : v * 0.15))
-  const rotate = useTransform(dragX, [-280, 0], [-5, 0])
-  const y = useTransform(dragX, [0, 160], [0, -PEEK_Y])
-  const scale = useTransform(dragX, [0, 160], [1.0, 1 - PEEK_SCALE])
-  const opacity = useTransform(dragX, [0, 160], [1.0, 0.9])
+  // 1:1 mengikuti jari ke dua arah. JANGAN di-damping (mis. v*0.15):
+  // kartu cuma gerak 15% dari jari → terasa tersendat/ketinggalan.
+  // Pelajaran lama yang sempat tertulis di kode: "dragElastic 0.08 +
+  // constraints 0 dulu bikin kartu cuma gerak 8% dari jari".
+  const x = dragX
+  // clamp:true — tanpa ini, transform berekstrapolasi keluar rentang:
+  // swipe kiri bikin kartu AMBLES (+) & MEMBESAR, commit kanan bikin
+  // kartu overshoot lalu POP saat handoff. Itu glitch-nya.
+  const rotate = useTransform(dragX, [-280, 0], [-5, 0], { clamp: true })
+  const y = useTransform(dragX, [0, 160], [0, -PEEK_Y], { clamp: true })
+  const scale = useTransform(dragX, [0, 160], [1.0, 1 - PEEK_SCALE], {
+    clamp: true,
+  })
+  const opacity = useTransform(dragX, [0, 160], [1.0, 0.9], { clamp: true })
 
   return (
     <motion.div
