@@ -1011,3 +1011,53 @@ create trigger tr_notify_new_user_to_telegram
 -- ============================================================================
 -- Segarkan cache PostgREST agar semua kolom dan endpoint RPC langsung aktif
 notify pgrst, 'reload schema';
+
+-- ============================================================
+-- Web Push Notifications (ditambahkan 2026-09-27)
+-- ============================================================
+
+create table if not exists public.push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  endpoint text not null,
+  p256dh text not null,
+  auth text not null,
+  user_agent text,
+  created_at timestamptz default now(),
+  unique(user_id, endpoint)
+);
+
+create table if not exists public.notification_settings (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  push_enabled boolean default false,
+  bill_enabled boolean default true,
+  budget_enabled boolean default true,
+  announcement_enabled boolean default true,
+  updated_at timestamptz default now()
+);
+
+create table if not exists public.push_sent (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  notification_id text not null,
+  sent_at timestamptz default now(),
+  primary key (user_id, notification_id)
+);
+
+alter table public.push_subscriptions enable row level security;
+alter table public.notification_settings enable row level security;
+alter table public.push_sent enable row level security;
+
+drop policy if exists "Users manage own push subscriptions" on public.push_subscriptions;
+create policy "Users manage own push subscriptions"
+  on public.push_subscriptions for all
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "Users manage own notification settings" on public.notification_settings;
+create policy "Users manage own notification settings"
+  on public.notification_settings for all
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "Users read own push sent" on public.push_sent;
+create policy "Users read own push sent"
+  on public.push_sent for select
+  using (auth.uid() = user_id);
