@@ -328,27 +328,83 @@ function BalanceCarousel() {
   )
 }
 
-function QuickGrid() {
-  const { t, open, isAiAllowed } = useApp()
+export function QuickGrid() {
+  const { t, open, bills = [], transactions = [] } = useApp()
+
+  // Hierarki + info sekilas: badge dihitung dengan logika yang sama seperti
+  // BillsTrackerSheet ("belum dibayar bulan ini").
+  const now = new Date()
+  const mKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  const today = now.getDate()
+  const unpaidBills = (bills || []).filter((b) => !((b?.paid_months || {})[mKey]))
+  const overdueBills = unpaidBills.filter((b) => (Number(b?.due_day) || 1) < today)
+  const receiptCount = (transactions || []).filter((tx) => Boolean(tx?.receipt_url)).length
+
   const items = [
-    { id: 'bills', label: t('bills'), icon: FileText, onClick: () => open('bills') },
+    {
+      id: 'bills',
+      label: t('bills'),
+      icon: FileText,
+      onClick: () => open('bills'),
+      badge: unpaidBills.length,
+      // Tile yang menuntut perhatian dapat aksen: overdue (rose) > due (amber).
+      tone: overdueBills.length > 0 ? 'overdue' : unpaidBills.length > 0 ? 'due' : 'idle',
+    },
     {
       id: 'receipts',
       label: t('receipts'),
       icon: Receipt,
       onClick: () => open('receiptGallery'),
+      badge: receiptCount,
+      tone: 'quiet',
     },
-    { id: 'split', label: t('bill_split'), icon: Users, onClick: () => open('split') },
-    { id: 'analytics', label: t('analytics'), icon: PieChart, onClick: () => open('analytics') },
+    { id: 'split', label: t('bill_split'), icon: Users, onClick: () => open('split'), tone: 'idle' },
+    { id: 'analytics', label: t('analytics'), icon: PieChart, onClick: () => open('analytics'), tone: 'idle' },
   ]
   return (
-    <div className="grid grid-cols-4 gap-3 mt-6">
+    <div className="grid grid-cols-4 gap-3 mt-4">
       {items.map((it) => (
-        <button key={it.id} type="button" onClick={it.onClick} className="flex flex-col items-center gap-2 group" data-testid={`quick-${it.id}`}>
-          <div className="h-14 w-14 rounded-2xl bg-white border border-border/70 text-foreground dark:bg-[#121214] dark:border-white/10 dark:text-white flex items-center justify-center active:scale-95 transition shadow-xs group-hover:border-foreground/40 group-hover:text-foreground">
-            <it.icon size={22} />
+        <button
+          key={it.id}
+          type="button"
+          onClick={it.onClick}
+          data-testid={`quick-${it.id}`}
+          aria-label={it.badge > 0 ? `${it.label} (${it.badge})` : it.label}
+          className="flex flex-col items-center gap-2 group"
+        >
+          <div
+            className={cn(
+              'relative h-14 w-14 rounded-2xl border flex items-center justify-center transition active:scale-95 shadow-xs',
+              it.tone === 'overdue' && 'bg-rose-500/10 border-rose-500/60 text-rose-500 dark:text-rose-400',
+              it.tone === 'due' && 'bg-amber-500/10 border-amber-500/60 text-amber-600 dark:text-amber-400',
+              (it.tone === 'idle' || it.tone === 'quiet') &&
+                'bg-white border-border/70 text-foreground dark:bg-[#121214] dark:border-white/10 dark:text-white group-hover:border-foreground/40'
+            )}
+          >
+            <it.icon size={24} strokeWidth={it.tone === 'idle' || it.tone === 'quiet' ? 2 : 2.25} />
+            {it.badge > 0 && (
+              <span
+                className={cn(
+                  'absolute -top-1.5 -right-1.5 h-5 min-w-5 px-1 rounded-full text-[10px] font-bold tabular-nums flex items-center justify-center shadow',
+                  it.tone === 'overdue' && 'bg-rose-500 text-white',
+                  it.tone === 'due' && 'bg-amber-400 text-zinc-950',
+                  it.tone === 'quiet' && 'bg-zinc-500/30 text-zinc-100'
+                )}
+              >
+                {it.badge}
+              </span>
+            )}
           </div>
-          <span className="text-[11px] font-semibold text-muted-foreground group-hover:text-foreground transition-colors">{it.label}</span>
+          <span
+            className={cn(
+              'text-[11px] font-semibold transition-colors',
+              it.tone === 'idle' || it.tone === 'quiet'
+                ? 'text-muted-foreground group-hover:text-foreground'
+                : 'text-foreground'
+            )}
+          >
+            {it.label}
+          </span>
         </button>
       ))}
     </div>
