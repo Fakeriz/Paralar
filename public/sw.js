@@ -6,7 +6,7 @@
 // - Aset lain: stale-while-revalidate
 // - API (/api/*): selalu network-only (data jangan di-cache)
 
-const VERSION = 'paralar-v2';
+const VERSION = 'paralar-v3';
 
 // Cache khusus untuk Web Share Target: menampung file gambar yang di-share
 // dari aplikasi lain. Terpisah dari cache app shell agar tidak ikut terhapus
@@ -53,9 +53,14 @@ function putInCache(request, response) {
 async function handleShareTarget(request) {
   const done = (location) =>
     Response.redirect(new URL(location, self.location.origin).href, 303);
+  // Penanda diagnosis: catat setiap share yang dicegat SW agar bisa dibaca
+  // halaman lewat ?swinfo=1.
+  const dbg = { at: new Date().toISOString(), hadFile: false, size: 0, cached: false, error: null };
   try {
     const form = await request.formData();
     const file = form.get('receipt');
+    dbg.hadFile = !!(file && file.size > 0);
+    dbg.size = file && file.size > 0 ? file.size : 0;
     if (file && file.size > 0 && file.size <= 25 * 1024 * 1024) {
       const cache = await caches.open(SHARE_CACHE);
       await cache.put(
@@ -64,7 +69,19 @@ async function handleShareTarget(request) {
           headers: { 'Content-Type': file.type || 'image/jpeg' },
         })
       );
+      dbg.cached = true;
     }
+  } catch (e) {
+    dbg.error = String((e && e.message) || e);
+  }
+  try {
+    const cache = await caches.open(SHARE_CACHE);
+    await cache.put(
+      '__share_debug__',
+      new Response(JSON.stringify(dbg), {
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
   } catch (e) {
     // Abaikan: page.js akan membuka sheet scan kosong sebagai fallback.
   }

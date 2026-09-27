@@ -254,6 +254,32 @@ export default function App() {
         const m = t.match(/VERSION = '([^']+)'/)
         info.push('versi file sw.js: ' + (m ? m[1] : '?'))
       } catch (e) { info.push('versi file: ?') }
+      // Penanda 1: cookie dari server -> berarti POST sampai ke server (SW tidak mencegat).
+      try {
+        const cm = document.cookie.match(/paralar_share_server=([^;]+)/)
+        if (cm) {
+          const parts = decodeURIComponent(cm[1]).split('_')
+          info.push('POST ke SERVER: YA (file ' + (parts[1] || '?') + ' bytes)')
+        } else {
+          info.push('POST ke server: tidak')
+        }
+        document.cookie = 'paralar_share_server=; Path=/; Max-Age=0'
+      } catch (e) {}
+      // Penanda 2: catatan SW -> berarti POST dicegat service worker.
+      try {
+        if ('caches' in window) {
+          const cache = await caches.open('paralar-share-v1')
+          const res = await cache.match('__share_debug__')
+          if (res) {
+            const j = await res.json()
+            info.push('dicegat SW: YA (' + (j.at || '?') + ')')
+            info.push('file: ' + (j.hadFile ? j.size + ' bytes, tersimpan: ' + (j.cached ? 'ya' : 'TIDAK') : 'TIDAK ADA'))
+            if (j.error) info.push('error SW: ' + j.error)
+          } else {
+            info.push('dicegat SW: BELUM PERNAH')
+          }
+        }
+      } catch (e) {}
       try { alert('Info Service Worker:\n\n' + info.join('\n')) } catch {}
     })()
   }, [])
