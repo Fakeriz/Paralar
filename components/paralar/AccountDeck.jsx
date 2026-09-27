@@ -1,194 +1,290 @@
 'use client'
 
-import React, { useRef } from 'react'
-import { motion, useMotionValue, useTransform, useReducedMotion, animate } from 'framer-motion'
+import React, { useRef, useState, useEffect, useCallback } from 'react'
+import {
+  motion,
+  useMotionValue,
+  useTransform,
+  useReducedMotion,
+  animate,
+} from 'framer-motion'
 import { cn } from '@/lib/utils'
 
-const COMMIT_X = 90 // px — jarak geser minimum untuk pindah kartu
-const COMMIT_V = 550 // px/s — atau velocity cukup tinggi (flick)
-const EXIT_MS = 0.24 // durasi kartu keluar: meluncur halus (easeOut)
-const EXIT_EASE = [0.22, 1, 0.36, 1] // glide-out, bukan dihentak
-const SPRING = { type: 'spring', stiffness: 480, damping: 34, mass: 0.9 }
-const PEEK_Y = 11 // offset vertikal tiap kartu di belakang (rapat agar hero tidak renggang)
-const PEEK_SCALE = 0.05 // susut skala tiap kartu di belakang
-const RISE_PX = 170 // rentang geser untuk kartu belakang naik penuh satu slot
+const COMMIT_X = 75 // px geser minimum
+const COMMIT_V = 450 // px/s flick velocity
+const PEEK_Y = 12 // offset vertikal per kartu di belakang (px)
+const PEEK_SCALE = 0.055 // susut skala per kartu di belakang
+const RISE_PX = 160 // rentang geser untuk kartu belakang naik penuh satu slot
 
-function haptic(ms = 8) {
+function haptic(ms = 10) {
   try {
-    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') navigator.vibrate(ms)
-  } catch {
-    /* abaikan — haptic hanya enhancement */
-  }
+    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+      navigator.vibrate(ms)
+    }
+  } catch {}
 }
 
 /**
- * PeekCard — satu kartu di belakang tumpukan.
- *
- * Naik menyambut saat kartu depan digeser ke kiri: y dan scale didorong oleh
- * motion value `rise` (0 → 1 mengikuti jari), sehingga kartu berikut terasa
- * "datang menemui" alih-alih diam menunggu. Kedalaman `k` disalurkan lewat
- * motion value agar update depth & rise atomik dalam satu frame — tanpa flicker.
+ * PrevCard — kartu sebelumnya saat ditarik masuk dari kiri.
+ * Semua React Hooks ditempatkan tanpa syarat di baris teratas komponen.
  */
-function PeekCard({ slide, k, rise, reduceMotion }) {
-  const kMv = useMotionValue(k)
-  kMv.set(k) // idempoten: nilai sama → tidak memicu notifikasi/render ulang
-  const y = useTransform([rise, kMv], ([r, kk]) => -PEEK_Y * kk + PEEK_Y * r)
-  const scale = useTransform([rise, kMv], ([r, kk]) => 1 - PEEK_SCALE * kk + PEEK_SCALE * r)
+function PrevCard({ slide, dragX, trackWidth, reduceMotion }) {
+  const x = useTransform(
+    dragX,
+    [0, Math.max(1, trackWidth * 0.7)],
+    [-trackWidth - 40, 0],
+    { clamp: true }
+  )
+  const rotate = useTransform(
+    dragX,
+    [0, Math.max(1, trackWidth * 0.7)],
+    [-5, 0],
+    { clamp: true }
+  )
+  const opacity = useTransform(dragX, [0, 30], [0, 1], { clamp: true })
+
   return (
     <motion.div
+      key={slide.id}
       aria-hidden="true"
-      className="pointer-events-none absolute inset-x-0 top-6 h-[calc(100%-1.5rem)]"
-      // fade-in lembut saat kartu baru masuk ke tumpukan belakang
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={reduceMotion ? { duration: 0 } : { duration: 0.3 }}
-      style={{ y, scale, zIndex: 10 - k }}
+      className="pointer-events-none absolute inset-0 h-full w-full select-none"
+      style={{
+        x: reduceMotion ? 0 : x,
+        rotate: reduceMotion ? 0 : rotate,
+        opacity: reduceMotion ? 1 : opacity,
+        y: 0,
+        scale: 1,
+        zIndex: 30,
+      }}
     >
-      {slide.node}
+      <div className="h-full w-full rounded-2xl shadow-xl overflow-hidden">
+        {slide.node}
+      </div>
     </motion.div>
   )
 }
 
 /**
- * AccountDeck — tumpukan kartu akun dengan gesture geser untuk BERPINDAH kartu.
- *
- * Berbeda dengan pola triage (swipe-to-dismiss): di sini swipe MEMUTAR deck,
- * tidak ada kartu yang dibuang. Kartu-kartu di belakang mengintip dari atas
- * sebagai affordance bahwa ada kartu lain di tumpukan, dan naik menyambut
- * mengikuti jari saat deck digeser — transisi terasa kontinyu.
- *
- * Props:
- * - slides: Array<{ id: string, label: string, node: ReactNode }>
- *   `node` harus mengisi penuh wrapper (w-full h-full); rasio & tinggi
- *   diatur oleh deck agar semua kartu konsisten.
- * - index: posisi kartu aktif (controlled oleh parent)
- * - onIndexChange(i): dipanggil setelah kartu selesai berpindah
- * - regionLabel: aria-label untuk region carousel
+ * ActiveCard — kartu aktif terdepan yang dapat di-drag horizontal.
+ * Semua React Hooks ditempatkan tanpa syarat di baris teratas komponen.
  */
-export default function AccountDeck({ slides, index, onIndexChange, regionLabel, className }) {
+function ActiveCard({ slide, dragX, isCommitting, reduceMotion, onDragEnd }) {
+  const x = useTransform(dragX, (v) => (v <= 0 ? v : v * 0.15))
+  const rotate = useTransform(dragX, [-280, 0], [-5, 0])
+  const y = useTransform(dragX, [0, 160], [0, -PEEK_Y])
+  const scale = useTransform(dragX, [0, 160], [1.0, 1 - PEEK_SCALE])
+  const opacity = useTransform(dragX, [0, 160], [1.0, 0.9])
+
+  return (
+    <motion.div
+      key={slide.id}
+      className="absolute inset-0 h-full w-full cursor-grab active:cursor-grabbing select-none"
+      style={{
+        x: reduceMotion ? 0 : x,
+        rotate: reduceMotion ? 0 : rotate,
+        y: reduceMotion ? 0 : y,
+        scale: reduceMotion ? 1 : scale,
+        opacity: reduceMotion ? 1 : opacity,
+        zIndex: 20,
+        touchAction: 'pan-y',
+      }}
+      drag="x"
+      dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={0.8}
+      dragMomentum={false}
+      onDrag={(_, info) => {
+        if (!isCommitting) {
+          dragX.set(info.offset.x)
+        }
+      }}
+      onDragEnd={onDragEnd}
+      role="group"
+      aria-roledescription="slide"
+      aria-label={slide.label}
+    >
+      <div className="h-full w-full rounded-2xl shadow-lg">
+        {slide.node}
+      </div>
+    </motion.div>
+  )
+}
+
+/**
+ * PeekCard — satu kartu di belakang tumpukan yang mengintip dari atas.
+ * Semua React Hooks ditempatkan tanpa syarat di baris teratas komponen.
+ */
+function PeekCard({ slide, diff, dragX, reduceMotion }) {
+  const baseTargetY = -PEEK_Y * diff
+  const risenTargetY = -PEEK_Y * (diff - 1)
+  const baseScale = 1 - PEEK_SCALE * diff
+  const risenScale = 1 - PEEK_SCALE * (diff - 1)
+  const baseOpacity = diff === 1 ? 0.90 : diff === 2 ? 0.70 : 0.45
+  const risenOpacity = diff === 1 ? 1.0 : diff === 2 ? 0.90 : 0.70
+
+  const rise = useTransform(dragX, [-RISE_PX, 0], [1, 0], { clamp: true })
+  const y = useTransform(rise, [0, 1], [baseTargetY, risenTargetY])
+  const scale = useTransform(rise, [0, 1], [baseScale, risenScale])
+  const opacity = useTransform(rise, [0, 1], [baseOpacity, risenOpacity])
+
+  return (
+    <motion.div
+      key={slide.id}
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 h-full w-full select-none"
+      style={{
+        y: reduceMotion ? baseTargetY : y,
+        scale: reduceMotion ? baseScale : scale,
+        opacity: reduceMotion ? baseOpacity : opacity,
+        zIndex: 10 - diff,
+      }}
+    >
+      <div className="h-full w-full rounded-2xl shadow-md overflow-hidden">
+        {slide.node}
+      </div>
+    </motion.div>
+  )
+}
+
+/**
+ * AccountDeck — Carousel tumpukan kartu bank interaktif dengan gesture geser bebas glitch.
+ * Mematuhi ketat aturan Rules of Hooks (Zero Tolerance for Error #310).
+ */
+export default function AccountDeck({
+  slides = [],
+  index = 0,
+  onIndexChange,
+  regionLabel,
+  className,
+}) {
   const reduceMotion = useReducedMotion()
   const trackRef = useRef(null)
   const total = slides.length
 
-  const [visual, setVisual] = React.useState(() => Math.max(0, Math.min(index, total - 1)))
-  const [leaving, setLeaving] = React.useState(null) // { step, target } saat kartu sedang keluar
-  const [announcement, setAnnouncement] = React.useState('')
+  const [activeIdx, setActiveIdx] = useState(() => Math.max(0, Math.min(index || 0, total - 1)))
+  const [trackWidth, setTrackWidth] = useState(360)
+  const [isCommitting, setIsCommitting] = useState(false)
+  const [announcement, setAnnouncement] = useState('')
 
-  const x = useMotionValue(0)
-  const cardOpacity = useMotionValue(1)
-  const rotate = useTransform(x, [-280, 280], [-3.5, 3.5])
-  // rise: 0 saat diam / geser kanan → 1 saat kartu depan digeser kiri penuh.
-  // Kartu belakang naik satu slot mengikutinya — transisi terasa kontinyu.
-  const rise = useTransform(x, (v) => Math.min(1, Math.max(0, -v / RISE_PX)))
-  // 'peek' | 'risen' — dari pose mana kartu baru masuk menjadi kartu depan.
-  const enterFromRef = useRef('peek')
-  // firstMount: kartu pertama tampil instan, tanpa animasi masuk.
-  const firstMount = useRef(true)
-  React.useEffect(() => {
-    firstMount.current = false
+  const dragX = useMotionValue(0)
+
+  // Ukur lebar deck secara dinamis
+  useEffect(() => {
+    const el = trackRef.current
+    if (!el) return
+    const update = () => {
+      if (el.clientWidth) setTrackWidth(el.clientWidth)
+    }
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
   }, [])
 
-  const announce = React.useCallback(
-    (i) => {
-      const s = slides[i]
-      if (s) setAnnouncement(`Kartu ${i + 1} dari ${total}: ${s.label}`)
-    },
-    [slides, total]
-  )
-
-  // Lompatan dari luar (dots / panah / keyboard): potong langsung tanpa animasi palsu.
-  // Jangan pernah mengganggu animasi keluar yang sedang berjalan.
-  React.useEffect(() => {
-    const clamped = Math.max(0, Math.min(index, total - 1))
-    if (clamped !== visual && !leaving) {
-      enterFromRef.current = 'peek' // lompatan dots: selalu spring dari pose peek
-      setVisual(clamped)
-      x.set(0)
-      cardOpacity.set(1)
-      announce(clamped)
+  // Sinkronisasi index dari luar (misal: klik dot navigasi)
+  useEffect(() => {
+    const clamped = Math.max(0, Math.min(index || 0, total - 1))
+    if (clamped !== activeIdx) {
+      setActiveIdx(clamped)
+      dragX.set(0)
     }
-  }, [index, total, visual, leaving, announce, x, cardOpacity])
+  }, [index, total, activeIdx, dragX])
 
-  const settle = React.useCallback(() => {
-    // Batalkan exit yang mungkin sedang berjalan: user "menangkap" kembali
-    // kartu di tengah animasi keluar. Tanpa ini, cardOpacity terjebak di
-    // tengah fade (kartu jadi abu-abu) dan onComplete lama memicu pindah
-    // halaman hantu.
-    x.stop()
-    cardOpacity.stop()
-    setLeaving(null)
-    if (reduceMotion) {
-      x.set(0)
-      cardOpacity.set(1)
-      return
-    }
-    animate(x, 0, SPRING)
-    animate(cardOpacity, 1, { duration: 0.2 })
-  }, [reduceMotion, x, cardOpacity])
+  // Pengumuman pembaca layar
+  useEffect(() => {
+    const s = slides[activeIdx]
+    if (s) setAnnouncement(`Kartu ${activeIdx + 1} dari ${total}: ${s.label}`)
+  }, [activeIdx, slides, total])
 
-  const commit = React.useCallback(
-    (step) => {
-      const target = visual + step
-      // Di luar batas (kartu pertama/terakhir): pegas kembali, jangan commit.
-      if (target < 0 || target >= total || leaving) {
-        settle()
+  const handleDragEnd = useCallback(
+    (_, info) => {
+      if (isCommitting) return
+
+      const { offset, velocity } = info
+      const isSwipeLeft = offset.x <= -COMMIT_X || velocity.x <= -COMMIT_V
+      const isSwipeRight = offset.x >= COMMIT_X || velocity.x >= COMMIT_V
+
+      // Geser kiri: buang kartu depan ke kiri dan naikkan kartu berikutnya
+      if (isSwipeLeft && activeIdx < total - 1) {
+        setIsCommitting(true)
+        haptic()
+        const targetX = -trackWidth - 60
+        animate(dragX, targetX, {
+          duration: reduceMotion ? 0 : 0.22,
+          ease: [0.22, 1, 0.36, 1],
+          onComplete: () => {
+            const next = activeIdx + 1
+            setActiveIdx(next)
+            onIndexChange?.(next)
+            dragX.set(0)
+            setIsCommitting(false)
+          },
+        })
         return
       }
-      haptic()
-      // Kalau kartu belakang sudah naik mengikuti jari (risen), kartu baru
-      // melanjutkan persis dari pose itu — tanpa animasi masuk tambahan.
-      // Kalau tidak (keyboard/dots), ia spring dari pose peek seperti biasa.
-      enterFromRef.current = step > 0 && rise.get() > 0.12 ? 'risen' : 'peek'
-      setLeaving({ step, target })
-      announce(target)
-      const w = trackRef.current?.clientWidth || 320
-      const exitX = step > 0 ? -(w + 64) : w + 64
-      const dur = reduceMotion ? 0 : EXIT_MS
-      // Keluar meluncur (easeOut): kartu baru sudah menunggu di bawah dalam
-      // pose depan, jadi pergantian terasa kontinyu tanpa jeda.
-      animate(x, exitX, { duration: dur, ease: EXIT_EASE })
-      animate(cardOpacity, 0, {
-        duration: dur,
-        ease: 'easeOut',
-        onComplete: () => {
-          onIndexChange(target)
-          setVisual(target)
-          setLeaving(null)
-          x.set(0)
-          cardOpacity.set(1)
-        },
-      })
-    },
-    [visual, total, leaving, settle, announce, onIndexChange, reduceMotion, x, cardOpacity, rise]
-  )
 
-  const onDragEnd = React.useCallback(
-    (_, info) => {
-      const { offset, velocity } = info
-      if (offset.x <= -COMMIT_X || velocity.x <= -COMMIT_V) commit(1) // geser kiri → kartu berikut
-      else if (offset.x >= COMMIT_X || velocity.x >= COMMIT_V) commit(-1) // geser kanan → kartu sebelum
-      else settle() // di bawah threshold → pegas kembali
+      // Geser kanan: tarik kartu sebelumnya masuk dari kiri
+      if (isSwipeRight && activeIdx > 0) {
+        setIsCommitting(true)
+        haptic()
+        animate(dragX, trackWidth * 0.7, {
+          duration: reduceMotion ? 0 : 0.22,
+          ease: [0.22, 1, 0.36, 1],
+          onComplete: () => {
+            const prev = activeIdx - 1
+            setActiveIdx(prev)
+            onIndexChange?.(prev)
+            dragX.set(0)
+            setIsCommitting(false)
+          },
+        })
+        return
+      }
+
+      // Jika di bawah batas geser: kembalikan ke posisi semula dengan pegas halus
+      if (reduceMotion) {
+        dragX.set(0)
+      } else {
+        animate(dragX, 0, {
+          type: 'spring',
+          stiffness: 450,
+          damping: 32,
+          mass: 0.8,
+        })
+      }
     },
-    [commit, settle]
+    [activeIdx, total, trackWidth, onIndexChange, reduceMotion, dragX, isCommitting]
   )
 
   const onKeyDown = (e) => {
+    if (isCommitting) return
     if (e.key === 'ArrowRight') {
       e.preventDefault()
-      commit(1)
+      if (activeIdx < total - 1) {
+        const next = activeIdx + 1
+        setActiveIdx(next)
+        onIndexChange?.(next)
+        haptic()
+      }
     } else if (e.key === 'ArrowLeft') {
       e.preventDefault()
-      commit(-1)
+      if (activeIdx > 0) {
+        const prev = activeIdx - 1
+        setActiveIdx(prev)
+        onIndexChange?.(prev)
+        haptic()
+      }
     } else if (e.key === 'Home') {
       e.preventDefault()
-      onIndexChange(0)
+      setActiveIdx(0)
+      onIndexChange?.(0)
+      haptic()
     } else if (e.key === 'End') {
       e.preventDefault()
-      onIndexChange(total - 1)
+      setActiveIdx(total - 1)
+      onIndexChange?.(total - 1)
+      haptic()
     }
   }
-
-  const active = slides[visual]
 
   return (
     <div className={cn('relative', className)}>
@@ -199,49 +295,48 @@ export default function AccountDeck({ slides, index, onIndexChange, regionLabel,
         aria-label={regionLabel}
         tabIndex={0}
         onKeyDown={onKeyDown}
-        className="relative rounded-2xl pt-6 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="relative rounded-2xl pt-7 pb-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
-        {/* Kartu belakang: mengintip dari atas, naik menyambut saat deck digeser */}
-        {[2, 1].map((k) => {
-          const s = slides[visual + k]
-          if (!s) return null
-          return <PeekCard key={s.id} slide={s} k={k} rise={rise} reduceMotion={reduceMotion} />
-        })}
+        {/* Frame deck dengan aspect ratio standar kartu ATM/Bank (1.58 : 1) */}
+        <div className="relative aspect-[1.58/1] min-h-[190px] w-full select-none">
+          {/* Kartu sebelumnya (muncul hanya jika ada kartu sebelumnya dan ditarik kanan) */}
+          {activeIdx > 0 && slides[activeIdx - 1] && (
+            <PrevCard
+              key={`prev-${slides[activeIdx - 1].id}`}
+              slide={slides[activeIdx - 1]}
+              dragX={dragX}
+              trackWidth={trackWidth}
+              reduceMotion={reduceMotion}
+            />
+          )}
 
-        {/* Kartu aktif: satu-satunya yang bisa di-drag horizontal */}
-        {active && (
-          <motion.div
-            // Key dibedakan dari peek agar selalu remount saat jadi kartu depan.
-            // 'risen': kartu sudah di pose depan sebagai peek → tampil instan,
-            // tanpa animasi (seamless). 'peek': spring dari pose peek.
-            key={`front-${active.id}`}
-            className="relative aspect-[1.58/1] min-h-[185px] cursor-grab active:cursor-grabbing"
-            style={{ x, rotate, opacity: cardOpacity, zIndex: 20, touchAction: 'pan-y' }}
-            initial={
-              firstMount.current || enterFromRef.current === 'risen'
-                ? false
-                : { y: -PEEK_Y, scale: 1 - PEEK_SCALE, opacity: 0.92 }
-            }
-            animate={{ y: 0, scale: 1, opacity: 1 }}
-            transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 34 }}
-            role="group"
-            aria-roledescription="slide"
-            aria-label={`${active.label} (${visual + 1} dari ${total})`}
-            drag="x"
-            // 1:1 mengikuti jari dalam batas wajar (±170px, threshold 90px ada di dalam).
-            // Di luar batas ada rubber-band lembut, bukan tembok kaku.
-            // dragElastic 0.08 + constraints 0 dulu bikin kartu cuma gerak 8% dari
-            // jari → terasa tersendat/ketinggalan.
-            dragConstraints={{ left: -170, right: 170 }}
-            dragElastic={0.35}
-            // Tanpa momentum: perilaku saat lepas sepenuhnya dikontrol
-            // commit()/settle(), tidak rebutan dengan inertia framer.
-            dragMomentum={false}
-            onDragEnd={onDragEnd}
-          >
-            {active.node}
-          </motion.div>
-        )}
+          {/* Kartu di belakang tumpukan (diff 3, 2, 1) */}
+          {[3, 2, 1].map((k) => {
+            const slide = slides[activeIdx + k]
+            if (!slide) return null
+            return (
+              <PeekCard
+                key={`peek-${slide.id}`}
+                slide={slide}
+                diff={k}
+                dragX={dragX}
+                reduceMotion={reduceMotion}
+              />
+            )
+          })}
+
+          {/* Kartu aktif depan */}
+          {slides[activeIdx] && (
+            <ActiveCard
+              key={`active-${slides[activeIdx].id}`}
+              slide={slides[activeIdx]}
+              dragX={dragX}
+              isCommitting={isCommitting}
+              reduceMotion={reduceMotion}
+              onDragEnd={handleDragEnd}
+            />
+          )}
+        </div>
       </div>
 
       {/* Live region: umumkan kartu aktif ke screen reader */}
