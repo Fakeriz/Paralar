@@ -110,12 +110,21 @@ export default function AccountDeck({ slides, index, onIndexChange, regionLabel,
   }, [index, total, visual, leaving, announce, x, cardOpacity])
 
   const settle = React.useCallback(() => {
+    // Batalkan exit yang mungkin sedang berjalan: user "menangkap" kembali
+    // kartu di tengah animasi keluar. Tanpa ini, cardOpacity terjebak di
+    // tengah fade (kartu jadi abu-abu) dan onComplete lama memicu pindah
+    // halaman hantu.
+    x.stop()
+    cardOpacity.stop()
+    setLeaving(null)
     if (reduceMotion) {
       x.set(0)
+      cardOpacity.set(1)
       return
     }
     animate(x, 0, SPRING)
-  }, [reduceMotion, x])
+    animate(cardOpacity, 1, { duration: 0.2 })
+  }, [reduceMotion, x, cardOpacity])
 
   const commit = React.useCallback(
     (step) => {
