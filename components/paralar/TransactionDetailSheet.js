@@ -147,7 +147,7 @@ export default function TransactionDetailSheet({ open, isOpen: propIsOpen, onClo
       />
 
       <div className="text-center mt-6">
-        <p className={cn('text-4xl font-extrabold tabular-nums', tx.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-950 dark:text-white')}>{tx.type === 'expense' ? '-' : tx.type === 'income' ? '+' : ''}{fmt(total, cur)}</p>
+        <p className="text-4xl font-extrabold tabular-nums text-zinc-950 dark:text-white">{tx.type === 'expense' ? '-' : tx.type === 'income' ? '+' : ''}{fmt(total, cur)}</p>
         {isForeign ? <p className="text-sm text-zinc-600 dark:text-zinc-400 font-medium mt-1">≈ {fmt(convertToHome(total, cur), home)} {home} · {t('rate')} {tx.rate ? Number(tx.rate).toPrecision(4) : ''}</p> : null}
         <p className="text-xs text-zinc-600 dark:text-zinc-400 font-medium mt-2">{t(tx.payment_method || 'cash')}{acc ? ` · ${acc.name}` : ''}{tx.tax_deductible ? ` · ${t('tax_deductible')}` : ''}</p>
       </div>

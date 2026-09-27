@@ -95,7 +95,7 @@ export default function TransactionRow({ tx, onClick, showDate = false, hideBala
         <p className="text-xs text-zinc-600 dark:text-zinc-400 truncate mt-0.5">{sub}</p>
       </div>
       <div className="text-right shrink-0">
-        <p className={cn('font-bold text-[15px] tabular-nums', isExpense ? 'text-zinc-950 dark:text-white' : isTransfer ? 'text-zinc-600 dark:text-zinc-400' : 'text-emerald-600 dark:text-emerald-400')}>
+        <p className={cn('font-bold text-[15px] tabular-nums', isTransfer ? 'text-zinc-600 dark:text-zinc-400' : 'text-zinc-950 dark:text-white')}>
           {isHidden ? '••••••' : `${isExpense ? '-' : isTransfer ? '' : '+'}${safeFmt(tx?.amount, tx?.currency)}`}
         </p>
         {showHomeApprox ? (

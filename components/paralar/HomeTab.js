@@ -219,9 +219,9 @@ export function TotalBalanceCard() {
         </button>
       </div>
 
-      {/* Saldo: nominal */}
-      <div className="relative z-10 mt-2">
-        <p className="mt-1.5 flex items-baseline gap-1.5 tabular-nums" data-testid="total-balance">
+      {/* Saldo: nominal — rapat tepat di bawah caption */}
+      <div className="relative z-10">
+        <p className="mt-1 flex items-baseline gap-1.5 tabular-nums" data-testid="total-balance">
           {balCcy && (
             <span className="text-base sm:text-lg font-bold text-white/65 shrink-0">{balCcy}</span>
           )}
@@ -232,22 +232,22 @@ export function TotalBalanceCard() {
       </div>
 
       {/* Income & Spending */}
-      <div className="grid grid-cols-2 gap-2.5 relative z-10 mt-3">
-        <div className="rounded-xl bg-white/[0.05] border border-white/[0.08] px-3 py-2.5">
-          <div className="flex items-center gap-1.5 text-white/50 text-[10px] font-semibold uppercase tracking-[0.12em]">
+      <div className="grid grid-cols-2 gap-2 relative z-10 mt-2.5">
+        <div className="rounded-xl bg-white/[0.05] border border-white/[0.08] px-2.5 py-2">
+          <div className="flex items-center gap-1 text-white/50 text-[9px] font-semibold uppercase tracking-[0.12em]">
             <ArrowDownLeft size={12} className="text-emerald-400 shrink-0" strokeWidth={2.5} />
             <span>{t('income')}</span>
           </div>
-          <p className="font-bold text-sm tabular-nums text-white/90 mt-1 truncate">
+          <p className="font-bold text-[13px] tabular-nums text-white/90 mt-0.5 truncate">
             {mask(fmt(stats?.income || 0, home))}
           </p>
         </div>
-        <div className="rounded-xl bg-white/[0.05] border border-white/[0.08] px-3 py-2.5">
-          <div className="flex items-center gap-1.5 text-white/50 text-[10px] font-semibold uppercase tracking-[0.12em]">
+        <div className="rounded-xl bg-white/[0.05] border border-white/[0.08] px-2.5 py-2">
+          <div className="flex items-center gap-1 text-white/50 text-[9px] font-semibold uppercase tracking-[0.12em]">
             <ArrowUpRight size={12} className="text-rose-400 shrink-0" strokeWidth={2.5} />
             <span>{t('spending')}</span>
           </div>
-          <p className="font-bold text-sm tabular-nums text-white/90 mt-1 truncate">
+          <p className="font-bold text-[13px] tabular-nums text-white/90 mt-0.5 truncate">
             {mask(fmt(stats?.spending || 0, home))}
           </p>
         </div>
@@ -368,15 +368,6 @@ export function QuickGrid() {
 
   const items = [
     {
-      id: 'bills',
-      label: t('bills'),
-      icon: DocumentOutline,
-      onClick: () => open('bills'),
-      badge: unpaidBills.length,
-      // Tile yang menuntut perhatian dapat aksen: overdue (rose) > due (amber).
-      tone: overdueBills.length > 0 ? 'overdue' : unpaidBills.length > 0 ? 'due' : 'idle',
-    },
-    {
       id: 'receipts',
       label: t('receipts'),
       icon: ReceiptOutline,
@@ -385,6 +376,15 @@ export function QuickGrid() {
       tone: 'quiet',
     },
     { id: 'split', label: t('bill_split'), icon: Profile2userOutline, onClick: () => open('split'), tone: 'idle' },
+    {
+      id: 'bills',
+      label: t('bills'),
+      icon: DocumentOutline,
+      onClick: () => open('bills'),
+      badge: unpaidBills.length,
+      // Tile yang menuntut perhatian dapat aksen: overdue (rose) > due (amber).
+      tone: overdueBills.length > 0 ? 'overdue' : unpaidBills.length > 0 ? 'due' : 'idle',
+    },
     { id: 'analytics', label: t('analytics'), icon: ChartPieOutline, onClick: () => open('analytics'), tone: 'idle' },
   ]
   return (
