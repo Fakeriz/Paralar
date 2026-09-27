@@ -192,11 +192,14 @@ export async function POST(request) {
           )
         )
 
-        // Hapus subscription yang expired (410 Gone)
+        // Hapus subscription yang expired atau tidak valid (410 Gone, 404 Not Found, 401 Unauthorized)
         for (let i = 0; i < results.length; i++) {
           const r = results[i]
-          if (r.status === 'rejected' && r.reason?.statusCode === 410) {
-            await sb.from('push_subscriptions').delete().eq('endpoint', subs[i].endpoint)
+          if (r.status === 'rejected') {
+            const sc = r.reason?.statusCode
+            if (sc === 410 || sc === 404 || sc === 401) {
+              await sb.from('push_subscriptions').delete().eq('endpoint', subs[i].endpoint)
+            }
           }
         }
 

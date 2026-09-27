@@ -100,9 +100,15 @@ export async function POST(request) {
       ok++
     } catch (e) {
       failed++
-      lastError = e?.message || String(e)
-      // Hapus yang expired
-      if (e?.statusCode === 410) {
+      const errorDetail = e.body ? `${e.statusCode}: ${e.body}` : (e.message || String(e))
+      lastError = errorDetail
+      console.error('[WebPush Test Error]:', {
+        statusCode: e.statusCode,
+        body: e.body,
+        endpoint: sub.endpoint,
+      })
+      // Hapus yang expired (410 Gone) atau token invalid / registration unauthorized (401 / 404)
+      if (e?.statusCode === 410 || e?.statusCode === 404 || e?.statusCode === 401) {
         await sb.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
       }
     }

@@ -1,5 +1,4 @@
 'use client'
-import { useState } from 'react'
 import { User, Globe, Coins, Moon, CalendarDays, ShieldCheck, Bell, PlayCircle, ShieldAlert, ChevronRight, Cloud } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTheme } from 'next-themes'
@@ -8,7 +7,6 @@ import { Sheet, Segmented } from './ui'
 import { LANGUAGES } from '@/lib/i18n'
 import { getCurrency } from '@/lib/currencies'
 import { cn } from '@/lib/utils'
-import NotificationSettingsSheet from './NotificationSettingsSheet'
 
 function Row({ icon: Icon, label, sub, onClick, testId }) {
   return (
@@ -28,7 +26,6 @@ function Row({ icon: Icon, label, sub, onClick, testId }) {
 export default function AppSettingsSheet({ open, onClose }) {
   const { t, open: openSheet, lang, home, profile } = useApp()
   const { theme, setTheme } = useTheme()
-  const [notifOpen, setNotifOpen] = useState(false)
 
   const nav = (fn) => { onClose?.(); setTimeout(() => fn(), 140) }
   const soon = () => toast(t('coming_soon'))
@@ -63,7 +60,7 @@ export default function AppSettingsSheet({ open, onClose }) {
           <Row icon={CalendarDays} label={t('month_start_date')} sub={t('month_start_desc') || t('month_start_sub')} onClick={soon} testId="set-monthstart" />
           <Row icon={Cloud} label={t('cloud_receipt_backup', 'Cloud Receipt Backup')} sub={providerSubtitle} onClick={() => nav(() => openSheet('cloudBackup'))} testId="set-cloud-backup" />
           <Row icon={ShieldCheck} label={t('account_backup')} sub={t('account_backup_sub')} onClick={soon} testId="set-backup" />
-          <Row icon={Bell} label={t('notifications')} sub={t('notifications_sub')} onClick={() => nav(() => setNotifOpen(true))} testId="set-notifications" />
+          <Row icon={Bell} label={t('notifications')} sub={t('notifications_sub')} onClick={() => nav(() => openSheet('notifSettings'))} testId="set-notifications" />
         </div>
 
         <div className={box}>
@@ -72,7 +69,6 @@ export default function AppSettingsSheet({ open, onClose }) {
         </div>
         <div className="h-2" />
       </div>
-      <NotificationSettingsSheet open={notifOpen} onClose={() => setNotifOpen(false)} />
     </Sheet>
   )
 }

@@ -33,6 +33,7 @@ import AccountsSheet from '@/components/paralar/AccountsSheet'
 import AnalyticsSheet from '@/components/paralar/AnalyticsSheet'
 import CurrencySheet from '@/components/paralar/CurrencySheet'
 import NotificationsSheet from '@/components/paralar/NotificationsSheet'
+import NotificationSettingsSheet from '@/components/paralar/NotificationSettingsSheet'
 import SmartAutomationSheet from '@/components/paralar/SmartAutomationSheet'
 import BillsTrackerSheet from '@/components/paralar/BillsTrackerSheet'
 import LoanCalculatorSheet from '@/components/paralar/LoanCalculatorSheet'
@@ -532,6 +533,7 @@ export default function App() {
         />
         <PaywallSheet open={!!sheets.paywall} onClose={() => close('paywall')} />
         <CloudReceiptBackupSheet open={!!sheets.cloudBackup} onClose={() => close('cloudBackup')} />
+        <NotificationSettingsSheet open={Boolean(sheets?.notifSettings || sheets?.notificationSettings)} onClose={() => { close('notifSettings'); close('notificationSettings') }} />
       </main>
     </AppContext.Provider>
   )

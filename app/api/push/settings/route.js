@@ -39,26 +39,22 @@ export async function GET(request) {
   if (!auth) return json({ error: 'Unauthorized' }, 401)
   const { user, sb } = auth
 
-  let { data } = await sb
-    .from('notification_settings')
-    .select('*')
-    .eq('user_id', user.id)
-    .maybeSingle()
+  // Jalankan query settings dan device count secara paralel
+  const [settingsRes, countRes] = await Promise.all([
+    sb.from('notification_settings').select('*').eq('user_id', user.id).maybeSingle(),
+    sb.from('push_subscriptions').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+  ])
+
+  let data = settingsRes.data
 
   if (!data) {
     const { data: inserted } = await sb
       .from('notification_settings')
       .upsert({ user_id: user.id }, { onConflict: 'user_id' })
       .select()
-      .single()
+      .maybeSingle()
     data = inserted || { user_id: user.id, ...DEFAULTS }
   }
-
-  // Hitung jumlah device terdaftar
-  const { count } = await sb
-    .from('push_subscriptions')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', user.id)
 
   return json({
     settings: {
@@ -67,7 +63,7 @@ export async function GET(request) {
       budget_enabled: data.budget_enabled !== false,
       announcement_enabled: data.announcement_enabled !== false,
     },
-    devices: count || 0,
+    devices: countRes.count || 0,
     permission: null, // diisi client-side
   })
 }
