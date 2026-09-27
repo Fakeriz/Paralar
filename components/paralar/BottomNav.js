@@ -412,7 +412,7 @@ export default function BottomNav({
       aria-hidden={!visible}
       initial={false}
       animate={{
-        y: visible ? 0 : 'calc(100% + 40px + env(safe-area-inset-bottom, 0px))',
+        y: visible ? 0 : 80,
         opacity: visible ? 1 : 0,
       }}
       transition={
@@ -420,18 +420,15 @@ export default function BottomNav({
           ? { duration: 0 }
           : {
               type: 'spring',
-              stiffness: 400,
-              damping: 36,
-              mass: 0.8,
+              stiffness: 450,
+              damping: 35,
+              mass: 0.5,
             }
       }
-      style={{
-        bottom: 'max(14px, env(safe-area-inset-bottom, 14px))',
-        pointerEvents: visible ? 'auto' : 'none',
-      }}
-      className="fixed inset-x-0 z-50 flex select-none justify-center px-4 transform-gpu"
+      className="fixed inset-x-0 bottom-0 z-50 flex select-none justify-center px-4 pb-[max(12px,env(safe-area-inset-bottom))] pointer-events-none transform-gpu"
     >
       <div
+        style={{ pointerEvents: visible ? 'auto' : 'none' }}
         className="
           relative isolate h-[60px] w-full max-w-[360px]
           rounded-full p-[5px]
