@@ -5,6 +5,27 @@ import { getCurrency } from '@/lib/currencies'
 import { cn } from '@/lib/utils'
 import { ArrowLeftRight } from 'lucide-react'
 
+// Pembersih otomatis kata awalan seperti "Beli", "Bayar", "Jajan", dll.
+function formatCleanTitle(tx, fallback) {
+  // 1. Jika ada nama merchant asli yang bukan kata kerja, pakai nama merchant
+  if (tx?.merchant && !/^(beli|jajan|bayar|pesan|order|topup|tarik)\b/i.test(tx.merchant.trim())) {
+    return tx.merchant.trim()
+  }
+
+  // 2. Ambil dari nama items (jika multi-item) atau note/description
+  let raw =
+    (Array.isArray(tx?.items) && tx.items.length > 0 ? tx.items.map((i) => i.name).join(' & ') : '') ||
+    tx?.note ||
+    tx?.description ||
+    fallback ||
+    'Transaksi'
+
+  // 3. Pangkas kata awalan "beli", "jajan", "bayar", "pesan"
+  const cleaned = raw.replace(/^(beli|jajan|bayar|pesan|order|belanja)\s+/i, '').trim()
+
+  return cleaned ? cleaned.charAt(0).toUpperCase() + cleaned.slice(1) : fallback || 'Transaksi'
+}
+
 // Safe time/date formatting — never throws on null/invalid values.
 const safeTime = (dateStr, locale) => {
   if (!dateStr) return ''
@@ -35,7 +56,11 @@ export default function TransactionRow({ tx, onClick, showDate = false, hideBala
   const isTransfer = tx?.type === 'transfer'
   const acc = accList.find((a) => a?.id === tx?.account_id)
   const toAcc = accList.find((a) => a?.id === tx?.to_account_id)
-  const title = tx?.merchant || tx?.note || tx?.description || (t ? t(`cat_${tx?.category || 'other'}`) : (tx?.category || 'Other'))
+  
+  // Ambil judul bersih tanpa repetisi kata "Beli"
+  const categoryFallback = t ? t(`cat_${tx?.category || 'other'}`) : (tx?.category || 'Other')
+  const title = formatCleanTitle(tx, categoryFallback)
+
   const foreign = tx?.currency && tx?.currency !== home
 
   // Guard conversion — only show ≈ home amount when we actually have a number.

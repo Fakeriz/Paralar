@@ -137,6 +137,10 @@ export default function AddTransactionSheet({ open, isOpen: propIsOpen, onClose,
     setSaving(true)
     try {
       const finalAmount = roundMoney(num, currency)
+
+      // Fallback: Jika accountId masih kosong/null, gunakan akun pertama yang tersedia
+      const resolvedAccountId = accountId || accounts?.[0]?.id || null
+
       const tx = {
         type,
         amount: finalAmount,
@@ -146,7 +150,7 @@ export default function AddTransactionSheet({ open, isOpen: propIsOpen, onClose,
         rate,
         category: type === 'transfer' ? 'transfer' : category,
         payment_method: type === 'transfer' ? 'bank' : payment,
-        account_id: accountId || null,
+        account_id: resolvedAccountId, // <-- Pastikan terisi ID akun
         to_account_id: type === 'transfer' ? toAccountId : null,
         fee: type === 'transfer' && showFee ? Number(fee) || 0 : 0,
         note: note || null,

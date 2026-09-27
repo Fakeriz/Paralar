@@ -8,7 +8,8 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
-// Urutkan varian Lite yang memiliki kuota harian longgar (500 RPD) pada urutan pertama
+
+// Model candidate fallback
 const CANDIDATE_MODELS = [
   'gemini-2.5-flash',
   'gemini-2.0-flash',
@@ -38,9 +39,9 @@ async function verifyAndConsumeAiAccess(request) {
   if (!token) {
     return {
       allowed: false,
-      response: NextResponse.json(
+      response: json(
         { error: 'Fitur AI eksklusif untuk pengguna Premium atau Admin.', code: 'AI_PREMIUM_REQUIRED' },
-        { status: 403 }
+        403
       ),
     }
   }
@@ -61,9 +62,9 @@ async function verifyAndConsumeAiAccess(request) {
   if (authError || !user) {
     return {
       allowed: false,
-      response: NextResponse.json(
+      response: json(
         { error: 'Fitur AI eksklusif untuk pengguna Premium atau Admin.', code: 'AI_PREMIUM_REQUIRED' },
-        { status: 403 }
+        403
       ),
     }
   }
@@ -91,14 +92,14 @@ async function verifyAndConsumeAiAccess(request) {
   if (!isPremiumOrAdmin) {
     return {
       allowed: false,
-      response: NextResponse.json(
+      response: json(
         { error: 'Fitur AI eksklusif untuk pengguna Premium atau Admin.', code: 'AI_PREMIUM_REQUIRED' },
-        { status: 403 }
+        403
       ),
     }
   }
 
-  // Check & consume quota via RPC check_and_consume_ai_quota
+  // Check & consume quota via RPC
   let quota = { remaining: 999, total: 999, is_unlimited: true }
   try {
     const { data: rpcRes, error: rpcErr } = await supabaseClient.rpc('check_and_consume_ai_quota', {
@@ -108,12 +109,12 @@ async function verifyAndConsumeAiAccess(request) {
       if (rpcRes.allowed === false || rpcRes.remaining === 0) {
         return {
           allowed: false,
-          response: NextResponse.json(
+          response: json(
             {
               error: 'Kuota AI harian Anda telah habis. Reset setiap pukul 00:00 UTC atau upgrade ke Premium.',
               code: 'AI_QUOTA_EXCEEDED',
             },
-            { status: 429 }
+            429
           ),
         }
       }
@@ -321,7 +322,6 @@ async function callGemini(contentsInput, generationConfig = {}, systemInstructio
       const errMsg = payload?.error?.message || `HTTP ${res.status}`
       attemptErrors.push(`[${model}] status=${res.status}: ${errMsg} (text_len=${text.length})`)
 
-      // Fallback ke model berikutnya jika model tidak tersedia / spike / rate limit
       const isRetryable =
         res.status === 404 ||
         res.status === 429 ||
@@ -377,9 +377,18 @@ async function handleTranscribe(request, quota = null) {
     const base64Audio = Buffer.from(buffer).toString('base64')
 
     const promptText = `Transkripsikan rekaman suara audio ini secara presisi kata demi kata.
-Aturan:
-- Kembalikan HANYA teks ucapan kata demi kata.
-- Jangan menambahkan teks pembuka, penutup, atau tanda kutip.`
+ATURAN MATA UANG PENTING:
+- Dengarkan dan tulis kata mata uang apa adanya sesuai ucapan pengguna.
+- JANGAN PERNAH mengubah mata uang asing menjadi "Rp" atau "Rupiah".
+  Contoh:
+  * Jika mendengar "ringgit" atau "RM", tulis "RM" atau "ringgit".
+  * Jika mendengar "lira" atau "TL", tulis "TL" atau "lira".
+  * Jika mendengar "dollar" atau "$", tulis "dollar" atau "$".
+  * Jika mendengar "euro" atau "€", tulis "euro".
+  * Jika mendengar "sing dollar" atau "SGD", tulis "SGD".
+  * Jika mendengar "riyal", tulis "riyal".
+  * Jika mendengar "yen", tulis "yen".
+- Kembalikan HANYA teks ucapan kata demi kata tanpa tanda kutip pembuka/penutup.`
 
     const { text, model } = await callGemini([
       {
@@ -419,22 +428,132 @@ async function handleParse(request, quota = null) {
     const homeCurrency = (body?.homeCurrency || 'IDR').toString().toUpperCase().slice(0, 3)
     const categories = Array.isArray(body?.categories) && body.categories.length
       ? body.categories
-      : ['food', 'groceries', 'transport', 'shopping', 'bills', 'entertainment', 'health', 'education', 'travel', 'housing', 'personal', 'business', 'other']
+      : ['salary', 'food', 'groceries', 'transport', 'bills', 'shopping', 'entertainment', 'health', 'travel', 'education', 'business', 'other']
     const accounts = Array.isArray(body?.accounts) ? body.accounts : []
-    const language = body?.language || 'id'
 
-    const system = `You are Paralar, a multilingual financial transaction parser.
-Extract ONE transaction from the text and return ONLY a JSON object:
+    const accountsListStr = accounts.length > 0
+      ? JSON.stringify(accounts.map((a) => (typeof a === 'string' ? { name: a } : { id: a.id, name: a.name, currency: a.currency })))
+      : '[]'
+
+    const GLOBAL_CURRENCIES = [
+      { regex: /\b(ringgit|rm)\b/i, code: 'MYR' },
+      { regex: /\b(rupiah|rp|perak)\b/i, code: 'IDR' },
+      { regex: /\b(lira|tl|turki)\b/i, code: 'TRY' },
+      { regex: /\b(usd|dollar|dolar|buck|bucks|\$)\b/i, code: 'USD' },
+      { regex: /\b(eur|euro|€)\b/i, code: 'EUR' },
+      { regex: /\b(sgd|sing\s*dollar|dolar\s*singapura)\b/i, code: 'SGD' },
+      { regex: /\b(gbp|pound|sterling|£)\b/i, code: 'GBP' },
+      { regex: /\b(jpy|yen|¥)\b/i, code: 'JPY' },
+      { regex: /\b(aud|aussie|dolar\s*australia)\b/i, code: 'AUD' },
+      { regex: /\b(thb|baht)\b/i, code: 'THB' },
+      { regex: /\b(sar|riyal|riyal\s*saudi)\b/i, code: 'SAR' },
+      { regex: /\b(aed|dirham)\b/i, code: 'AED' },
+      { regex: /\b(cny|yuan|renminbi)\b/i, code: 'CNY' },
+      { regex: /\b(krw|won)\b/i, code: 'KRW' },
+      { regex: /\b(php|peso)\b/i, code: 'PHP' },
+      { regex: /\b(vnd|dong)\b/i, code: 'VND' },
+    ]
+
+    const system = `You are Paralar, an international multi-currency financial voice parser.
+Extract the transaction details into JSON.
+
+USER WALLETS/ACCOUNTS REFERENCE:
+${accountsListStr}
+
+USER HOME CURRENCY:
+${homeCurrency}
+
+CURRENCY DETECTION RULES:
+1. EXPLICIT CURRENCY SPOKEN:
+   - Identify currency words in any language and convert to standard ISO 4217 3-letter code:
+     * "ringgit / RM" -> "MYR"
+     * "rupiah / rp / ribu / jt" -> "IDR"
+     * "lira / tl" -> "TRY"
+     * "dollar / buck / USD" -> "USD"
+     * "euro" -> "EUR"
+     * "sing dollar / SGD" -> "SGD"
+     * "pound / sterling" -> "GBP"
+     * "yen" -> "JPY"
+     * "riyal" -> "SAR"
+     * "baht" -> "THB"
+     * "dirham" -> "AED"
+     * (And all other world ISO currencies: AUD, CAD, CHF, CNY, KRW, etc.)
+
+2. WALLET CONTEXT OVERRIDE:
+   - If user specifies an account/wallet (e.g., "pake Ziraat", "via Wise USD", "pake BCA", "pake Maybank", "pake TnG"):
+     Match with the user's account and adopt that account's assigned currency!
+
+3. FALLBACK:
+   - If no currency or account is mentioned, strictly use the user's home currency: "${homeCurrency}".
+
+4. SAME STORE VS DIFFERENT STORES:
+   - Same place: 1 transaction with detailed "items" array [{ name, qty, unit, price }].
+   - Different places: split into multiple transaction objects in the "transactions" array.
+
+RULES FOR ITEM UNITS & QUANTITIES:
+- Jika pengguna menyebutkan takaran/satuan (misal: "cabai 2 kilo", "bebek 2 ekor", "minyak 1 liter", "telur 1 kg", "rokok 2 bungkus"):
+  * qty: 2
+  * unit: "kg" (atau "ekor", "liter", "gram", "bungkus", "ikat")
+  * name: "Cabai"
+- Jika hanya menyebutkan jumlah tanpa satuan (misal: "beli 5 burger", "2 dimsum"):
+  * qty: 5
+  * unit: null
+
+RULES FOR ITEMS, TOTALS & MERCHANT:
+1. MERCHANT/STORE NAME:
+   - Jika pengguna tidak menyebutkan nama toko secara spesifik, JANGAN jadikan ucapan belanja seperti "beli sapi..." atau "jajan..." sebagai nama toko[cite: 21].
+   - Isi "merchant": null[cite: 22].
+
+2. ITEM PRICE CALCULATION (PENTING!):
+   - Jika pengguna mengatakan "beli sapi dua ekor 5.000 ringgit", itu artinya TOTAL harga untuk 2 ekor sapi tersebut adalah 5000 (maka harga satuan per ekor adalah 2500)[cite: 21].
+   - "price" pada item HARUS berupa HARGA SATUAN (unit price)[cite: 22]:
+     * qty: 2, unit: "ekor", name: "Sapi", price: 2500
+   - Jika mengatakan "cabai 2 kilo 100 ringgit":
+     * qty: 2, unit: "kg", name: "Cabai", price: 50[cite: 21]
+   - Pastikan rumus: akumulasi (qty * price) dari semua item = total transaksi (amount).
+
+TRANSACTION TYPE & CATEGORY INFERENCE RULES:
+1. INCOME DETECTION (PEMASUKAN):
+   - Jika teks menyebut kata kunci pemasukan seperti: "gaji", "salary", "bonus", "dapat uang", "terima transfer", "cair", "profit", "hasil jualan", "dividen", "freelance":
+     * type: "income"
+     * category: "salary" (atau "business", "investment", "other")
+     * JANGAN PERNAH memberikan kategori "food" untuk gaji/pemasukan!
+
+2. EXPENSE DETECTION (PENGELUARAN):
+   - Makanan/Minuman: "makan", "minum", "resto", "kopi", "cafe", "dimsum", "ayam", "bebek", "cabai", "sapi" -> category: "food"
+   - Belanja Harian/Dapur: "supermarket", "sayur", "beras", "minyak", "pasar" -> category: "groceries"
+   - Transportasi: "bensin", "grab", "gojek", "taksi", "tol", "parkir", "mrt" -> category: "transport"
+   - Tagihan: "listrik", "pln", "air", "pdam", "wifi", "internet", "pulsa", "sewa" -> category: "bills"
+   - Belanja Barang: "beli baju", "sepatu", "iphone", "laptop", "tokopedia", "shopee" -> category: "shopping"
+   - Kesehatan: "obat", "apotek", "dokter", "rs", "klinik" -> category: "health"
+
+3. TRANSFER DETECTION (PINDAH DANA):
+   - Jika ada perpindahan antar akun (misal "transfer dari BCA ke Maybank"):
+     * type: "transfer"
+
+OUTPUT FORMAT (JSON ONLY):
 {
-  "type": "expense" | "income" | "transfer",
-  "amount": number,
-  "currency": string,
-  "category": one of [${categories.map((c) => `"${c}"`).join(', ')}],
-  "payment_method": "cash" | "qr" | "card" | "bank",
-  "account_name": string | null,
-  "merchant": string | null,
-  "note": string,
-  "confidence": number
+  "transactions": [
+    {
+      "type": "expense" | "income" | "transfer",
+      "amount": number,
+      "currency": "ISO 3-letter code (e.g. USD, EUR, TRY, MYR, IDR, SGD)",
+      "category": string,
+      "payment_method": "cash" | "qr" | "card" | "bank",
+      "account_name": string | null,
+      "account_id": string | null,
+      "merchant": string | null,
+      "note": string,
+      "items": [
+        {
+          "name": string,
+          "qty": number,
+          "unit": string | null,
+          "price": number
+        }
+      ]
+    }
+  ]
 }`
 
     const { text: raw, model } = await callGemini(
@@ -446,15 +565,102 @@ Extract ONE transaction from the text and return ONLY a JSON object:
     const parsed = extractJson(raw)
     if (!parsed) return err('Gemini menghasilkan format respon yang tidak valid', 502)
 
+    let rawList = []
+    if (Array.isArray(parsed?.transactions) && parsed.transactions.length > 0) {
+      rawList = parsed.transactions
+    } else if (parsed && typeof parsed === 'object') {
+      rawList = [parsed]
+    }
+
+    const sanitizedTransactions = rawList.map((tx) => {
+      const items = Array.isArray(tx?.items)
+        ? tx.items.map((it) => ({
+            name: String(it?.name || 'Item').trim(),
+            qty: Math.max(0.1, Number(it?.qty) || 1),
+            unit: it?.unit ? String(it.unit).trim().toLowerCase() : null,
+            price: Math.abs(parseNumber(it?.price) || 0),
+          }))
+        : []
+
+      const itemsSum = items.reduce((sum, it) => sum + it.price * it.qty, 0)
+      const rawAmount = Math.abs(parseNumber(tx?.amount) || 0)
+      const amount = rawAmount > 0 ? rawAmount : (itemsSum > 0 ? itemsSum : 0)
+
+      // 1. Akun & Mata Uang Akun
+      let accountId = tx?.account_id || null
+      let accountName = tx?.account_name || null
+      let matchedAccountCurrency = null
+
+      if (accountName && accounts.length > 0) {
+        const found = accounts.find((a) => {
+          const aName = (typeof a === 'string' ? a : a?.name || '').toLowerCase()
+          return aName.includes(accountName.toLowerCase()) || accountName.toLowerCase().includes(aName)
+        })
+        if (found && typeof found === 'object') {
+          accountId = found.id || accountId
+          accountName = found.name || accountName
+          if (found.currency) {
+            matchedAccountCurrency = String(found.currency).toUpperCase().slice(0, 3)
+          }
+        }
+      }
+
+      // Filter nama merchant agar tidak mengambil kata ucapan belanja
+      let merchantName = tx?.merchant || null
+      if (merchantName && /^(beli|jajan|bayar|pesan|dapat|terima)\b/i.test(merchantName.trim())) {
+        merchantName = null
+      }
+
+      // 2. Deteksi mata uang yang diucapkan
+      let spokenCurrency = null
+      for (const cur of GLOBAL_CURRENCIES) {
+        if (cur.regex.test(text)) {
+          spokenCurrency = cur.code
+          break
+        }
+      }
+
+      const finalCurrency =
+        spokenCurrency ||
+        matchedAccountCurrency ||
+        (tx?.currency ? String(tx.currency).toUpperCase().slice(0, 3) : homeCurrency)
+
+      // 3. Tentukan tipe transaksi secara akurat
+      let txType = ['expense', 'income', 'transfer'].includes(tx?.type) ? tx.type : 'expense'
+      if (/gaji|salary|bonus|dapat\s*uang|terima\s*(uang|transfer)|income|pendapatan/i.test(text)) {
+        txType = 'income'
+      }
+
+      // 4. Kategori otomatis presisi
+      let detectedCategory = tx?.category || ''
+      if (txType === 'income') {
+        detectedCategory = /bonus/i.test(text) ? 'bonus' : /bisnis|jualan|omset/i.test(text) ? 'business' : 'salary'
+      } else {
+        if (/bensin|grab|gojek|tol|parkir|mrt/i.test(text)) detectedCategory = 'transport'
+        else if (/listrik|pln|pdam|wifi|internet|pulsa/i.test(text)) detectedCategory = 'bills'
+        else if (/supermarket|sayur|sembako|alfa|indo/i.test(text)) detectedCategory = 'groceries'
+        else if (!detectedCategory || detectedCategory === 'other') detectedCategory = 'food'
+      }
+
+      return {
+        type: txType,
+        amount,
+        currency: finalCurrency,
+        category: detectedCategory,
+        payment_method: ['cash', 'qr', 'card', 'bank'].includes(tx?.payment_method) ? tx.payment_method : (txType === 'income' ? 'bank' : 'cash'),
+        account_name: accountName,
+        account_id: accountId,
+        merchant: merchantName || (txType === 'income' ? 'Gaji' : null),
+        note: tx?.note || (items.length > 0 ? items.map((i) => i.name).join(', ') : text),
+        items,
+      }
+    })
+
+    const primary = sanitizedTransactions[0] || {}
+
     return json({
-      type: ['expense', 'income', 'transfer'].includes(parsed?.type) ? parsed.type : 'expense',
-      amount: Math.abs(parseNumber(parsed?.amount) || 0),
-      currency: (parsed?.currency || homeCurrency).toString().toUpperCase().slice(0, 3),
-      category: categories.includes(parsed?.category) ? parsed.category : 'other',
-      payment_method: ['cash', 'qr', 'card', 'bank'].includes(parsed?.payment_method) ? parsed.payment_method : 'cash',
-      account_name: parsed?.account_name || null,
-      merchant: parsed?.merchant || null,
-      note: parsed?.note || text,
+      transactions: sanitizedTransactions,
+      ...primary,
       confidence: typeof parsed?.confidence === 'number' ? parsed.confidence : 0.95,
       transcript: text,
       model,
@@ -591,7 +797,6 @@ async function handleOcr(request, quota = null) {
     const rawTotal = receipt?.total !== undefined && receipt?.total !== null ? parseNumber(receipt.total) : calculatedTotal
     const total = rawTotal > 0 ? rawTotal : calculatedTotal
 
-    // Jam transaksi: ekstrak format 24 jam jika tercetak pada struk fisik
     let validTime = null
     if (receipt?.time && typeof receipt.time === 'string') {
       const tStr = receipt.time.trim()
@@ -611,7 +816,6 @@ async function handleOcr(request, quota = null) {
       }
     }
 
-    // Jika jam tidak tertera di struk, gunakan jam lokal perangkat/server saat ini (JANGAN 00:00:00 UTC)
     if (!validTime) {
       const now = new Date()
       validTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
@@ -680,8 +884,7 @@ async function getRates() {
   return data
 }
 
-// ---------------- Router Dispatcher ----------------
-// In-memory cache for recent receipt images uploaded to Google Drive
+// ---------------- Router Dispatcher (GET & POST) ----------------
 const RECEIPT_CACHE = new Map()
 
 async function handleDriveThumbnail(request) {
@@ -690,11 +893,8 @@ async function handleDriveThumbnail(request) {
   const size = urlObj.searchParams.get('sz') || '800'
   const merchant = urlObj.searchParams.get('merchant') || 'Google Drive Struk'
 
-  if (!id) {
-    return new NextResponse('Missing id', { status: 400 })
-  }
+  if (!id) return new NextResponse('Missing id', { status: 400 })
 
-  // 1. Check in-memory cache first (instant response)
   if (RECEIPT_CACHE.has(id)) {
     const cached = RECEIPT_CACHE.get(id)
     if (cached?.base64) {
@@ -713,7 +913,6 @@ async function handleDriveThumbnail(request) {
     }
   }
 
-  // 2. If it's a real Google Drive file ID (not mock), proxy from Google server-side
   if (!id.startsWith('1gDrive_')) {
     const candidates = [
       `https://lh3.googleusercontent.com/d/${id}=w${size}`,
@@ -740,13 +939,10 @@ async function handleDriveThumbnail(request) {
             },
           })
         }
-      } catch (fetchErr) {
-        // try next candidate
-      }
+      } catch {}
     }
   }
 
-  // 3. Fallback: High quality SVG receipt preview card
   const cleanMerchant = merchant.slice(0, 22).replace(/[<>&]/g, '')
   const cleanId = id.slice(0, 16).replace(/[<>&]/g, '')
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="420" viewBox="0 0 600 420" fill="none">
@@ -771,28 +967,6 @@ async function handleDriveThumbnail(request) {
     <rect x="220" y="260" width="160" height="28" rx="8" fill="rgba(16,185,129,0.15)" stroke="rgba(16,185,129,0.3)" stroke-width="1"/>
     <text x="300" y="278" text-anchor="middle" fill="#34D399" font-family="system-ui, sans-serif" font-weight="700" font-size="11">TERSIMPAN DI DRIVE</text>
     <text x="300" y="312" text-anchor="middle" fill="#71717A" font-family="monospace" font-size="10">ID: ${cleanId}</text>
-    <rect x="200" y="335" width="4" height="28" fill="rgba(255,255,255,0.3)"/>
-    <rect x="208" y="335" width="8" height="28" fill="rgba(255,255,255,0.3)"/>
-    <rect x="220" y="335" width="2" height="28" fill="rgba(255,255,255,0.3)"/>
-    <rect x="226" y="335" width="6" height="28" fill="rgba(255,255,255,0.3)"/>
-    <rect x="236" y="335" width="4" height="28" fill="rgba(255,255,255,0.3)"/>
-    <rect x="244" y="335" width="8" height="28" fill="rgba(255,255,255,0.3)"/>
-    <rect x="256" y="335" width="3" height="28" fill="rgba(255,255,255,0.3)"/>
-    <rect x="263" y="335" width="5" height="28" fill="rgba(255,255,255,0.3)"/>
-    <rect x="272" y="335" width="6" height="28" fill="rgba(255,255,255,0.3)"/>
-    <rect x="282" y="335" width="4" height="28" fill="rgba(255,255,255,0.3)"/>
-    <rect x="290" y="335" width="8" height="28" fill="rgba(255,255,255,0.3)"/>
-    <rect x="302" y="335" width="3" height="28" fill="rgba(255,255,255,0.3)"/>
-    <rect x="309" y="335" width="7" height="28" fill="rgba(255,255,255,0.3)"/>
-    <rect x="320" y="335" width="4" height="28" fill="rgba(255,255,255,0.3)"/>
-    <rect x="328" y="335" width="8" height="28" fill="rgba(255,255,255,0.3)"/>
-    <rect x="340" y="335" width="2" height="28" fill="rgba(255,255,255,0.3)"/>
-    <rect x="346" y="335" width="6" height="28" fill="rgba(255,255,255,0.3)"/>
-    <rect x="356" y="335" width="4" height="28" fill="rgba(255,255,255,0.3)"/>
-    <rect x="364" y="335" width="8" height="28" fill="rgba(255,255,255,0.3)"/>
-    <rect x="376" y="335" width="3" height="28" fill="rgba(255,255,255,0.3)"/>
-    <rect x="383" y="335" width="5" height="28" fill="rgba(255,255,255,0.3)"/>
-    <rect x="392" y="335" width="6" height="28" fill="rgba(255,255,255,0.3)"/>
   </svg>`
 
   return new NextResponse(svg, {
@@ -804,20 +978,26 @@ async function handleDriveThumbnail(request) {
   })
 }
 
-function route(request, params) {
-  const path = (params?.path || []).join('/')
-  return { path, method: request.method }
-}
-
 export async function GET(request, ctx) {
-  const { path } = route(request, await ctx.params)
+  let path = ''
   try {
-    if (path === '' || path === 'health') return json({ ok: true, app: 'Paralar', engine: 'Google Gemini', time: new Date().toISOString() })
+    const urlObj = new URL(request.url)
+    path = urlObj.pathname.replace(/^\/api\/?/, '').replace(/\/+$/, '')
+  } catch {
+    const resolved = await ctx?.params
+    path = (resolved?.path || []).join('/')
+  }
+
+  try {
+    if (path === '' || path === 'health') {
+      return json({ ok: true, app: 'Paralar', engine: 'Google Gemini', time: new Date().toISOString() })
+    }
     if (path === 'rates') return json(await getRates())
     if (path === 'ai/usage') return await handleAiUsage(request)
     if (path === 'backup/gdrive') return json({ ok: true, provider: 'google_drive', scope: 'https://www.googleapis.com/auth/drive.file' })
     if (path === 'drive/thumbnail' || path === 'backup/gdrive/thumbnail') return await handleDriveThumbnail(request)
-    return err('Not found', 404)
+
+    return err(`Not found: /api/${path}`, 404)
   } catch (e) {
     console.error('GET /api/' + path, e)
     return err(e?.message || 'Server error', 500)
@@ -825,9 +1005,17 @@ export async function GET(request, ctx) {
 }
 
 export async function POST(request, ctx) {
-  const { path } = route(request, await ctx.params)
+  let path = ''
   try {
-    if (path === 'backup/gdrive') {
+    const urlObj = new URL(request.url)
+    path = urlObj.pathname.replace(/^\/api\/?/, '').replace(/\/+$/, '')
+  } catch {
+    const resolved = await ctx?.params
+    path = (resolved?.path || []).join('/')
+  }
+
+  try {
+    if (path.startsWith('backup/gdrive')) {
       let body = {}
       const ct = request.headers.get('content-type') || ''
       if (ct.includes('application/json')) {
@@ -856,7 +1044,6 @@ export async function POST(request, ctx) {
       if (token && token.length > 15 && token !== 'local' && !token.startsWith('dev-')) {
         let folderId = null
 
-        // 1. Check or create "Paralar Receipts" folder
         try {
           const query = encodeURIComponent("name='Paralar Receipts' and mimeType='application/vnd.google-apps.folder' and trashed=false")
           const findFolderRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`, {
@@ -912,7 +1099,6 @@ export async function POST(request, ctx) {
             if (base64) {
               RECEIPT_CACHE.set(driveData.id, { base64, mimeType, time: Date.now() })
             }
-            // Grant reader permission so standard Google Drive thumbnail links work publicly
             try {
               await fetch(`https://www.googleapis.com/drive/v3/files/${driveData.id}/permissions`, {
                 method: 'POST',
@@ -962,7 +1148,8 @@ export async function POST(request, ctx) {
       if (path === 'ai/coach') return await handleCoach(request, authResult.quota)
       if (path === 'ai/ocr') return await handleOcr(request, authResult.quota)
     }
-    return err('Not found', 404)
+
+    return err(`Not found: /api/${path}`, 404)
   } catch (e) {
     console.error('POST /api/' + path, e)
     return err(e?.message || 'Server error', 500)

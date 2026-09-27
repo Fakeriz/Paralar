@@ -10,7 +10,7 @@ import { CATEGORIES } from '@/lib/categories'
 import { cn } from '@/lib/utils'
 
 export default function VoiceLogSheet({ open, onClose, onResult }) {
-  const { t, home, lang, accounts = [], fmt, session, isAiAllowed, open: openSheet } = useApp()
+  const { t, home, lang, accounts = [], fmt, session, isAiAllowed, open: openSheet, store, refresh } = useApp()
   const [state, setState] = useState('idle') // idle | recording | processing | result
   const [transcript, setTranscript] = useState('')
   const [parsed, setParsed] = useState(null)
@@ -74,35 +74,46 @@ export default function VoiceLogSheet({ open, onClose, onResult }) {
           text,
           homeCurrency: home,
           language: lang,
-          accounts: accounts.map((a) => a.name),
-          categories: CATEGORIES.filter((c) => c.id !== 'transfer').map((c) => c.id),
+          accounts: accounts.map((a) => ({ id: a.id, name: a.name, currency: a.currency })),
+          // Sertakan seluruh kategori pemasukan dan pengeluaran:
+          categories: ['salary', 'food', 'groceries', 'transport', 'bills', 'shopping', 'entertainment', 'health', 'travel', 'education', 'business', 'other'],
         }),
       })
-      const data = await res.json()
+
+      // Cek apakah respons berupa JSON atau halaman HTML error
+      const contentType = res.headers.get('content-type') || ''
+      let payload = null
+      if (contentType.includes('application/json')) {
+        payload = await res.json().catch(() => null)
+      } else {
+        await res.text().catch(() => '')
+        throw new Error(`Server error (${res.status}): Endpoint API tidak merespons JSON.`)
+      }
+
       if (!res.ok) {
-        if (res.status === 403 || data?.code === 'AI_PREMIUM_REQUIRED') {
+        if (res.status === 403 || payload?.code === 'AI_PREMIUM_REQUIRED') {
           onClose?.()
           openSheet?.('aiPremium')
           return
         }
-        if (res.status === 429 || data?.code === 'AI_QUOTA_EXCEEDED') {
-          toast.error(data?.error || 'Kuota AI harian Anda telah habis.')
+        if (res.status === 429 || payload?.code === 'AI_QUOTA_EXCEEDED') {
+          toast.error(payload?.error || 'Kuota AI harian Anda telah habis.')
           setState('idle')
           return
         }
-        throw new Error(data?.error || t('error'))
+        throw new Error(payload?.error || t('error'))
       }
 
-      if (data?.remaining !== undefined) {
+      if (payload?.remaining !== undefined) {
         setQuota({
-          remaining: data.remaining,
-          total: data.total,
-          is_unlimited: data.is_unlimited,
+          remaining: payload.remaining,
+          total: payload.total,
+          is_unlimited: payload.is_unlimited,
         })
       }
 
       setTranscript(text)
-      setParsed(data?.parsed || data)
+      setParsed(payload)
       setState('result')
     } catch (e) {
       toast.error(e?.message || t('error'))
@@ -137,7 +148,16 @@ export default function VoiceLogSheet({ open, onClose, onResult }) {
             headers['Authorization'] = `Bearer ${session.access_token}`
           }
           const res = await fetch('/api/ai/transcribe', { method: 'POST', headers, body: form })
-          const data = await res.json()
+          
+          const contentType = res.headers.get('content-type') || ''
+          let data = null
+          if (contentType.includes('application/json')) {
+            data = await res.json().catch(() => null)
+          } else {
+            const textErr = await res.text().catch(() => '')
+            throw new Error(`Transkripsi gagal (${res.status}): Server mengembalikan HTML.`)
+          }
+
           if (!res.ok) {
             if (res.status === 403 || data?.code === 'AI_PREMIUM_REQUIRED') {
               onClose?.()
@@ -175,12 +195,85 @@ export default function VoiceLogSheet({ open, onClose, onResult }) {
       setShowTyped(true)
     }
   }
+
   const stop = () => { try { recRef.current?.stop() } catch {} }
 
-  const useIt = () => {
+  const useIt = async () => {
     if (!parsed) return
-    onResult?.({ type: parsed.type, amount: parsed.amount, currency: parsed.currency, category: parsed.category, payment_method: parsed.payment_method, account_name: parsed.account_name, merchant: parsed.merchant, note: parsed.note })
-    onClose?.()
+
+    const txList = Array.isArray(parsed?.transactions) && parsed.transactions.length > 0
+      ? parsed.transactions
+      : (parsed?.amount !== undefined ? [parsed] : [])
+
+    if (txList.length === 0) return
+
+    // KASUS 1: Hanya 1 transaksi (misal: satu toko dengan daftar barang)
+    if (txList.length === 1) {
+      const first = txList[0]
+      onResult?.({
+        type: first.type || 'expense',
+        amount: first.amount,
+        currency: first.currency || home,
+        category: first.category || 'food',
+        payment_method: first.payment_method || 'cash',
+        account_name: first.account_name || null,
+        account_id: first.account_id || null,
+        merchant: first.merchant || null,
+        note: first.note || '',
+        items: first.items || [],
+      })
+      onClose?.()
+      return
+    }
+
+    // KASUS 2: Lebih dari 1 transaksi (tempat/toko berbeda) -> Langsung simpan ke Database
+    setState('processing')
+    try {
+      let savedCount = 0
+      for (const tx of txList) {
+        let resolvedAccId = tx.account_id || null
+        if (!resolvedAccId && tx.account_name) {
+          const matchAcc = accounts.find((a) =>
+            a.name?.toLowerCase().includes(String(tx.account_name).toLowerCase()) ||
+            String(tx.account_name).toLowerCase().includes(a.name?.toLowerCase())
+          )
+          resolvedAccId = matchAcc?.id || null
+        }
+        if (!resolvedAccId) {
+          resolvedAccId = accounts[0]?.id || null
+        }
+
+        const payload = {
+          type: tx.type || 'expense',
+          amount: Number(tx.amount) || 0,
+          currency: tx.currency || home,
+          category: tx.category || 'food',
+          payment_method: tx.payment_method || 'cash',
+          account_id: resolvedAccId,
+          merchant: tx.merchant || null,
+          note: tx.note || (tx.items?.length ? tx.items.map((i) => i.name).join(', ') : ''),
+          items: tx.items || [],
+          date: new Date().toISOString(),
+          transaction_date: new Date().toISOString(),
+        }
+
+        if (typeof store?.createTransaction === 'function') {
+          await store.createTransaction(payload)
+          savedCount++
+        }
+      }
+
+      toast.success(`${savedCount} transaksi berhasil dicatat!`)
+      if (typeof refresh === 'function') {
+        await refresh()
+      }
+      onClose?.()
+    } catch (err) {
+      console.error('Gagal batch insert transaksi suara:', err)
+      toast.error('Gagal menyimpan beberapa transaksi')
+    } finally {
+      setState('result')
+    }
   }
 
   return (
@@ -226,18 +319,70 @@ export default function VoiceLogSheet({ open, onClose, onResult }) {
           <div className="w-full">
             <p className="label-upper">{t('transcript')}</p>
             <p className="mt-1 text-lg font-medium">“{transcript}”</p>
-            <Card className="mt-5 p-4 flex items-center gap-3" data-testid="voice-result">
-              <CategoryBadge id={parsed?.category} />
-              <div className="flex-1 min-w-0">
-                <p className="font-bold truncate">{parsed?.merchant || parsed?.note}</p>
-                <p className="text-xs text-muted-foreground">{t(`cat_${parsed?.category || 'other'}`)} · {t(parsed?.payment_method || 'cash')}{parsed?.account_name ? ` · ${parsed.account_name}` : ''}</p>
-              </div>
-              <p className="font-bold tabular-nums">{parsed?.type === 'income' ? '+' : '-'}{fmt(parsed?.amount || 0, parsed?.currency || home)}</p>
-            </Card>
-            <p className="text-[11px] text-muted-foreground mt-2 text-right">{Math.round((parsed?.confidence || 0) * 100)}% · {parsed?.model}</p>
+
+            {/* List Kartu Transaksi */}
+            <div className="mt-4 space-y-2.5 max-h-[300px] overflow-y-auto no-scrollbar">
+              {(parsed?.transactions || (parsed ? [parsed] : [])).map((tx, idx) => (
+                <Card key={idx} className="p-3.5 flex flex-col gap-2">
+                  <div className="flex items-center gap-3">
+                    <CategoryBadge id={tx?.category} />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold truncate text-[15px]">
+                        {tx?.merchant && !/^(beli|jajan|bayar|pesan)\b/i.test(tx.merchant)
+                          ? tx.merchant
+                          : (tx?.items?.length ? tx.items.map((i) => i.name).join(' & ') : tx?.note || 'Transaction')}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {t(`cat_${tx?.category || 'other'}`)} · {t(tx?.payment_method || 'cash')}
+                        {tx?.account_name ? ` · ${tx.account_name}` : ''}
+                      </p>
+                    </div>
+                    <p className="font-bold tabular-nums text-base">
+                      {tx?.type === 'income' ? '+' : '-'}{fmt(tx?.amount || 0, tx?.currency || home)}
+                    </p>
+                  </div>
+
+                  {/* List barang jika belanja di toko yang sama */}
+                  {Array.isArray(tx?.items) && tx.items.length > 0 ? (
+                    <div className="pt-2 border-t border-border/40 space-y-1">
+                      {tx.items.map((it, iIdx) => {
+                        // Ambil total harga item yang tepat tanpa pelipatgandaan
+                        const calcTotal = it.price * (it.qty || 1)
+                        const itemSubtotal = calcTotal <= (tx?.amount || 0) && it.qty > 1 ? calcTotal : it.price
+
+                        return (
+                          <div key={iIdx} className="flex justify-between items-center text-xs text-muted-foreground pl-1">
+                            <span className="truncate">
+                              {it.unit && it.unit !== 'x' && it.unit !== 'pcs'
+                                ? `${it.qty} ${it.unit} ${it.name}`
+                                : (it.qty > 1 ? `${it.qty}x ${it.name}` : it.name)}
+                            </span>
+                            <span className="tabular-nums font-medium">
+                              {fmt(itemSubtotal || 0, tx?.currency || home)}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : null}
+                </Card>
+              ))}
+            </div>
+
+            <p className="text-[11px] text-muted-foreground mt-2 text-right">
+              {Math.round((parsed?.confidence || 0.95) * 100)}% · {parsed?.model || 'Gemini'}
+            </p>
             <div className="mt-5 space-y-2">
-              <PrimaryButton onClick={useIt} data-testid="voice-use">{t('review_and_save')}</PrimaryButton>
-              <button type="button" onClick={() => { setState('idle'); setParsed(null) }} className="w-full py-3 text-sm font-semibold text-muted-foreground">{t('cancel')}</button>
+              <PrimaryButton onClick={useIt} data-testid="voice-use">
+                {(parsed?.transactions?.length || 1) > 1 ? `Simpan ${parsed.transactions.length} Transaksi` : t('review_and_save')}
+              </PrimaryButton>
+              <button
+                type="button"
+                onClick={() => { setState('idle'); setParsed(null) }}
+                className="w-full py-3 text-sm font-semibold text-muted-foreground"
+              >
+                {t('cancel')}
+              </button>
             </div>
           </div>
         )}
