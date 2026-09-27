@@ -8,12 +8,14 @@ import { cn } from '@/lib/utils'
  * Model interaksi disamakan dengan paralar-g (WalletCardDeck) yang terbukti
  * tidak nge-bug di HP Ahmad:
  *
- *  1. Drag = TRIGGER, bukan 1:1 tracking. Kartu cuma "ngeganjel" elastis
- *     (dragElastic 0.2, constraints 0/0) — tidak pernah terbang jauh
- *     mengikuti jari ke seluruh layar.
- *  2. Lepas melewati threshold (40px / 200px/s) -> ganti kartu via
- *     AnimatePresence: kartu lama geser +/-40px + fade + scale 0.98 keluar,
- *     kartu baru masuk dari +/-40px ke posisi diam. 0.25s ease [0.16,1,0.3,1].
+ *  1. Drag = TRIGGER, bukan 1:1 tracking. Kartu "ngeganjel" elastis
+ *     (dragElastic 0.35, constraints 0/0) — nurut jari tapi tidak pernah
+ *     terbang jauh mengikuti jari ke seluruh layar.
+ *  2. Lepas melewati threshold (40px / 200px/s) -> ganti kartu:
+ *     kartu lama fade cepat di tempat (0.12s, tanpa geser — tidak ada dua
+ *     kartu meluncur bersamaan yang bikin transisi terasa "muddy"),
+ *     kartu baru masuk dari +/-48px + fade + scale 0.98 ke posisi diam,
+ *     0.3s ease [0.16,1,0.3,1].
  *  3. TANPA rotasi, TANPA fling off-screen, TANPA motion value yang di-share
  *     antar kartu. Kartu peek di belakang STATIS (CSS transition saja).
  *
@@ -28,8 +30,10 @@ const SWIPE_VELOCITY = 200 // px/s — sama seperti paralar-g
 const PEEK_Y = 12 // offset vertikal per kartu di belakang (px)
 const PEEK_SCALE = 0.055 // susut skala per kartu di belakang
 
-// Transisi kartu — identik dengan paralar-g
-const CARD_TRANSITION = { duration: 0.25, ease: [0.16, 1, 0.3, 1] }
+// Transisi kartu masuk — sedikit lebih panjang & jauh dari paralar-g
+// agar terasa buttery, tapi tetap tanpa exit-slide (anti "muddy")
+const CARD_TRANSITION = { duration: 0.3, ease: [0.16, 1, 0.3, 1] }
+const ENTER_X = 48
 
 function haptic(ms = 10) {
   try {
@@ -171,9 +175,11 @@ export default function AccountDeck({
                   key={`active-${active.id}`}
                   custom={direction}
                   variants={{
-                    enter: (d) => ({ x: d * 40, opacity: 0.85, scale: 0.98 }),
+                    enter: (d) => ({ x: d * ENTER_X, opacity: 0.85, scale: 0.98 }),
                     center: { x: 0, opacity: 1, scale: 1 },
-                    exit: (d) => ({ x: -d * 40, opacity: 0, scale: 0.98 }),
+                    // Fade cepat di tempat — kartu lama tidak ikut meluncur,
+                    // jadi tidak ada dua kartu bergerak bersamaan.
+                    exit: { opacity: 0, transition: { duration: 0.12 } },
                   }}
                   initial="enter"
                   animate="center"
@@ -181,7 +187,7 @@ export default function AccountDeck({
                   transition={reduceMotion ? { duration: 0 } : CARD_TRANSITION}
                   drag={reduceMotion ? false : 'x'}
                   dragConstraints={{ left: 0, right: 0 }}
-                  dragElastic={0.2}
+                  dragElastic={0.35}
                   dragMomentum={false}
                   onDragEnd={handleDragEnd}
                   className="h-full w-full cursor-grab active:cursor-grabbing"
