@@ -21,12 +21,30 @@ function getAdminSupabase() {
   })
 }
 
+function b64urlDecode(s) {
+  s = s.replace(/-/g, '+').replace(/_/g, '/')
+  while (s.length % 4) s += '='
+  return Buffer.from(s, 'base64')
+}
+
 function initWebPush() {
-  const priv = process.env.VAPID_PRIVATE_KEY
+  const priv = (process.env.VAPID_PRIVATE_KEY || '').trim()
   if (!priv) throw new Error('VAPID_PRIVATE_KEY belum diset')
   // Public key di-hardcode (sama persis dengan yang dipakai client untuk subscribe).
   // Jangan pakai env var — rawan typo satu huruf yang bikin VAPID auth gagal.
   const VAPID_PUBLIC_KEY = 'BLJFYLWaspuB9gzdmzKai492UwIUpP4FIxmf-sqt11j0nH9kai24zu_xXitKfpZ-yS2qZ0LxAUFjYio0Xaac2WQ'
+  // Validasi keypair
+  try {
+    const crypto = require('crypto')
+    const privKey = b64urlDecode(priv)
+    const ecdh = crypto.createECDH('prime256v1')
+    ecdh.setPrivateKey(privKey)
+    if (!ecdh.getPublicKey().equals(b64urlDecode(VAPID_PUBLIC_KEY))) {
+      throw new Error('VAPID private key tidak cocok dengan public key (typo?)')
+    }
+  } catch (e) {
+    throw new Error('VAPID key tidak valid: ' + e.message)
+  }
   webpush.setVapidDetails(
     process.env.VAPID_SUBJECT || 'mailto:admin@paralar.app',
     VAPID_PUBLIC_KEY,
