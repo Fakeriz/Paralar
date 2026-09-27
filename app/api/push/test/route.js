@@ -24,7 +24,10 @@ export async function POST(request) {
 
   const pub = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
   const priv = process.env.VAPID_PRIVATE_KEY
-  if (!pub || !priv) return json({ error: 'VAPID keys belum dikonfigurasi di server' }, 500)
+  if (!priv) return json({ error: 'VAPID private key belum dikonfigurasi di server' }, 500)
+  // Public key di-hardcode (sama persis dengan yang dipakai client untuk subscribe).
+  // Jangan pakai env var — rawan typo satu huruf yang bikin VAPID auth gagal.
+  const VAPID_PUBLIC_KEY = 'BLJFYLWaspuB9gzdmzKai492UwIUpP4FIxmf-sqt11j0nH9kai24zu_xXitKfpZ-yS2qZ0LxAUFjYio0Xaac2WQ'
 
   const sb = getServerSupabase(token)
   const { data: authData, error: authError } = await sb.auth.getUser(token)
@@ -33,7 +36,7 @@ export async function POST(request) {
 
   webpush.setVapidDetails(
     process.env.VAPID_SUBJECT || 'mailto:admin@paralar.app',
-    pub,
+    VAPID_PUBLIC_KEY,
     priv
   )
 
@@ -56,6 +59,7 @@ export async function POST(request) {
 
   let ok = 0
   let failed = 0
+  let lastError = null
   for (const sub of subs) {
     try {
       await webpush.sendNotification(
@@ -65,6 +69,7 @@ export async function POST(request) {
       ok++
     } catch (e) {
       failed++
+      lastError = e?.message || String(e)
       // Hapus yang expired
       if (e?.statusCode === 410) {
         await sb.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
@@ -72,5 +77,5 @@ export async function POST(request) {
     }
   }
 
-  return json({ ok: true, sent: ok, failed, devices: subs.length })
+  return json({ ok: true, sent: ok, failed, devices: subs.length, lastError })
 }

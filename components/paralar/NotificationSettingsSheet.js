@@ -136,8 +136,12 @@ export default function NotificationSettingsSheet({ open, onClose }) {
     if (testing) return
     setTesting(true)
     try {
-      await sendTestPush()
-      toast.success('Notifikasi test dikirim! Cek panel notifikasi HP.')
+      const res = await sendTestPush()
+      if (res?.sent > 0) {
+        toast.success('Notifikasi test dikirim! Cek panel notifikasi HP.')
+      } else {
+        toast.error('Gagal kirim: ' + (res?.lastError || 'tidak ada device yang menerima'))
+      }
     } catch (e) {
       toast.error(e?.message || 'Gagal kirim test')
     } finally {

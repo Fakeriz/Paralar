@@ -22,12 +22,14 @@ function getAdminSupabase() {
 }
 
 function initWebPush() {
-  const pub = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
   const priv = process.env.VAPID_PRIVATE_KEY
-  if (!pub || !priv) throw new Error('VAPID keys belum diset')
+  if (!priv) throw new Error('VAPID_PRIVATE_KEY belum diset')
+  // Public key di-hardcode (sama persis dengan yang dipakai client untuk subscribe).
+  // Jangan pakai env var — rawan typo satu huruf yang bikin VAPID auth gagal.
+  const VAPID_PUBLIC_KEY = 'BLJFYLWaspuB9gzdmzKai492UwIUpP4FIxmf-sqt11j0nH9kai24zu_xXitKfpZ-yS2qZ0LxAUFjYio0Xaac2WQ'
   webpush.setVapidDetails(
     process.env.VAPID_SUBJECT || 'mailto:admin@paralar.app',
-    pub,
+    VAPID_PUBLIC_KEY,
     priv
   )
 }
