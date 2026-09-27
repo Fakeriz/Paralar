@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import { supabase } from '@/lib/supabase'
 import { createStore, DEFAULT_PROFILE } from '@/lib/store'
@@ -240,6 +241,8 @@ export default function App() {
       window.history.replaceState(null, '', url.pathname + url.search + url.hash)
     } catch {}
     let cancelled = false
+    let toastId = null
+    try { toastId = toast.loading('Menerima gambar struk…') } catch {}
     const readSharedImage = async () => {
       try {
         if ('caches' in window) {
@@ -266,12 +269,20 @@ export default function App() {
     const t = setTimeout(async () => {
       const dataUrl = await readSharedImage()
       if (cancelled) return
+      try { if (toastId) toast.dismiss(toastId) } catch {}
       // open('scan', { image }) -> ScanReceiptSheet menerima initialImage.
-      // Kalau gambar tidak ketemu, buka sheet kosong saja.
+      // Kalau gambar tidak ketemu, buka sheet kosong saja + kasih tahu user.
       if (dataUrl) open('scan', { image: dataUrl })
-      else open('scan')
+      else {
+        try { toast.error('Gambar struk tidak ketemu — coba share ulang ya') } catch {}
+        open('scan')
+      }
     }, 400)
-    return () => { cancelled = true; clearTimeout(t) }
+    return () => {
+      cancelled = true
+      clearTimeout(t)
+      try { if (toastId) toast.dismiss(toastId) } catch {}
+    }
   }, [authed, open])
 
   const signOut = useCallback(async () => {
