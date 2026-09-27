@@ -36,28 +36,6 @@ export default function ScanReceiptSheet({ open, onClose, onUse, initialImage })
     }
   }, [session?.access_token])
 
-  const initialRef = useRef(null)
-  useEffect(() => {
-    if (open) {
-      if (!isAiAllowed) {
-        onClose?.()
-        openSheet?.('aiPremium')
-        return
-      }
-      setPreview(null)
-      setResult(null)
-      setBusy(false)
-      fetchQuota()
-      // Gambar dari Web Share Target: langsung diproses OCR, sekali per buka.
-      if (initialImage && initialRef.current !== initialImage) {
-        initialRef.current = initialImage
-        processDataUrl(initialImage)
-      }
-    } else {
-      initialRef.current = null
-    }
-  }, [open, isAiAllowed, onClose, openSheet, fetchQuota, initialImage, processDataUrl])
-
   // Inti pemrosesan gambar struk: dipakai upload manual (onFile) maupun
   // gambar titipan dari Web Share Target (initialImage).
   const processDataUrl = useCallback(async (dataUrl) => {
@@ -103,6 +81,29 @@ export default function ScanReceiptSheet({ open, onClose, onUse, initialImage })
       toast.error(err?.message || t('error'))
     } finally { setBusy(false) }
   }, [session?.access_token, t])
+
+  const initialRef = useRef(null)
+  useEffect(() => {
+    if (open) {
+      if (!isAiAllowed) {
+        onClose?.()
+        openSheet?.('aiPremium')
+        return
+      }
+      setPreview(null)
+      setResult(null)
+      setBusy(false)
+      fetchQuota()
+      // Gambar dari Web Share Target: langsung diproses OCR, sekali per buka.
+      if (initialImage && initialRef.current !== initialImage) {
+        initialRef.current = initialImage
+        processDataUrl(initialImage)
+      }
+    } else {
+      initialRef.current = null
+    }
+  }, [open, isAiAllowed, onClose, openSheet, fetchQuota, initialImage, processDataUrl])
+
 
   const onFile = async (e) => {
     if (!isAiAllowed) {
