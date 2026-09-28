@@ -91,8 +91,7 @@ export default function AccountsSheet({ open, onClose }) {
     }
   }, [open])
 
-  // Lightweight reorder handler during active drag:
-  // ONLY updates local React state without triggering parent re-renders or synchronous disk I/O
+  // Lightweight reorder handler during active drag
   const handleReorder = useCallback((newOrder) => {
     setOrderedAccounts(newOrder)
   }, [])
@@ -131,7 +130,6 @@ export default function AccountsSheet({ open, onClose }) {
       commitOrder(sorted)
       toast.success(`Diurutkan berdasarkan ${opt.label}`)
     } else {
-      // Revert to initial accounts order
       const original = [...accounts]
       setOrderedAccounts(original)
       commitOrder(original)
@@ -202,62 +200,64 @@ export default function AccountsSheet({ open, onClose }) {
         className="h-[100dvh] w-full fixed inset-0 z-50 bg-background flex flex-col overflow-hidden select-none transform-gpu will-change-transform"
       >
         {/* ======================================================================
-            1. NAVIGASI ATAS (SAFE AREA HEADER NATIVE IOS)
+            1. NAVIGASI ATAS (TERKUNCI DI TENGAH: max-w-[420px] mx-auto)
            ====================================================================== */}
-        <div className="pt-safe safe-top shrink-0 bg-background/95 backdrop-blur-md z-30 border-b border-border/40">
-          <div className="flex items-center justify-between px-5 h-14">
-            {/* Kiri: Teks "Selesai" untuk menutup */}
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-[15px] font-semibold text-zinc-950 dark:text-white hover:opacity-70 transition-opacity cursor-pointer py-1 pr-2"
-              data-testid="wallet-done-btn"
-            >
-              {t('done') || 'Selesai'}
-            </button>
+        <div className="pt-safe safe-top shrink-0 bg-background/95 backdrop-blur-md z-30 border-b border-border/40 w-full">
+          <div className="w-full max-w-[420px] mx-auto">
+            <div className="flex items-center justify-between px-5 h-14">
+              {/* Kiri: Teks "Selesai" untuk menutup */}
+              <button
+                type="button"
+                onClick={onClose}
+                className="text-[15px] font-semibold text-zinc-950 dark:text-white hover:opacity-70 transition-opacity cursor-pointer py-1 pr-2"
+                data-testid="wallet-done-btn"
+              >
+                {t('done') || 'Selesai'}
+              </button>
 
-            {/* Tengah: Judul "Wallet" / "Akun" */}
-            <h1 className="text-base font-bold text-foreground tracking-tight text-center">
-              {t('wallet') || t('accounts_cards') || 'Wallet'}
-            </h1>
+              {/* Tengah: Judul "Wallet" / "Akun" */}
+              <h1 className="text-base font-bold text-foreground tracking-tight text-center">
+                {t('wallet') || t('accounts_cards') || 'Wallet'}
+              </h1>
 
-            {/* Kanan: Ikon "+" untuk tambah kartu */}
-            <button
-              type="button"
-              onClick={() => {
-                onClose?.()
-                setTimeout(() => openSheet('newAccount'), 120)
-              }}
-              className="h-8 w-8 rounded-full bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 flex items-center justify-center transition-transform active:scale-95 shadow-sm cursor-pointer"
-              aria-label="Add account"
-              data-testid="wallet-add-btn"
-            >
-              <Plus size={18} strokeWidth={2.4} />
-            </button>
-          </div>
+              {/* Kanan: Ikon "+" untuk tambah kartu */}
+              <button
+                type="button"
+                onClick={() => {
+                  onClose?.()
+                  setTimeout(() => openSheet('newAccount'), 120)
+                }}
+                className="h-8 w-8 rounded-full bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 flex items-center justify-center transition-transform active:scale-95 shadow-sm cursor-pointer"
+                aria-label="Add account"
+                data-testid="wallet-add-btn"
+              >
+                <Plus size={18} strokeWidth={2.4} />
+              </button>
+            </div>
 
-          {/* Sub-header Utilitas: "Drag card to reorder" & "↓↑ Sort" */}
-          <div className="flex items-center justify-between px-5 pb-3 pt-0.5">
-            <span className="text-xs text-muted-foreground font-medium">
-              Drag card to reorder
-            </span>
-            <button
-              type="button"
-              onClick={handleSortCycle}
-              className="text-xs font-semibold text-foreground/80 hover:text-foreground flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-muted/60 hover:bg-muted transition-colors active:scale-95 cursor-pointer"
-              data-testid="wallet-sort-btn"
-            >
-              <ArrowUpDown size={12} strokeWidth={2} />
-              <span>{sortOptions[sortIndex].label}</span>
-            </button>
+            {/* Sub-header Utilitas: "Drag card to reorder" & "↓↑ Sort" */}
+            <div className="flex items-center justify-between px-5 pb-3 pt-0.5">
+              <span className="text-xs text-muted-foreground font-medium">
+                Drag card to reorder
+              </span>
+              <button
+                type="button"
+                onClick={handleSortCycle}
+                className="text-xs font-semibold text-foreground/80 hover:text-foreground flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-muted/60 hover:bg-muted transition-colors active:scale-95 cursor-pointer"
+                data-testid="wallet-sort-btn"
+              >
+                <ArrowUpDown size={12} strokeWidth={2} />
+                <span>{sortOptions[sortIndex].label}</span>
+              </button>
+            </div>
           </div>
         </div>
 
         {/* ======================================================================
-            2. DAFTAR KARTU APPLE WALLET DENGAN DRAG-TO-REORDER
+            2. DAFTAR KARTU APPLE WALLET (TERKUNCI DI TENGAH: max-w-[420px] mx-auto)
            ====================================================================== */}
         {orderedAccounts.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center w-full max-w-[420px] mx-auto">
             <EmptyState
               icon={CreditCard}
               title={t('no_transactions') || 'Belum ada kartu'}
@@ -276,162 +276,155 @@ export default function AccountsSheet({ open, onClose }) {
             </button>
           </div>
         ) : (
-          <Reorder.Group
-            axis="y"
-            values={orderedAccounts}
-            onReorder={handleReorder}
-            className="relative flex flex-col px-5 pt-3 pb-56 overflow-y-auto flex-1 no-scrollbar touch-pan-y"
-          >
-            {orderedAccounts.map((a, index) => {
-              const isSelected = selectedCardId === a.id || (orderedAccounts.length === 1 && !draggingId)
-              const isDragging = draggingId === a.id
-              const selectedIndex = orderedAccounts.findIndex((item) => item.id === selectedCardId)
+          <div className="flex-1 overflow-y-auto no-scrollbar w-full flex justify-center">
+            <Reorder.Group
+              axis="y"
+              values={orderedAccounts}
+              onReorder={handleReorder}
+              className="relative flex flex-col px-5 pt-3 pb-56 w-full max-w-[420px] mx-auto touch-pan-y"
+            >
+              {orderedAccounts.map((a, index) => {
+                const isSelected = selectedCardId === a.id || (orderedAccounts.length === 1 && !draggingId)
+                const isDragging = draggingId === a.id
+                const selectedIndex = orderedAccounts.findIndex((item) => item.id === selectedCardId)
 
-              // Translasi Sumbu Y Native Apple Wallet Physics:
-              // - Collapsed: y: 0 (bergeser sesuai indeks tumpukan slot h-[56px])
-              // - Selected (Focused): kartu meluncur ke atas (y: -12)
-              // - Belakang Selected: kartu di belakangnya meluncur mundur ke bawah (y: 180) untuk memberi ruang pandang
-              const targetY = (() => {
-                if (selectedCardId === null || orderedAccounts.length <= 1) {
+                const targetY = (() => {
+                  if (selectedCardId === null || orderedAccounts.length <= 1) {
+                    return 0
+                  }
+                  if (index === selectedIndex) {
+                    return -12
+                  }
+                  if (index > selectedIndex) {
+                    return 245
+                  }
                   return 0
-                }
-                if (index === selectedIndex) {
-                  return -12
-                }
-                if (index > selectedIndex) {
-                  return 245 // <-- Memberi ruang lega penuh untuk laci tombol aksi
-                }
-                return 0
-              })()
+                })()
 
-              const cardZIndex = isDragging ? 60 : isSelected ? 50 : index + 1
+                const cardZIndex = isDragging ? 60 : isSelected ? 50 : index + 1
 
-              return (
-                <Reorder.Item
-                  key={a.id}
-                  value={a}
-                  onDragStart={() => {
-                    setDraggingId(a.id)
-                    // Auto-collapse open card when dragging starts to preserve uniform deck math
-                    if (selectedCardId) setSelectedCardId(null)
-                  }}
-                  onDragEnd={() => {
-                    setDraggingId(null)
-                    // Smoothly commit the finalized order once drag finishes
-                    commitOrder(orderedAccountsRef.current)
-                  }}
-                  whileDrag={{
-                    scale: 1.03,
-                    cursor: 'grabbing',
-                  }}
-                  style={{
-                    zIndex: cardZIndex,
-                  }}
-                  className={cn(
-                    'relative select-none transform-gpu will-change-transform',
-                    orderedAccounts.length === 1 ? 'h-auto mb-6' : 'h-[56px]',
-                    isDragging && 'shadow-2xl z-60'
-                  )}
-                  data-testid={`wallet-card-item-${a.id}`}
-                >
-                  {/* Pembungkus Kartu yang bergeser vertikal dengan translasi Y dan spring natural */}
-                  <motion.div
-                    animate={{ y: targetY }}
-                    transition={{ type: 'spring', stiffness: 350, damping: 28, mass: 0.8 }}
+                return (
+                  <Reorder.Item
+                    key={a.id}
+                    value={a}
+                    onDragStart={() => {
+                      setDraggingId(a.id)
+                      if (selectedCardId) setSelectedCardId(null)
+                    }}
+                    onDragEnd={() => {
+                      setDraggingId(null)
+                      commitOrder(orderedAccountsRef.current)
+                    }}
+                    whileDrag={{
+                      scale: 1.03,
+                      cursor: 'grabbing',
+                    }}
                     style={{
                       zIndex: cardZIndex,
                     }}
-                    className="relative w-full transform-gpu will-change-transform"
+                    className={cn(
+                      'relative select-none transform-gpu will-change-transform w-full max-w-[420px] mx-auto',
+                      orderedAccounts.length === 1 ? 'h-auto mb-6' : 'h-[56px]',
+                      isDragging && 'shadow-2xl z-60'
+                    )}
+                    data-testid={`wallet-card-item-${a.id}`}
                   >
-                    {/* Komponen Fisik Kartu Bank (Fixed Aspect Ratio) */}
-                    <BankCard
-                      name={a.name}
-                      balance={a.balance}
-                      currency={a.currency}
-                      theme={a.theme}
-                      logo={a.logo}
-                      icon={a.icon}
-                      type={a.type}
-                      id={a.id}
-                      fmt={fmt}
-                      isCollapsed={!isSelected}
-                      onClick={() => {
-                        if (orderedAccounts.length > 1) {
-                          setSelectedCardId(isSelected ? null : a.id)
-                        }
+                    {/* Pembungkus Kartu */}
+                    <motion.div
+                      animate={{ y: targetY }}
+                      transition={{ type: 'spring', stiffness: 350, damping: 28, mass: 0.8 }}
+                      style={{
+                        zIndex: cardZIndex,
                       }}
-                      className={cn(
-                        'cursor-pointer active:scale-[0.99] transition-shadow',
-                        isSelected && 'ring-2 ring-white/20'
-                      )}
-                    />
+                      className="relative w-full transform-gpu will-change-transform"
+                    >
+                      {/* Komponen Fisik Kartu Bank (Terkunci Aspek Rasio & Anti-Melar) */}
+                      <BankCard
+                        name={a.name}
+                        balance={a.balance}
+                        currency={a.currency}
+                        theme={a.theme}
+                        logo={a.logo}
+                        icon={a.icon}
+                        type={a.type}
+                        id={a.id}
+                        fmt={fmt}
+                        isCollapsed={!isSelected}
+                        onClick={() => {
+                          if (orderedAccounts.length > 1) {
+                            setSelectedCardId(isSelected ? null : a.id)
+                          }
+                        }}
+                        className={cn(
+                          'cursor-pointer active:scale-[0.99] transition-shadow w-full max-w-[420px] mx-auto',
+                          isSelected && 'ring-2 ring-white/20'
+                        )}
+                      />
 
-                    {/* 
-                      Pisahkan Laci Tombol Aksi (Independent Action Bar Drawer):
-                      Elemen terpisah tepat di bawah kartu fisik, meluncur mandiri saat kartu aktif tanpa memaksa kartu di atasnya meregang.
-                    */}
-                    <AnimatePresence>
-                      {isSelected && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -8 }}
-                          transition={{ type: 'spring', stiffness: 350, damping: 28, mass: 0.8 }}
-                          className="flex items-center justify-between gap-2.5 mt-3.5 mb-2 px-1"
-                        >
-                          {/* Tombol Hapus Kartu */}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setDeletingAccount(a)
-                            }}
-                            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold active:scale-95 transition cursor-pointer"
-                            data-testid={`wallet-delete-${a.id}`}
+                      {/* Laci Tombol Aksi */}
+                      <AnimatePresence>
+                        {isSelected && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -8 }}
+                            transition={{ type: 'spring', stiffness: 350, damping: 28, mass: 0.8 }}
+                            className="flex items-center justify-between gap-2.5 mt-3.5 mb-2 px-1 w-full max-w-[420px] mx-auto"
                           >
-                            <Trash2 size={14} />
-                            <span>{t('delete') || 'Hapus'}</span>
-                          </button>
-
-                          <div className="flex items-center gap-2">
-                            {/* Tombol Ubah / Edit */}
+                            {/* Tombol Hapus Kartu */}
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation()
-                                handleEdit(a)
+                                setDeletingAccount(a)
                               }}
-                              className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-foreground text-xs font-bold active:scale-95 transition cursor-pointer"
-                              data-testid={`wallet-edit-${a.id}`}
+                              className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold active:scale-95 transition cursor-pointer"
+                              data-testid={`wallet-delete-${a.id}`}
                             >
-                              <Pencil size={14} />
-                              <span>{t('edit') || 'Ubah'}</span>
+                              <Trash2 size={14} />
+                              <span>{t('delete') || 'Hapus'}</span>
                             </button>
 
-                            {/* Tombol Selesai (Tutup Kartu Ini jika lebih dari 1) */}
-                            {orderedAccounts.length > 1 && (
+                            <div className="flex items-center gap-2">
+                              {/* Tombol Ubah / Edit */}
                               <button
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  setSelectedCardId(null)
+                                  handleEdit(a)
                                 }}
-                                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 text-xs font-bold active:scale-95 transition cursor-pointer shadow-xs"
-                                data-testid={`wallet-collapse-${a.id}`}
+                                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-foreground text-xs font-bold active:scale-95 transition cursor-pointer"
+                                data-testid={`wallet-edit-${a.id}`}
                               >
-                                <Check size={14} strokeWidth={2.5} />
-                                <span>{t('done') || 'Selesai'}</span>
+                                <Pencil size={14} />
+                                <span>{t('edit') || 'Ubah'}</span>
                               </button>
-                            )}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </motion.div>
-                </Reorder.Item>
-              )
-            })}
-          </Reorder.Group>
+
+                              {/* Tombol Selesai */}
+                              {orderedAccounts.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setSelectedCardId(null)
+                                  }}
+                                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 text-xs font-bold active:scale-95 transition cursor-pointer shadow-xs"
+                                  data-testid={`wallet-collapse-${a.id}`}
+                                >
+                                  <Check size={14} strokeWidth={2.5} />
+                                  <span>{t('done') || 'Selesai'}</span>
+                                </button>
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  </Reorder.Item>
+                )
+              })}
+            </Reorder.Group>
+          </div>
         )}
 
         {/* ======================================================================
@@ -466,7 +459,7 @@ export default function AccountsSheet({ open, onClose }) {
                 />
               </div>
 
-              {/* Pilihan Tema Kartu (6 Tema Solid) */}
+              {/* Pilihan Tema Kartu */}
               <div className="space-y-1.5 text-left">
                 <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {t('theme') || 'Tema Kartu'}

@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Send, Sparkles } from 'lucide-react'
+import { Send, Sparkles, SquarePen } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
 import { Sheet, DotsLoader } from './ui'
@@ -13,6 +13,36 @@ export default function CoachSheet({ open, onClose }) {
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const scrollRef = useRef(null)
+
+  // Riwayat chat tersimpan per-user di localStorage (maks 40 pesan terakhir)
+  const uid = session?.user?.id || 'guest'
+  const chatKey = `paralar:coach-chat:${uid}`
+  const MAX_SAVED = 40
+
+  const greetingFor = (l) => l === 'id'
+    ? 'Halo! Saya AI Financial Coach kamu. Tanya apa saja soal keuanganmu. 💰'
+    : l === 'ms'
+      ? 'Hai! Saya AI Financial Coach anda. Tanya apa sahaja tentang kewangan anda. 💰'
+      : l === 'tr'
+        ? 'Merhaba! Ben AI Finans Koçunuzum. Finanslarınız hakkında her şeyi sorun. 💰'
+        : "Hi! I'm your AI Financial Coach. Ask me anything about your money. 💰"
+
+  const loadHistory = () => {
+    try {
+      const raw = localStorage.getItem(chatKey)
+      if (!raw) return null
+      const arr = JSON.parse(raw)
+      if (!Array.isArray(arr) || !arr.length) return null
+      const clean = arr.filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
+      return clean.length ? clean.slice(-MAX_SAVED) : null
+    } catch { return null }
+  }
+
+  const startNewChat = () => {
+    const g = [{ role: 'assistant', content: greetingFor(lang) }]
+    setMessages(g)
+    try { localStorage.setItem(chatKey, JSON.stringify(g)) } catch {}
+  }
 
   const context = useMemo(() => {
     const now = new Date()
@@ -44,11 +74,16 @@ export default function CoachSheet({ open, onClose }) {
         openSheet?.('aiPremium')
         return
       }
-      setMessages([{ role: 'assistant', content: lang === 'id' ? 'Halo! Saya AI Financial Coach kamu. Tanya apa saja soal keuanganmu. 💰' : lang === 'ms' ? 'Hai! Saya AI Financial Coach anda. Tanya apa sahaja tentang kewangan anda. 💰' : lang === 'tr' ? 'Merhaba! Ben AI Finans Koçunuzum. Finanslarınız hakkında her şeyi sorun. 💰' : "Hi! I'm your AI Financial Coach. Ask me anything about your money. 💰" }])
+      setMessages(loadHistory() || [{ role: 'assistant', content: greetingFor(lang) }])
     }
   }, [open, lang, isAiAllowed, onClose, openSheet])
 
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }) }, [messages, busy])
+
+  useEffect(() => {
+    if (!open || !messages.length) return
+    try { localStorage.setItem(chatKey, JSON.stringify(messages.slice(-MAX_SAVED))) } catch {}
+  }, [messages, open, chatKey])
 
   const send = async (text) => {
     if (!isAiAllowed) {
@@ -100,6 +135,7 @@ export default function CoachSheet({ open, onClose }) {
       full
       noPadding
       title={<span className="flex items-center justify-center gap-2"><video src="/coach-avatar-anim.mp4" autoPlay muted loop playsInline className="h-7 w-7 rounded-full object-cover" /> {t('ai_coach')}</span>}
+      right={<button type="button" onClick={startNewChat} title={t('coach_new_chat')} aria-label={t('coach_new_chat')} className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"><SquarePen size={18} /></button>}
     >
       <div className="flex flex-col h-full">
         <div className="px-3 py-2 bg-muted/50 text-[11px] text-muted-foreground text-center">
