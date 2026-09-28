@@ -380,10 +380,10 @@ export default function AccountDeck({
         // tepi samping — kartu terlihat penuh seperti di preview. Kliping atas
         // tidak diperlukan karena stackSink menenggelamkan blok secukupnya;
         // overflow-x halaman diamankan via overflow-x-clip di root HomeTab.
-        className="relative pt-[72px] pb-6 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="relative pt-[45px] pb-4 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
-        {/* Frame deck aspect ratio standar kartu ATM/Bank (1.58 : 1) */}
-        <div ref={frameRef} className="relative aspect-[1.58/1] min-h-[190px] w-full select-none">
+        {/* Frame deck aspect ratio standar kartu ATM/Bank (1.58 : 1) — Kunci di Tablet */}
+        <div ref={frameRef} className="relative aspect-[1.58/1] min-h-[190px] w-full max-w-[390px] sm:max-w-[420px] mx-auto select-none">
           {/* Wrapper tumpukan solid: rotasi + lift di level blok */}
           <motion.div
             style={{ rotate: stackRotate, scale: stackLift, y: stackSink, transformOrigin: 'bottom center' }}

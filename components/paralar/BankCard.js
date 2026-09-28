@@ -227,12 +227,29 @@ export function BankCard({
     return `${cur.symbol} ${Number(balance || 0).toLocaleString()}`
   }, [balance, currency, fmt, hideBalance, cur.symbol])
 
-  // Balance parts for the reference-style split treatment:
-  // small dim symbol + large semi-bold digits, no space between.
+  // Pisahkan simbol dan nominal agar simbol bisa dikecilkan secara independen
   const balanceParts = useMemo(() => {
-    if (hideBalance || fmt) return null
-    return { symbol: cur.symbol, digits: Number(balance || 0).toLocaleString() }
-  }, [balance, fmt, hideBalance, cur.symbol])
+    if (hideBalance) return null
+    
+    // Ambil string format bawaan atau gunakan toLocaleString
+    const raw = fmt ? String(fmt(balance ?? 0, currency)) : `${cur.symbol} ${Number(balance || 0).toLocaleString()}`
+    
+    // Regex mendeteksi simbol/kode mata uang di depan (termasuk tanda minus jika ada)
+    const match = raw.match(/^(-?)([^\d\s]+)\s*(.+)$/)
+    if (match) {
+      return {
+        prefixSign: match[1] || '',
+        symbol: match[2] || cur.symbol,
+        digits: match[3] || '',
+      }
+    }
+    
+    return {
+      prefixSign: Number(balance || 0) < 0 ? '-' : '',
+      symbol: cur.symbol || currency,
+      digits: Number(Math.abs(balance || 0)).toLocaleString(),
+    }
+  }, [balance, currency, fmt, hideBalance, cur.symbol])
 
   // Monogram fallback: same tile language as LogoBadge (tile + letters),
   // so cards without a bank logo read as branded instead of placeholder.
@@ -259,11 +276,8 @@ export function BankCard({
       onClick={onClick}
       style={style}
       className={cn(
-        // Catatan: TANPA transform-gpu/will-change-transform di root kartu.
-        // Layer GPU bersarang (root + motion.div parent) membuat tepi rounded
-        // ter-blend berulang terhadap background → halo putih di tepi kartu.
-        // Animasi transform terjadi di parent (AccountDeck), bukan di sini.
-        'w-full aspect-[1.58/1] min-h-[185px] max-h-[220px] rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between shrink-0 select-none',
+        // Kunci aspek rasio murni, hapus max-h-[220px] agar kartu tidak gepeng/melar di tablet
+        'w-full aspect-[1.58/1] min-h-[185px] rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between shrink-0 select-none bg-[#0c0c0e]',
         th.className,
         topBorderCls,
         occlusionShadowCls,
@@ -361,27 +375,37 @@ export function BankCard({
           <div className="flex-1" />
 
           {/* Bottom: hero balance + approx-home | network mark */}
+          {/* Bottom: hero balance + approx-home | network mark */}
           <div className="flex items-end justify-between gap-3 relative z-10">
             <div className="min-w-0">
               <p
                 className={cn(
-                  'text-[31px] leading-none font-semibold tabular-nums tracking-tight truncate opacity-90',
+                  'text-2xl sm:text-[28px] leading-none font-semibold tabular-nums tracking-tight truncate opacity-95 flex items-baseline gap-1',
                   titleCls
                 )}
                 title={typeof balance === 'number' ? String(balance) : ''}
               >
-                {balanceParts ? (
+                {hideBalance ? (
+                  '••••••'
+                ) : balanceParts ? (
                   <>
-                    <span className="text-[0.62em] font-medium opacity-70">{balanceParts.symbol}</span>
-                    {' '}
-                    {balanceParts.digits}
+                    {balanceParts.prefixSign && (
+                      <span className="text-lg font-bold opacity-80">{balanceParts.prefixSign}</span>
+                    )}
+                    <span className="text-sm sm:text-base font-bold tracking-normal opacity-70 select-none">
+                      {balanceParts.symbol}
+                    </span>
+                    <span className="font-extrabold tracking-tight">
+                      {balanceParts.digits}
+                    </span>
                   </>
                 ) : (
                   formattedBalance
                 )}
               </p>
+
               {approxHome ? (
-                <p className={cn('text-[11px] font-medium mt-1 truncate', subCls)}>
+                <p className={cn('text-[10px] font-normal mt-0.5 truncate opacity-75', subCls)}>
                   {hideBalance ? '••••••' : (String(approxHome).startsWith('≈') ? approxHome : `≈ ${approxHome}`)}
                 </p>
               ) : null}

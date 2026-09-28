@@ -124,7 +124,7 @@ function Header() {
   const hasBadge = hasUrgent || hasUnreadAnnouncements
 
   return (
-    <div className="flex items-center justify-between pt-4">
+    <div className="flex items-center justify-between pt-2">
       <div className="flex items-center gap-3">
         <Avatar profile={profile} onClick={() => open('profile')} data-testid="avatar" />
         <div>
@@ -321,7 +321,7 @@ function BalanceCarousel() {
   )
 
   return (
-    <div className="mt-2">
+    <div className="mt-1 w-full max-w-[390px] sm:max-w-[420px] mx-auto">
       <AccountDeck
         slides={slides}
         index={idx}
