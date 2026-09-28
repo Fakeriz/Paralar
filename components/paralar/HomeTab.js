@@ -204,28 +204,31 @@ export function TotalBalanceCard() {
       <div className="absolute -left-8 -bottom-14 w-44 h-44 rounded-full bg-white/[0.03] blur-2xl pointer-events-none" />
       <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
 
-      {/* Baris atas: caption + eye toggle di sampingnya */}
-      <div className="flex items-center gap-2 relative z-10">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/40">
-          {t('balance')}
-        </p>
-        <button
-          type="button"
-          onClick={() => setHideBalance(!hideBalance)}
-          className="h-6 w-6 rounded-full bg-white/[0.06] border border-white/10 text-white/60 hover:text-white flex items-center justify-center transition-all active:scale-95"
-          aria-label="toggle balance"
-        >
-          {hideBalance ? <EyeOff size={13} /> : <Eye size={13} />}
-        </button>
-      </div>
+      {/* Group Saldo: Ditarik ke TENGAH-KIRI kartu secara vertikal (my-auto) */}
+      <div className="relative z-10 flex flex-col gap-1 my-auto text-left">
+        {/* Baris Label & Toggle Eye Murni */}
+        <div className="flex items-center gap-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/50 select-none">
+            {t('balance')}
+          </p>
+          <button
+            type="button"
+            onClick={() => setHideBalance(!hideBalance)}
+            className="text-white/50 hover:text-white transition-colors cursor-pointer select-none focus:outline-none p-0 bg-transparent border-0 flex items-center justify-center"
+            aria-label="toggle balance"
+          >
+            {hideBalance ? <EyeOff size={13} strokeWidth={1.75} /> : <Eye size={13} strokeWidth={1.75} />}
+          </button>
+        </div>
 
-      {/* Saldo: nominal — rapat tepat di bawah caption */}
-      <div className="relative z-10">
-        <p className="mt-1 flex items-baseline gap-1.5 tabular-nums" data-testid="total-balance">
+        {/* Baris Angka Nominal (Tetap rapat 4px di bawah SALDO) */}
+        <p className="flex items-baseline gap-1.5 tabular-nums leading-none m-0" data-testid="total-balance">
           {balCcy && (
-            <span className="text-base sm:text-lg font-bold text-white/65 shrink-0">{balCcy}</span>
+            <span className="text-base sm:text-lg font-bold text-white/70 shrink-0 select-none">
+              {balCcy}
+            </span>
           )}
-          <span className="text-[32px] sm:text-4xl font-extrabold tracking-tight text-white leading-none truncate">
+          <span className="text-[32px] sm:text-4xl font-extrabold tracking-tight text-white select-text truncate">
             {mask(balMain)}
           </span>
         </p>
