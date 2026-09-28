@@ -117,7 +117,7 @@ export default function ImportTransactionsSheet({ open, onClose }) {
         ...r,
         idx: i,
         fingerprint: SI.rowFingerprint(r),
-        category: SI.suggestCategory(r.desc) || 'other',
+        category: SI.suggestCategory(r.desc, r.type) || 'other',
       }))
       SI.markInFileDuplicates(parsed)
       // Dedup terhadap data existing di rentang tanggal file
