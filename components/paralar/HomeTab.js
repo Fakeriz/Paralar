@@ -321,7 +321,7 @@ function BalanceCarousel() {
   )
 
   return (
-    <div className="mt-3">
+    <div className="mt-2">
       <AccountDeck
         slides={slides}
         index={idx}
@@ -331,7 +331,7 @@ function BalanceCarousel() {
 
       {/* Indikator halaman: dots saja. Navigasi utama via swipe;
           keyboard tetap bisa via fokus ke deck (panah/Home/End). */}
-      <div className="flex justify-center items-center gap-1.5 mt-3">
+      <div className="flex justify-center items-center gap-1.5 mt-2">
         {slides.map((s, i) => (
           <button
             key={s.id}

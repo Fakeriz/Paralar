@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react'
-import { motion, useReducedMotion } from 'framer-motion'
+import { motion, useReducedMotion, useMotionValue, useTransform, animate } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
 /**
@@ -29,12 +29,24 @@ import { cn } from '@/lib/utils'
 const SWIPE_OFFSET = 45 // px minimum drag untuk memicu ganti kartu
 const SWIPE_VELOCITY = 220 // px/s kecepatan flick untuk ganti kartu
 
+// Ekspresi 3D ala referensi (Dribbble 3D card swipe):
+// - kartu aktif miring (rotate) mengikuti jarak drag, rileks saat lepas
+// - kartu belakang "membuka" (fan-out): naik + membesar seiring drag
+const DRAG_FULL = 140 // px drag untuk ekspresi 3D penuh
+const TILT_FACTOR = 0.06 // derajat tilt per px drag
+const TILT_MAX = 9 // clamp tilt maksimum
+
 const SPRING_TRANSITION = {
   type: 'spring',
   stiffness: 300,
-  damping: 30,
+  damping: 26, // sedikit underdamped -> settle dengan overshoot rotasi yang lembut
   mass: 0.8,
 }
+
+// Spring untuk merilekskan dragX kembali ke 0 saat lepas
+const RELAX_SPRING = { type: 'spring', stiffness: 380, damping: 30 }
+
+const clamp = (v, min, max) => Math.min(max, Math.max(min, v))
 
 function getCardConfig(diff) {
   if (diff < 0) {
@@ -66,12 +78,12 @@ function getCardConfig(diff) {
   }
 
   if (diff === 1) {
-    // Kartu ke-1 di belakang tumpukan (peek 1)
+    // Kartu ke-1 di belakang tumpukan (peek 1) — solid, hanya digelapkan
     return {
       x: 0,
-      y: -14,
-      scale: 0.94,
-      opacity: 0.9,
+      y: -24,
+      scale: 0.96,
+      opacity: 1,
       brightness: 0.92,
       zIndex: 15,
       pointerEvents: 'auto', // Bisa di-tap untuk loncat ke kartu ini
@@ -80,13 +92,13 @@ function getCardConfig(diff) {
   }
 
   if (diff === 2) {
-    // Kartu ke-2 di belakang tumpukan (peek 2)
+    // Kartu ke-2 di belakang tumpukan (peek 2) — solid, hanya digelapkan
     return {
       x: 0,
-      y: -26,
-      scale: 0.88,
-      opacity: 0.65,
-      brightness: 0.85,
+      y: -46,
+      scale: 0.925,
+      opacity: 1,
+      brightness: 0.84,
       zIndex: 10,
       pointerEvents: 'auto',
       cursor: 'pointer',
@@ -94,13 +106,13 @@ function getCardConfig(diff) {
   }
 
   if (diff === 3) {
-    // Kartu ke-3 di belakang tumpukan (peek 3)
+    // Kartu ke-3 di belakang tumpukan (peek 3) — solid, hanya digelapkan
     return {
       x: 0,
-      y: -36,
-      scale: 0.82,
-      opacity: 0.38,
-      brightness: 0.78,
+      y: -66,
+      scale: 0.89,
+      opacity: 1,
+      brightness: 0.76,
       zIndex: 5,
       pointerEvents: 'none',
       cursor: 'default',
@@ -110,8 +122,8 @@ function getCardConfig(diff) {
   // Kartu jauh di belakang
   return {
     x: 0,
-    y: -42,
-    scale: 0.78,
+    y: -80,
+    scale: 0.86,
     opacity: 0,
     brightness: 0.7,
     zIndex: 1,
@@ -126,6 +138,87 @@ function haptic(ms = 10) {
       navigator.vibrate(ms)
     }
   } catch {}
+}
+
+/**
+ * DeckCard — satu kartu dalam tumpukan.
+ *
+ * Dua lapis transform yang saling melengkapi (tidak berkonflik):
+ * - LAPIS LUAR: posisi layout dari activeIdx (x/y/scale/opacity/brightness),
+ *   dianimasikan spring saat index berganti + menampung gesture drag.
+ * - LAPIS DALAM: ekspresi 3D yang didorong dragX/dragP (rotate tilt kartu
+ *   aktif, fan-out kartu belakang). Selalu kembali ke netral saat tidak di-drag.
+ */
+function DeckCard({
+  slide,
+  diff,
+  dragX,
+  dragP,
+  reduceMotion,
+  transition,
+  dragProps,
+  shadowCls,
+  label,
+}) {
+  const config = getCardConfig(diff)
+  const isActive = diff === 0
+  const isBehind = diff >= 1 && diff <= 3
+  const isPeek = diff === 1 || diff === 2
+  const allowExpr = !reduceMotion
+
+  // Tilt kartu aktif mengikuti arah drag (trailing edge tertinggal),
+  // mirip kartu fisik yang digeser di atas meja.
+  const rotate = useTransform(dragX, (x) =>
+    isActive && allowExpr ? clamp(-x * TILT_FACTOR, -TILT_MAX, TILT_MAX) : 0
+  )
+  // Fan-out: tumpukan belakang "membuka" — naik + membesar seiring drag.
+  const fanY = useTransform(dragP, (p) =>
+    isBehind && allowExpr ? -p * 10 * diff : 0
+  )
+  const fanScale = useTransform(dragP, (p) =>
+    isBehind && allowExpr ? 1 + p * 0.016 * diff : 1
+  )
+
+  return (
+    <motion.div
+      key={slide.id}
+      initial={false}
+      animate={{
+        x: config.x,
+        y: config.y,
+        scale: config.scale,
+        opacity: config.opacity,
+        filter: `brightness(${config.brightness})`,
+      }}
+      transition={transition}
+      style={{
+        zIndex: config.zIndex,
+        touchAction: 'pan-y',
+        transformOrigin: 'bottom center',
+        pointerEvents: config.pointerEvents,
+      }}
+      className={cn(
+        'absolute inset-0 h-full w-full select-none transform-gpu will-change-transform',
+        isActive && 'cursor-grab active:cursor-grabbing',
+        isPeek && 'cursor-pointer'
+      )}
+      role="group"
+      aria-roledescription="slide"
+      aria-label={label}
+      aria-hidden={!isActive}
+      {...(isPeek ? dragProps.peekHandlers : {})}
+    >
+      <motion.div
+        style={{ rotate, y: fanY, scale: fanScale, transformOrigin: 'bottom center' }}
+        className="h-full w-full transform-gpu will-change-transform"
+        {...(isActive ? dragProps.activeHandlers : {})}
+      >
+        <div className={cn('h-full w-full rounded-2xl transition-shadow duration-300', shadowCls)}>
+          {slide.node}
+        </div>
+      </motion.div>
+    </motion.div>
+  )
 }
 
 export default function AccountDeck({
@@ -143,6 +236,12 @@ export default function AccountDeck({
     Math.max(0, Math.min(index || 0, Math.max(0, total - 1)))
   )
   const [announcement, setAnnouncement] = useState('')
+  const [lifting, setLifting] = useState(false)
+
+  // Motion value bersama untuk ekspresi 3D saat drag:
+  // dragX = offset horizontal kartu aktif, dragP = progres 0..1.
+  const dragX = useMotionValue(0)
+  const dragP = useTransform(dragX, (x) => Math.min(1, Math.abs(x) / DRAG_FULL))
 
   const goTo = useCallback(
     (next) => {
@@ -155,9 +254,26 @@ export default function AccountDeck({
     [activeIdx, total, onIndexChange]
   )
 
+  const handleDrag = useCallback(
+    (_, info) => {
+      dragX.set(info.offset.x)
+    },
+    [dragX]
+  )
+
+  const handleDragStart = useCallback(() => {
+    setLifting(true)
+  }, [])
+
+  const relaxDrag = useCallback(() => {
+    setLifting(false)
+    animate(dragX, 0, RELAX_SPRING)
+  }, [dragX])
+
   const handleDragEnd = useCallback(
     (_, info) => {
       const { offset, velocity } = info
+      relaxDrag()
       // Swipe ke kiri -> kartu berikutnya
       if (offset.x < -SWIPE_OFFSET || velocity.x < -SWIPE_VELOCITY) {
         if (activeIdx < total - 1) {
@@ -174,7 +290,7 @@ export default function AccountDeck({
       }
       // Di bawah threshold: Framer Motion otomatis menganimasikan kembali ke animate={{ x: 0 }}
     },
-    [activeIdx, total, goTo]
+    [activeIdx, total, goTo, relaxDrag]
   )
 
   // Sinkronisasi index dari kontrol luar (seperti klik dot pagination)
@@ -226,66 +342,54 @@ export default function AccountDeck({
         aria-label={regionLabel}
         tabIndex={0}
         onKeyDown={onKeyDown}
-        className="relative rounded-2xl pt-8 pb-9 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background overflow-hidden"
+        className="relative rounded-2xl pt-[72px] pb-6 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background overflow-hidden"
       >
         {/* Frame deck aspect ratio standar kartu ATM/Bank (1.58 : 1) */}
         <div className="relative aspect-[1.58/1] min-h-[190px] w-full select-none">
           {slides.map((slide, i) => {
             const diff = i - activeIdx
             const isActive = diff === 0
-            const isPeek = diff === 1 || diff === 2
-            const config = getCardConfig(diff)
 
             // Optimasi render: kartu yang terlalu jauh di belakang/depan disembunyikan
             if (diff < -2 || diff > 4) {
               return null
             }
 
+            // Shadow: kartu terangkat (lifting) dapat bayangan lebih besar,
+            // meniru kartu yang "diangkat" dari tumpukan seperti di referensi.
+            const shadowCls =
+              isActive && lifting
+                ? 'shadow-[0_2px_6px_rgba(16,16,20,0.10),0_26px_50px_-12px_rgba(16,16,20,0.38)] dark:shadow-[0_2px_6px_rgba(0,0,0,0.5),0_26px_50px_-12px_rgba(0,0,0,0.7)]'
+                : isActive
+                  ? 'shadow-[0_1px_2px_rgba(16,16,20,0.06),0_14px_30px_-10px_rgba(16,16,20,0.22)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_14px_30px_-10px_rgba(0,0,0,0.5)]'
+                  : 'shadow-[0_1px_2px_rgba(16,16,20,0.05),0_8px_18px_-8px_rgba(16,16,20,0.13)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_8px_18px_-8px_rgba(0,0,0,0.35)]'
+
             return (
-              <motion.div
+              <DeckCard
                 key={slide.id}
-                initial={false}
-                animate={{
-                  x: config.x,
-                  y: config.y,
-                  scale: config.scale,
-                  opacity: config.opacity,
-                  filter: `brightness(${config.brightness})`,
-                }}
+                slide={slide}
+                diff={diff}
+                dragX={dragX}
+                dragP={dragP}
+                reduceMotion={reduceMotion}
                 transition={transition}
-                drag={isActive && !reduceMotion ? 'x' : false}
-                dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={0.4}
-                dragMomentum={false}
-                onDragEnd={isActive ? handleDragEnd : undefined}
-                style={{
-                  zIndex: config.zIndex,
-                  touchAction: 'pan-y',
-                  transformOrigin: 'bottom center',
-                  pointerEvents: config.pointerEvents,
+                shadowCls={shadowCls}
+                label={slide.label}
+                dragProps={{
+                  activeHandlers: {
+                    drag: isActive && !reduceMotion ? 'x' : false,
+                    dragConstraints: { left: 0, right: 0 },
+                    dragElastic: 0.4,
+                    dragMomentum: false,
+                    onDrag: handleDrag,
+                    onDragStart: handleDragStart,
+                    onDragEnd: handleDragEnd,
+                  },
+                  peekHandlers: {
+                    onClick: () => goTo(i),
+                  },
                 }}
-                className={cn(
-                  'absolute inset-0 h-full w-full select-none transform-gpu will-change-transform',
-                  isActive && 'cursor-grab active:cursor-grabbing',
-                  isPeek && 'cursor-pointer'
-                )}
-                role="group"
-                aria-roledescription="slide"
-                aria-label={slide.label}
-                aria-hidden={!isActive}
-                onClick={isPeek ? () => goTo(i) : undefined}
-              >
-                <div
-                  className={cn(
-                    'h-full w-full rounded-2xl transition-shadow duration-300',
-                    isActive
-                      ? 'shadow-[0_1px_2px_rgba(16,16,20,0.06),0_14px_30px_-10px_rgba(16,16,20,0.22)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_14px_30px_-10px_rgba(0,0,0,0.5)]'
-                      : 'shadow-[0_1px_2px_rgba(16,16,20,0.05),0_8px_18px_-8px_rgba(16,16,20,0.13)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_8px_18px_-8px_rgba(0,0,0,0.35)]'
-                  )}
-                >
-                  {slide.node}
-                </div>
-              </motion.div>
+              />
             )
           })}
         </div>

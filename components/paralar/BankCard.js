@@ -84,6 +84,7 @@ export function CardMotifTexture({ motif = 'parang', isLight = false }) {
 
   if (motif === 'glacier') {
     // 2) Glacier Frost: Solid #FFFFFF marble texture with 15% opacity veins, text #09090B
+    // (soft glow di kanan bawah dihapus 2026-09-28 — terbaca sebagai noda putih)
     return (
       <div className="absolute inset-0 pointer-events-none overflow-hidden bg-[#FFFFFF]">
         <svg className="absolute inset-0 w-full h-full opacity-15" viewBox="0 0 320 200" fill="none" preserveAspectRatio="none">
@@ -92,7 +93,6 @@ export function CardMotifTexture({ motif = 'parang', isLight = false }) {
           <path d="M 130 90 L 170 140 M 170 80 L 150 40" stroke="#09090B" strokeWidth="0.8" fill="none" />
           <path d="M 210 -10 Q 240 60 300 80" stroke="#09090B" strokeWidth="1" fill="none" />
         </svg>
-        <div className="absolute -right-8 -bottom-8 w-44 h-44 rounded-full bg-slate-200/40 blur-2xl" />
       </div>
     )
   }
@@ -214,21 +214,25 @@ export function BankCard({
   const th = getTheme(theme)
   const cur = getCurrency(currency)
   const typeLabel = ACCOUNT_TYPES.find((x) => x.id === type)?.label || 'Account'
-  const last4 = digits4(id || name)
   const isCardLight = Boolean(th.isLight || th.id === 'glacier' || theme === 'glacier' || theme === 'white')
   const motif = th.motif || theme || 'parang'
 
   // Text color palette (Glacier Frost is 100% black #09090B, others crisp white)
   const titleCls = isCardLight ? 'text-[#09090B]' : 'text-white'
   const subCls = isCardLight ? 'text-zinc-600' : 'text-zinc-300'
-  const accentCls = isCardLight ? 'text-zinc-700' : 'text-zinc-200'
-  const waveCls = isCardLight ? 'text-zinc-700 opacity-80' : 'text-white/80'
 
   const formattedBalance = useMemo(() => {
     if (hideBalance) return '••••••'
     if (fmt) return fmt(balance ?? 0, currency)
     return `${cur.symbol} ${Number(balance || 0).toLocaleString()}`
   }, [balance, currency, fmt, hideBalance, cur.symbol])
+
+  // Balance parts for the reference-style split treatment:
+  // small dim symbol + large semi-bold digits, no space between.
+  const balanceParts = useMemo(() => {
+    if (hideBalance || fmt) return null
+    return { symbol: cur.symbol, digits: Number(balance || 0).toLocaleString() }
+  }, [balance, fmt, hideBalance, cur.symbol])
 
   // Monogram fallback: same tile language as LogoBadge (tile + letters),
   // so cards without a bank logo read as branded instead of placeholder.
@@ -305,66 +309,78 @@ export function BankCard({
           </div>
         </div>
       ) : (
-        /* Full Physical Card view when expanded (isCollapsed === false) */
+        /* Full card view — adapted from the 3D swipe reference:
+           small-caps name top-left, hero balance bottom-left, network mark
+           bottom-right, generous negative space. No chip, no card number. */
         <>
-          {/* Top Section: Chip EMV + Contactless Wave + Bank/Icon Badge */}
-          <div className="flex items-center justify-between gap-3 relative z-10">
-            <div className="flex items-center gap-2.5">
-              <EmvChip isLight={isCardLight} />
-              <ContactlessWave className={cn('w-4 h-4', waveCls)} />
-            </div>
-
-            {rightHeader ? (
-              rightHeader
-            ) : (
-              <div className="shrink-0">
-                {logo ? (
-                  <LogoBadge logoId={logo} />
-                ) : (
-                  <div
-                    className={cn(
-                      'h-9 w-9 rounded-xl flex items-center justify-center border shrink-0 font-extrabold text-[13px] tracking-tight',
-                      isCardLight
-                        ? 'bg-zinc-950/5 border-zinc-300 text-zinc-900'
-                        : 'bg-white/10 border-white/20 text-white'
-                    )}
-                    title={name || 'Account'}
-                  >
-                    {monogram}
-                  </div>
-                )}
-              </div>
+          {/* Subtle top-light sheen over the motif (motifs incl. glacier untouched) */}
+          <div
+            className={cn(
+              'absolute inset-0 pointer-events-none',
+              isCardLight
+                ? 'bg-gradient-to-b from-black/[0.04] via-transparent to-transparent'
+                : 'bg-gradient-to-b from-white/[0.06] via-transparent to-transparent'
             )}
-          </div>
+          />
 
-          {/* Middle Section: Account Name & Balance */}
-          <div className="relative z-10 my-auto py-1">
-            <div className="flex items-baseline justify-between gap-2">
-              <p className={cn('font-bold text-base truncate max-w-[70%]', titleCls)}>{name || '—'}</p>
-              <span className={cn('text-[10px] font-semibold uppercase tracking-[0.14em] shrink-0', subCls)}>
-                {typeLabel}
-              </span>
-            </div>
-            <p
-              className={cn(
-                'text-[22px] sm:text-2xl font-extrabold tabular-nums tracking-tight truncate mt-0.5',
-                titleCls
-              )}
-              title={typeof balance === 'number' ? String(balance) : ''}
-            >
-              {formattedBalance}
-            </p>
-            {approxHome ? (
-              <p className={cn('text-[11px] font-medium mt-0.5 truncate', subCls)}>
-                {hideBalance ? '••••••' : (String(approxHome).startsWith('≈') ? approxHome : `≈ ${approxHome}`)}
+          {/* Top: small-caps account name + BANK category hook | bank badge */}
+          <div className="flex items-start justify-between gap-3 relative z-10">
+            <div className="min-w-0">
+              <p className={cn('text-[11px] font-semibold uppercase tracking-[0.2em] truncate', titleCls)}>
+                {name || '—'}
               </p>
-            ) : null}
+              <p className={cn('text-[9px] font-semibold uppercase tracking-[0.24em] mt-1', subCls)}>
+                {typeLabel}
+              </p>
+            </div>
+
+            <div className="shrink-0">
+              {logo ? (
+                <LogoBadge logoId={logo} />
+              ) : (
+                <div
+                  className={cn(
+                    'h-9 w-9 rounded-xl flex items-center justify-center border shrink-0 font-extrabold text-[13px] tracking-tight',
+                    isCardLight
+                      ? 'bg-zinc-950/5 border-zinc-300 text-zinc-900'
+                      : 'bg-white/10 border-white/20 text-white'
+                  )}
+                  title={name || 'Account'}
+                >
+                  {monogram}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Bottom Section: Masked Number + Currency + Network Logo */}
-          <div className="flex items-end justify-between relative z-10 pt-1">
-            <div className={cn('flex items-center gap-3 text-xs font-semibold', accentCls)}>
-              <span className="font-mono tracking-[0.22em] text-[11px] opacity-90">•••• {last4}</span>
+          {/* Breathing room for the motif */}
+          <div className="flex-1" />
+
+          {/* Bottom: hero balance + approx-home | network mark */}
+          <div className="flex items-end justify-between gap-3 relative z-10">
+            <div className="min-w-0">
+              <p
+                className={cn(
+                  'text-[31px] leading-none font-semibold tabular-nums tracking-tight truncate opacity-90',
+                  titleCls
+                )}
+                title={typeof balance === 'number' ? String(balance) : ''}
+              >
+                {balanceParts ? (
+                  <>
+                    <span className="text-[0.62em] font-medium opacity-70">{balanceParts.symbol}</span>
+                    {' '}
+                    {balanceParts.digits}
+                  </>
+                ) : (
+                  formattedBalance
+                )}
+              </p>
+              {approxHome ? (
+                <p className={cn('text-[11px] font-medium mt-1 truncate', subCls)}>
+                  {hideBalance ? '••••••' : (String(approxHome).startsWith('≈') ? approxHome : `≈ ${approxHome}`)}
+                </p>
+              ) : null}
             </div>
 
             {showNetwork && (
