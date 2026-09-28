@@ -469,7 +469,9 @@ export default function HomeTab() {
 
   const recent = (transactions || []).slice(0, 6)
   return (
-    <div className="px-5 pb-28">
+    // overflow-x-clip: sudut kartu yang miring saat drag boleh melukis ke area
+    // padding, tapi tidak boleh membuat halaman bisa scroll horizontal.
+    <div className="px-5 pb-28 overflow-x-clip">
       <Header />
       {isGuest ? (
         <div className="mt-4 rounded-xl bg-zinc-100 border border-zinc-200 dark:bg-zinc-900 dark:border-white/10 px-3 py-2 text-[11px] text-zinc-600 dark:text-zinc-400 flex items-center gap-2"><Sparkles size={12} /> {t('demo_banner')}</div>

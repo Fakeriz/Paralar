@@ -34,8 +34,9 @@ const SWIPE_VELOCITY = 220 // px/s kecepatan flick untuk ganti kartu
 // - kartu belakang "membuka" (fan-out): naik + membesar seiring drag
 const DRAG_FULL = 140 // px drag untuk ekspresi 3D penuh
 const TILT_FACTOR = 0.06 // derajat tilt per px drag
-const TILT_MAX = 7 // clamp tilt maksimum (diturunkan dari 9 agar kartu belakang tidak terlalu mengintip)
+const TILT_MAX = 7 // clamp tilt maksimum
 const LIFT_SCALE = 0.03 // kartu aktif membesar 3% saat diangkat — menutup celah kartu belakang + efek "terangkat ke viewer"
+const FAN_PER_DIFF = 4 // fan-out per tingkat (kecil agar muat di ruang atas)
 
 const SPRING_TRANSITION = {
   type: 'spring',
@@ -82,7 +83,7 @@ function getCardConfig(diff) {
     // Kartu ke-1 di belakang tumpukan (peek 1) — solid, hanya digelapkan
     return {
       x: 0,
-      y: -24,
+      y: -20,
       scale: 0.96,
       opacity: 1,
       brightness: 0.92,
@@ -96,7 +97,7 @@ function getCardConfig(diff) {
     // Kartu ke-2 di belakang tumpukan (peek 2) — solid, hanya digelapkan
     return {
       x: 0,
-      y: -46,
+      y: -38,
       scale: 0.925,
       opacity: 1,
       brightness: 0.84,
@@ -110,7 +111,7 @@ function getCardConfig(diff) {
     // Kartu ke-3 di belakang tumpukan (peek 3) — solid, hanya digelapkan
     return {
       x: 0,
-      y: -66,
+      y: -56,
       scale: 0.89,
       opacity: 1,
       brightness: 0.76,
@@ -172,7 +173,7 @@ function DeckCard({
   // Fan-out: tumpukan belakang "membuka" — naik seiring drag.
   // (Tanpa membesar: tumpukan solid, kartu belakang tetap tertutup kartu depan.)
   const fanY = useTransform(dragP, (p) =>
-    isBehind && allowExpr ? -p * 10 * diff : 0
+    isBehind && allowExpr ? -p * FAN_PER_DIFF * diff : 0
   )
   // Lift: kartu aktif sedikit membesar saat diangkat — kesan kartu fisik
   // yang dicomot dari tumpukan.
@@ -231,6 +232,8 @@ export default function AccountDeck({
 }) {
   const reduceMotion = useReducedMotion()
   const trackRef = useRef(null)
+  const frameRef = useRef(null)
+  const dimsRef = useRef({ w: 350, h: 221 }) // ukuran frame kartu, diukur saat drag mulai
   const total = slides.length
 
   const [activeIdx, setActiveIdx] = useState(() =>
@@ -252,6 +255,20 @@ export default function AccountDeck({
     allowStackExpr ? clamp(-x * TILT_FACTOR, -TILT_MAX, TILT_MAX) : 0
   )
   const stackLift = useTransform(dragP, (p) => (allowStackExpr ? 1 + p * 0.02 : 1))
+  // ANTI-CLIP: saat tumpukan miring, sudut kartu terangkat setinggi
+  // sin(tilt) * setengah-lebar — tanpa kompensasi, sudutnya naik melewati ruang
+  // atas dan melukis ke area header. Seluruh blok ditenggelamkan dengan jumlah
+  // yang sama (+ pertumbuhan lift kartu aktif), jadi sudut tidak pernah
+  // melewati ruang atas yang tersedia. Terasa seperti menekan tumpukan fisik.
+  const stackSink = useTransform(dragX, (x) => {
+    if (!allowStackExpr) return 0
+    const t = Math.min(1, Math.abs(x) / DRAG_FULL)
+    if (t <= 0) return 0
+    const { w, h } = dimsRef.current
+    const tiltRise = Math.sin(((t * TILT_MAX * Math.PI) / 180)) * (w / 2)
+    const liftRise = t * LIFT_SCALE * h
+    return tiltRise + liftRise
+  })
 
   const goTo = useCallback(
     (next) => {
@@ -273,6 +290,13 @@ export default function AccountDeck({
 
   const handleDragStart = useCallback(() => {
     setLifting(true)
+    // Ukur frame aktual (responsif) agar kompensasi sink presisi
+    if (frameRef.current) {
+      dimsRef.current = {
+        w: frameRef.current.clientWidth || 350,
+        h: frameRef.current.clientHeight || 221,
+      }
+    }
   }, [])
 
   const relaxDrag = useCallback(() => {
@@ -352,13 +376,17 @@ export default function AccountDeck({
         aria-label={regionLabel}
         tabIndex={0}
         onKeyDown={onKeyDown}
-        className="relative rounded-2xl pt-[72px] pb-6 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background overflow-hidden"
+        // Tanpa overflow-hidden: sudut kartu yang miring saat drag tidak terpotong
+        // tepi samping — kartu terlihat penuh seperti di preview. Kliping atas
+        // tidak diperlukan karena stackSink menenggelamkan blok secukupnya;
+        // overflow-x halaman diamankan via overflow-x-clip di root HomeTab.
+        className="relative pt-[72px] pb-6 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         {/* Frame deck aspect ratio standar kartu ATM/Bank (1.58 : 1) */}
-        <div className="relative aspect-[1.58/1] min-h-[190px] w-full select-none">
+        <div ref={frameRef} className="relative aspect-[1.58/1] min-h-[190px] w-full select-none">
           {/* Wrapper tumpukan solid: rotasi + lift di level blok */}
           <motion.div
-            style={{ rotate: stackRotate, scale: stackLift, transformOrigin: 'bottom center' }}
+            style={{ rotate: stackRotate, scale: stackLift, y: stackSink, transformOrigin: 'bottom center' }}
             className="absolute inset-0 transform-gpu will-change-transform"
           >
           {slides.map((slide, i) => {
