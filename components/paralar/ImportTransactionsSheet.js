@@ -72,7 +72,7 @@ export default function ImportTransactionsSheet({ open, onClose }) {
     setBusy(true)
     try {
       const { fileName: fn, headers: h, rows: body } = await SI.parseStatementFile(file)
-      const { mapping: m, dirMode: dm } = SI.detectMapping(h)
+      const { mapping: m, dirMode: dm } = SI.detectMapping(h, body)
       setFileName(fn); setHeaders(h); setAoa(body)
       setMapping(m); setDirMode(dm)
       setWalletId((accounts || [])[0]?.id || null)
@@ -263,23 +263,33 @@ export default function ImportTransactionsSheet({ open, onClose }) {
       || (dirMode === 'signed' && role === 'amount')
       || (dirMode === 'split' && (role === 'debit' || role === 'credit'))
     if (!show) return null
+    const colCount = Math.max(headers.length, ...aoa.map((r) => (r || []).length), 0)
+    const sampleRow = aoa[0] || []
     return (
       <div className="mb-3">
         <p className="text-xs font-semibold text-muted-foreground px-1 mb-1.5">{label}{required ? ' *' : ''}</p>
-        <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+        <div className="flex gap-1.5 overflow-x-auto no-scrollbar items-stretch">
           <button
             type="button"
             onClick={() => setMapping((m) => ({ ...m, [role]: -1 }))}
-            className={cn('shrink-0 rounded-lg border px-2.5 py-1.5 text-xs font-medium', mapping[role] === -1 ? 'bg-foreground text-background border-foreground' : 'bg-background border-border/60 text-muted-foreground')}
+            className={cn('shrink-0 rounded-xl border px-3 py-2 text-sm font-medium self-center', mapping[role] === -1 ? 'bg-foreground text-background border-foreground' : 'bg-background border-border/60 text-muted-foreground')}
           >—</button>
-          {headers.map((h, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => setMapping((m) => ({ ...m, [role]: i }))}
-              className={cn('shrink-0 max-w-[140px] truncate rounded-lg border px-2.5 py-1.5 text-xs font-medium', mapping[role] === i ? 'bg-foreground text-background border-foreground' : 'bg-background border-border/60')}
-            >{h || `···${i + 1}`}</button>
-          ))}
+          {Array.from({ length: colCount }, (_, i) => {
+            const colLabel = (headers[i] || '').trim() || t('import_col_n').replace('{n}', i + 1)
+            const sample = String(sampleRow[i] ?? '').trim()
+            const active = mapping[role] === i
+            return (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setMapping((m) => ({ ...m, [role]: i }))}
+                className={cn('shrink-0 min-w-[136px] max-w-[220px] rounded-xl border px-3 py-2 text-left', active ? 'bg-foreground text-background border-foreground' : 'bg-background border-border/60')}
+              >
+                <span className="block text-[13px] font-semibold truncate">{colLabel}</span>
+                {sample ? <span className={cn('block text-[11px] truncate mt-0.5', active ? 'opacity-70' : 'text-muted-foreground')}>{sample}</span> : null}
+              </button>
+            )
+          })}
         </div>
       </div>
     )
