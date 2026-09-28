@@ -40,7 +40,7 @@ import LoanCalculatorSheet from '@/components/paralar/LoanCalculatorSheet'
 import CategoriesTemplatesSheet from '@/components/paralar/CategoriesTemplatesSheet'
 import DebtTrackerSheet from '@/components/paralar/DebtTrackerSheet'
 import ExportTransactionsSheet from '@/components/paralar/ExportTransactionsSheet'
-import ImportTransactionsSheet from '@/components/paralar/ImportTransactionsSheet'
+import ImportTransactionsPage from '@/components/paralar/ImportTransactionsPage'
 import AiPremiumSheet from '@/components/paralar/AiPremiumSheet'
 import PaywallSheet from '@/components/paralar/PaywallSheet'
 import CloudReceiptBackupSheet from '@/components/paralar/CloudReceiptBackupSheet'
@@ -501,7 +501,7 @@ export default function App() {
         <CategoriesTemplatesSheet open={!!sheets.catman} onClose={() => close('catman')} />
         <DebtTrackerSheet open={!!sheets.debts} onClose={() => close('debts')} />
         <ExportTransactionsSheet open={!!sheets.exportTx} onClose={() => close('exportTx')} />
-        <ImportTransactionsSheet open={!!sheets.importTx} onClose={() => close('importTx')} />
+        {sheets.importTx ? <ImportTransactionsPage onClose={() => close('importTx')} /> : null}
         <ReceiptGallerySheet
           open={Boolean(sheets?.receiptGallery)}
           onClose={() => close('receiptGallery')}

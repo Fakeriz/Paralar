@@ -1,22 +1,25 @@
 'use client'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { UploadCloud, FileSpreadsheet, FileText, Sparkles, CheckCircle2, ChevronLeft, Plus, AlertTriangle, Undo2, Check, Search } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { UploadCloud, FileSpreadsheet, FileText, Sparkles, CheckCircle2, ChevronLeft, ChevronDown, Plus, AlertTriangle, Undo2, Check, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
-import { Sheet, Field, Segmented, Card, PrimaryButton, CategoryBadge, SectionLabel, TextInput } from './ui'
+import { Sheet, Field, Segmented, PrimaryButton, CategoryBadge, SectionLabel, TextInput } from './ui'
+import CurrencySheet from './CurrencySheet'
 import { CATEGORIES } from '@/lib/categories'
 import { convert, getRate } from '@/lib/rates'
-import { roundMoney } from '@/lib/currencies'
-import { cn } from '@/lib/utils'
+import { getCurrency, roundMoney } from '@/lib/currencies'
+import { cn, triggerHaptic } from '@/lib/utils'
 import * as SI from '@/lib/statement-import'
 
-// Wizard impor rekening koran: upload → setup (wallet + mapping) → review → selesai.
-// Seluruh parsing/normalisasi/dedup jalan client-side (privasi); server hanya
-// menerima baris final + catatan batch (jika migrasi import_batches sudah jalan).
+// Wizard impor rekening koran — FULL PAGE (bukan sheet): upload → setup
+// (wallet + mapping) → review → selesai. Seluruh parsing/normalisasi/dedup
+// jalan client-side (privasi); server hanya menerima baris final + catatan
+// batch (jika migrasi import_batches sudah jalan).
 
 const STEPS = ['upload', 'setup', 'review', 'done']
 
-export default function ImportTransactionsSheet({ open, onClose }) {
+export default function ImportTransactionsPage({ onClose }) {
   const { t, accounts = [], store, refresh, home, rates, session, open: openSheet } = useApp()
   const fileRef = useRef(null)
   const [step, setStep] = useState(0)
@@ -34,6 +37,7 @@ export default function ImportTransactionsSheet({ open, onClose }) {
   const [newWallet, setNewWallet] = useState(false)
   const [nwName, setNwName] = useState('')
   const [nwCurrency, setNwCurrency] = useState(home || 'MYR')
+  const [pickCur, setPickCur] = useState(false)
   const [rows, setRows] = useState([])
   const [excluded, setExcluded] = useState({})
   const [catEdits, setCatEdits] = useState({})
@@ -62,12 +66,16 @@ export default function ImportTransactionsSheet({ open, onClose }) {
     setAiMode(false); setPdfFile(null); setAiRows(null)
   }
 
-  // Probe kapabilitas server sekali saat sheet dibuka
+  // Kunci scroll body selama halaman full-page terbuka; probe kapabilitas server sekali saat mount
   useEffect(() => {
-    if (open && store?.getImportCapabilities) {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    triggerHaptic('success')
+    if (store?.getImportCapabilities) {
       store.getImportCapabilities().then(setCaps).catch(() => {})
     }
-  }, [open, store])
+    return () => { document.body.style.overflow = prev }
+  }, [store])
 
   const close = () => { reset(); onClose?.() }
 
@@ -341,6 +349,13 @@ export default function ImportTransactionsSheet({ open, onClose }) {
 
   const stepLabel = (i) => t(`import_step_${STEPS[i]}`)
 
+  // Navigasi header: mundur selangkah, atau tutup halaman di langkah awal/akhir
+  const goBack = () => {
+    triggerHaptic('light')
+    if (step > 0 && step < 3) setStep((s) => s - 1)
+    else close()
+  }
+
   const MapRow = ({ role, label, required }) => {
     const show = role === 'date' || role === 'desc' || role === 'balance'
       || (dirMode === 'signed' && role === 'amount')
@@ -385,18 +400,41 @@ export default function ImportTransactionsSheet({ open, onClose }) {
 
   return (
     <>
-      <Sheet open={open} onClose={close} title={t('import_data')}>
-        <div className="pt-1">
-          {/* hairline progress */}
-          <div className="flex gap-1 mb-3">
-            {STEPS.map((s, i) => (
-              <div key={s} className="flex-1">
-                <div className={cn('h-1 rounded-full', i <= step ? 'bg-foreground' : 'bg-border/60')} />
-                <p className={cn('text-[10px] font-semibold mt-1', i === step ? 'text-foreground' : 'text-muted-foreground')}>{stepLabel(i)}</p>
-              </div>
-            ))}
+      <motion.div
+        initial={{ y: 48, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ type: 'spring', stiffness: 320, damping: 32, mass: 0.9 }}
+        className="fixed inset-0 z-[80] bg-background"
+        data-testid="import-page"
+      >
+        <div className="h-full w-full max-w-md mx-auto flex flex-col">
+          {/* header halaman */}
+          <div className="shrink-0 border-b border-border/40 bg-background safe-top">
+            <div className="flex items-center justify-between px-4 pt-3 pb-2">
+              <button
+                type="button"
+                onClick={goBack}
+                aria-label={t('import_back')}
+                className="h-10 w-10 rounded-full bg-zinc-100 dark:bg-white/[0.06] flex items-center justify-center"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <h2 className="text-base font-bold text-foreground">{t('import_data')}</h2>
+              <div className="w-10" />
+            </div>
+            {/* hairline progress */}
+            <div className="flex gap-1 px-5 pb-3">
+              {STEPS.map((s, i) => (
+                <div key={s} className="flex-1">
+                  <div className={cn('h-1 rounded-full', i <= step ? 'bg-foreground' : 'bg-border/60')} />
+                  <p className={cn('text-[10px] font-semibold mt-1', i === step ? 'text-foreground' : 'text-muted-foreground')}>{stepLabel(i)}</p>
+                </div>
+              ))}
+            </div>
           </div>
 
+          {/* konten scroll */}
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 pt-4 pb-10">
           <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls,.pdf" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} data-testid="import-file" />
 
           {/* ============ STEP 0: upload ============ */}
@@ -453,7 +491,14 @@ export default function ImportTransactionsSheet({ open, onClose }) {
                     <TextInput value={nwName} onChange={(e) => setNwName(e.target.value)} placeholder={t('import_wallet_name_ph')} />
                   </Field>
                   <Field label={t('import_currency')}>
-                    <TextInput value={nwCurrency} onChange={(e) => setNwCurrency(e.target.value.toUpperCase().slice(0, 3))} placeholder="MYR" maxLength={3} />
+                    <button
+                      type="button"
+                      onClick={() => setPickCur(true)}
+                      className="w-full rounded-xl border border-border/60 bg-background px-3 py-3 text-sm font-semibold flex items-center justify-between"
+                    >
+                      <span>{getCurrency(nwCurrency).symbol} {nwCurrency}</span>
+                      <ChevronDown size={16} className="text-muted-foreground" />
+                    </button>
                   </Field>
                   <button type="button" onClick={createWallet} disabled={busy} className="w-full rounded-xl bg-foreground text-background font-semibold py-2.5 text-sm disabled:opacity-40">
                     {t('import_create')}
@@ -653,11 +698,12 @@ export default function ImportTransactionsSheet({ open, onClose }) {
           )}
 
           <div className="h-2" />
+          </div>
         </div>
-      </Sheet>
+      </motion.div>
 
       {/* picker kategori */}
-      <Sheet open={pickCatFor != null} onClose={() => { setPickCatFor(null); setCatSearch('') }} title={t('select_category')} zIndex={80} noPadding>
+      <Sheet open={pickCatFor != null} onClose={() => { setPickCatFor(null); setCatSearch('') }} title={t('select_category')} zIndex={90} noPadding>
         <div className="px-4 pt-2 pb-6">
           <div className="relative mb-3">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -688,6 +734,15 @@ export default function ImportTransactionsSheet({ open, onClose }) {
           </div>
         </div>
       </Sheet>
+
+      {/* picker mata uang untuk wallet baru */}
+      <CurrencySheet
+        open={pickCur}
+        onClose={() => setPickCur(false)}
+        value={nwCurrency}
+        onSelect={(c) => { setNwCurrency(c); setPickCur(false) }}
+        zIndex={90}
+      />
     </>
   )
 }
