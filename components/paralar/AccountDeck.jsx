@@ -34,7 +34,8 @@ const SWIPE_VELOCITY = 220 // px/s kecepatan flick untuk ganti kartu
 // - kartu belakang "membuka" (fan-out): naik + membesar seiring drag
 const DRAG_FULL = 140 // px drag untuk ekspresi 3D penuh
 const TILT_FACTOR = 0.06 // derajat tilt per px drag
-const TILT_MAX = 9 // clamp tilt maksimum
+const TILT_MAX = 7 // clamp tilt maksimum (diturunkan dari 9 agar kartu belakang tidak terlalu mengintip)
+const LIFT_SCALE = 0.03 // kartu aktif membesar 3% saat diangkat — menutup celah kartu belakang + efek "terangkat ke viewer"
 
 const SPRING_TRANSITION = {
   type: 'spring',
@@ -146,13 +147,15 @@ function haptic(ms = 10) {
  * Dua lapis transform yang saling melengkapi (tidak berkonflik):
  * - LAPIS LUAR: posisi layout dari activeIdx (x/y/scale/opacity/brightness),
  *   dianimasikan spring saat index berganti + menampung gesture drag.
- * - LAPIS DALAM: ekspresi 3D yang didorong dragX/dragP (rotate tilt kartu
- *   aktif, fan-out kartu belakang). Selalu kembali ke netral saat tidak di-drag.
+ * - LAPIS DALAM: ekspresi 3D yang didorong dragX/dragP (lift kartu aktif,
+ *   fan-out kartu belakang). Selalu kembali ke netral saat tidak di-drag.
+ * - ROTASI ada di level tumpukan (AccountDeck), bukan per kartu: seluruh deck
+ *   miring sebagai satu blok kaku seperti setumpuk kartu fisik — tidak ada
+ *   celah putih yang terbuka di antara kartu saat drag.
  */
 function DeckCard({
   slide,
   diff,
-  dragX,
   dragP,
   reduceMotion,
   transition,
@@ -166,17 +169,15 @@ function DeckCard({
   const isPeek = diff === 1 || diff === 2
   const allowExpr = !reduceMotion
 
-  // Tilt kartu aktif mengikuti arah drag (trailing edge tertinggal),
-  // mirip kartu fisik yang digeser di atas meja.
-  const rotate = useTransform(dragX, (x) =>
-    isActive && allowExpr ? clamp(-x * TILT_FACTOR, -TILT_MAX, TILT_MAX) : 0
-  )
-  // Fan-out: tumpukan belakang "membuka" — naik + membesar seiring drag.
+  // Fan-out: tumpukan belakang "membuka" — naik seiring drag.
+  // (Tanpa membesar: tumpukan solid, kartu belakang tetap tertutup kartu depan.)
   const fanY = useTransform(dragP, (p) =>
     isBehind && allowExpr ? -p * 10 * diff : 0
   )
-  const fanScale = useTransform(dragP, (p) =>
-    isBehind && allowExpr ? 1 + p * 0.016 * diff : 1
+  // Lift: kartu aktif sedikit membesar saat diangkat — kesan kartu fisik
+  // yang dicomot dari tumpukan.
+  const exprScale = useTransform(dragP, (p) =>
+    isActive && allowExpr ? 1 + p * LIFT_SCALE : 1
   )
 
   return (
@@ -209,7 +210,7 @@ function DeckCard({
       {...(isPeek ? dragProps.peekHandlers : {})}
     >
       <motion.div
-        style={{ rotate, y: fanY, scale: fanScale, transformOrigin: 'bottom center' }}
+        style={{ y: fanY, scale: exprScale, transformOrigin: 'bottom center' }}
         className="h-full w-full transform-gpu will-change-transform"
         {...(isActive ? dragProps.activeHandlers : {})}
       >
@@ -242,6 +243,15 @@ export default function AccountDeck({
   // dragX = offset horizontal kartu aktif, dragP = progres 0..1.
   const dragX = useMotionValue(0)
   const dragP = useTransform(dragX, (x) => Math.min(1, Math.abs(x) / DRAG_FULL))
+
+  // TUMPUKAN SOLID: seluruh deck miring + terangkat sebagai satu blok kaku
+  // (seperti memegang setumpuk kartu fisik). Karena semua kartu berbagi sudut
+  // yang sama, tidak ada celah putih yang terbuka di antara kartu saat drag.
+  const allowStackExpr = !reduceMotion
+  const stackRotate = useTransform(dragX, (x) =>
+    allowStackExpr ? clamp(-x * TILT_FACTOR, -TILT_MAX, TILT_MAX) : 0
+  )
+  const stackLift = useTransform(dragP, (p) => (allowStackExpr ? 1 + p * 0.02 : 1))
 
   const goTo = useCallback(
     (next) => {
@@ -346,6 +356,11 @@ export default function AccountDeck({
       >
         {/* Frame deck aspect ratio standar kartu ATM/Bank (1.58 : 1) */}
         <div className="relative aspect-[1.58/1] min-h-[190px] w-full select-none">
+          {/* Wrapper tumpukan solid: rotasi + lift di level blok */}
+          <motion.div
+            style={{ rotate: stackRotate, scale: stackLift, transformOrigin: 'bottom center' }}
+            className="absolute inset-0 transform-gpu will-change-transform"
+          >
           {slides.map((slide, i) => {
             const diff = i - activeIdx
             const isActive = diff === 0
@@ -357,19 +372,22 @@ export default function AccountDeck({
 
             // Shadow: kartu terangkat (lifting) dapat bayangan lebih besar,
             // meniru kartu yang "diangkat" dari tumpukan seperti di referensi.
+            // Semua varian diawali hairline ring 1px (0,0,0 ~18%) — menutup
+            // fringe putih anti-aliasing saat kartu gelap berotasi di atas
+            // background terang, sekaligus memberi definisi tepi kartu terang.
+            // (ditulis literal penuh agar terbaca pemindai Tailwind)
             const shadowCls =
               isActive && lifting
-                ? 'shadow-[0_2px_6px_rgba(16,16,20,0.10),0_26px_50px_-12px_rgba(16,16,20,0.38)] dark:shadow-[0_2px_6px_rgba(0,0,0,0.5),0_26px_50px_-12px_rgba(0,0,0,0.7)]'
+                ? 'shadow-[0_0_0_1px_rgba(0,0,0,0.18),0_2px_6px_rgba(16,16,20,0.10),0_26px_50px_-12px_rgba(16,16,20,0.38)] dark:shadow-[0_0_0_1px_rgba(0,0,0,0.18),0_2px_6px_rgba(0,0,0,0.5),0_26px_50px_-12px_rgba(0,0,0,0.7)]'
                 : isActive
-                  ? 'shadow-[0_1px_2px_rgba(16,16,20,0.06),0_14px_30px_-10px_rgba(16,16,20,0.22)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_14px_30px_-10px_rgba(0,0,0,0.5)]'
-                  : 'shadow-[0_1px_2px_rgba(16,16,20,0.05),0_8px_18px_-8px_rgba(16,16,20,0.13)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_8px_18px_-8px_rgba(0,0,0,0.35)]'
+                  ? 'shadow-[0_0_0_1px_rgba(0,0,0,0.18),0_1px_2px_rgba(16,16,20,0.06),0_14px_30px_-10px_rgba(16,16,20,0.22)] dark:shadow-[0_0_0_1px_rgba(0,0,0,0.18),0_1px_2px_rgba(0,0,0,0.4),0_14px_30px_-10px_rgba(0,0,0,0.5)]'
+                  : 'shadow-[0_0_0_1px_rgba(0,0,0,0.18),0_1px_2px_rgba(16,16,20,0.05),0_8px_18px_-8px_rgba(16,16,20,0.13)] dark:shadow-[0_0_0_1px_rgba(0,0,0,0.18),0_1px_2px_rgba(0,0,0,0.3),0_8px_18px_-8px_rgba(0,0,0,0.35)]'
 
             return (
               <DeckCard
                 key={slide.id}
                 slide={slide}
                 diff={diff}
-                dragX={dragX}
                 dragP={dragP}
                 reduceMotion={reduceMotion}
                 transition={transition}
@@ -392,6 +410,7 @@ export default function AccountDeck({
               />
             )
           })}
+          </motion.div>
         </div>
       </div>
 

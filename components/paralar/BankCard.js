@@ -259,7 +259,11 @@ export function BankCard({
       onClick={onClick}
       style={style}
       className={cn(
-        'w-full aspect-[1.58/1] min-h-[185px] max-h-[220px] rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between shrink-0 select-none transform-gpu will-change-transform',
+        // Catatan: TANPA transform-gpu/will-change-transform di root kartu.
+        // Layer GPU bersarang (root + motion.div parent) membuat tepi rounded
+        // ter-blend berulang terhadap background → halo putih di tepi kartu.
+        // Animasi transform terjadi di parent (AccountDeck), bukan di sini.
+        'w-full aspect-[1.58/1] min-h-[185px] max-h-[220px] rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between shrink-0 select-none',
         th.className,
         topBorderCls,
         occlusionShadowCls,
