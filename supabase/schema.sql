@@ -374,6 +374,39 @@ create index if not exists transactions_account_idx on public.transactions(accou
 create index if not exists transactions_dest_account_idx on public.transactions(destination_account_id);
 create index if not exists transactions_bill_idx on public.transactions(bill_id);
 
+-- Kolom pelacakan impor rekening koran (idempoten — wizard tetap jalan tanpanya,
+-- hanya fitur batch/undo/dedup-lintas-batch yang nonaktif sampai migrasi dijalankan)
+alter table public.transactions add column if not exists import_batch_id uuid;
+alter table public.transactions add column if not exists fingerprint text;
+create index if not exists transactions_import_batch_idx on public.transactions(import_batch_id);
+create index if not exists transactions_fingerprint_idx on public.transactions(user_id, fingerprint);
+
+-- Import batches: catatan tiap sesi impor statement (untuk undo & deteksi overlap)
+create table if not exists public.import_batches (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  account_id uuid references public.accounts(id) on delete set null,
+  file_name text,
+  row_count int default 0,
+  imported_count int default 0,
+  skipped_count int default 0,
+  date_from timestamptz,
+  date_to timestamptz,
+  status text default 'completed',       -- importing | completed | undone
+  created_at timestamptz default now()
+);
+alter table public.import_batches add column if not exists account_id uuid references public.accounts(id) on delete set null;
+alter table public.import_batches add column if not exists file_name text;
+alter table public.import_batches add column if not exists row_count int default 0;
+alter table public.import_batches add column if not exists imported_count int default 0;
+alter table public.import_batches add column if not exists skipped_count int default 0;
+alter table public.import_batches add column if not exists date_from timestamptz;
+alter table public.import_batches add column if not exists date_to timestamptz;
+alter table public.import_batches add column if not exists status text default 'completed';
+alter table public.import_batches add column if not exists created_at timestamptz default now();
+create index if not exists import_batches_user_idx on public.import_batches(user_id, created_at desc);
+create index if not exists import_batches_account_idx on public.import_batches(account_id);
+
 -- ============================================================================
 -- 6. TABEL PENDUKUNG & UTILITAS
 -- ============================================================================
@@ -619,8 +652,10 @@ alter table public.budgets enable row level security;
 alter table public.transaction_templates enable row level security;
 alter table public.debts enable row level security;
 alter table public.ai_quotas enable row level security;
+alter table public.import_batches enable row level security;
 
 -- Hak Akses Operasi (GRANTS)
+grant select, insert, update, delete on public.import_batches to authenticated;
 grant select, insert, update, delete on public.profiles to authenticated;
 grant select, insert, update, delete on public.accounts to authenticated;
 grant select, insert, update, delete on public.goals to authenticated;
@@ -700,6 +735,11 @@ create policy "debts own" on public.debts for all to authenticated
 
 drop policy if exists "ai_quotas own" on public.ai_quotas;
 create policy "ai_quotas own" on public.ai_quotas for all to authenticated
+  using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+
+-- Kebijakan RLS Import Batches: user_id = auth.uid()
+drop policy if exists "import_batches own" on public.import_batches;
+create policy "import_batches own" on public.import_batches for all to authenticated
   using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
 
 -- Kebijakan RLS Pengumuman Publik
