@@ -1,27 +1,9 @@
 'use client'
 import { useMemo } from 'react'
-import { CreditCard, Wallet, Banknote, Landmark, Smartphone, BarChart3, Briefcase, GripVertical } from 'lucide-react'
 import { getTheme, ACCOUNT_TYPES } from '@/lib/categories'
 import { getCurrency } from '@/lib/currencies'
 import { LogoBadge } from './ui'
 import { cn } from '@/lib/utils'
-
-const ICON_MAP = {
-  card: CreditCard,
-  creditcard: CreditCard,
-  wallet: Wallet,
-  cash: Banknote,
-  banknote: Banknote,
-  bankbuilding: Landmark,
-  bank: Landmark,
-  landmark: Landmark,
-  phone: Smartphone,
-  smartphone: Smartphone,
-  chart: BarChart3,
-  barchart3: BarChart3,
-  business: Briefcase,
-  briefcase: Briefcase,
-}
 
 // Deterministic last-4 digits
 export function digits4(s) {
@@ -204,7 +186,7 @@ export function CardMotifTexture({ motif = 'parang', isLight = false }) {
  * Standard Bank Physical Card Component
  * Conforms to:
  * - Aspect ratio: w-full aspect-[1.58/1] min-h-[185px] rounded-2xl relative overflow-hidden flex flex-col justify-between
- * - Occlusion Shadow: shadow-[0_-8px_24px_rgba(0,0,0,0.5)] dark:shadow-[0_-8px_24px_rgba(0,0,0,0.7)]
+ * - Elevation: soft two-layer cool-black drop shadow (downward only, never clipped)
  * - Border top: border-t border-white/20 (or border-zinc-300 for Glacier)
  * - Collapsed mode (isCollapsed = true): Only Account Name (top-left) & Bank Logo (top-right) in ~55px header strip.
  */
@@ -248,12 +230,19 @@ export function BankCard({
     return `${cur.symbol} ${Number(balance || 0).toLocaleString()}`
   }, [balance, currency, fmt, hideBalance, cur.symbol])
 
-  // Resolve generic icon fallback when logo is null
-  const FallbackIcon = ICON_MAP[icon] || CreditCard
+  // Monogram fallback: same tile language as LogoBadge (tile + letters),
+  // so cards without a bank logo read as branded instead of placeholder.
+  const monogram = useMemo(() => {
+    const words = String(name || '').trim().split(/\s+/).filter(Boolean)
+    if (words.length > 1) return `${words[0][0]}${words[1][0]}`.toUpperCase()
+    return (words[0] || '\u2022\u2022').slice(0, 2).toUpperCase()
+  }, [name])
 
-  // Occlusion shadow for physical separation when stacked in Apple Wallet
+  // Elevation: soft two-layer drop shadow in cool-black (16,16,20) so it never
+  // reads as a dirty grey bar on light surfaces. Purely downward — the old
+  // upward -8px occlusion bled a harsh 50%-black smear under the card.
   const occlusionShadowCls = (!flat && showOcclusionShadow)
-    ? 'shadow-[0_-8px_24px_rgba(0,0,0,0.5)] dark:shadow-[0_-8px_24px_rgba(0,0,0,0.7)]'
+    ? 'shadow-[0_1px_2px_rgba(16,16,20,0.06),0_14px_30px_-10px_rgba(16,16,20,0.22)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_14px_30px_-10px_rgba(0,0,0,0.5)]'
     : 'shadow-none'
 
   // Top gloss border
@@ -303,14 +292,14 @@ export function BankCard({
             ) : (
               <div
                 className={cn(
-                  'h-9 w-9 rounded-xl flex items-center justify-center border shrink-0',
+                  'h-9 w-9 rounded-xl flex items-center justify-center border shrink-0 font-extrabold text-[13px] tracking-tight',
                   isCardLight
                     ? 'bg-zinc-950/5 border-zinc-300 text-zinc-900'
                     : 'bg-white/10 border-white/20 text-white'
                 )}
-                title="Account Icon"
+                title={name || 'Account'}
               >
-                <FallbackIcon size={18} strokeWidth={2} />
+                {monogram}
               </div>
             )}
           </div>
@@ -334,14 +323,14 @@ export function BankCard({
                 ) : (
                   <div
                     className={cn(
-                      'h-9 w-9 rounded-xl flex items-center justify-center border shrink-0',
+                      'h-9 w-9 rounded-xl flex items-center justify-center border shrink-0 font-extrabold text-[13px] tracking-tight',
                       isCardLight
                         ? 'bg-zinc-950/5 border-zinc-300 text-zinc-900'
                         : 'bg-white/10 border-white/20 text-white'
                     )}
-                    title="Account Icon"
+                    title={name || 'Account'}
                   >
-                    <FallbackIcon size={18} strokeWidth={2} />
+                    {monogram}
                   </div>
                 )}
               </div>

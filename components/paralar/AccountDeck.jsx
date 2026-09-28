@@ -226,7 +226,7 @@ export default function AccountDeck({
         aria-label={regionLabel}
         tabIndex={0}
         onKeyDown={onKeyDown}
-        className="relative rounded-2xl pt-8 pb-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background overflow-hidden"
+        className="relative rounded-2xl pt-8 pb-9 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background overflow-hidden"
       >
         {/* Frame deck aspect ratio standar kartu ATM/Bank (1.58 : 1) */}
         <div className="relative aspect-[1.58/1] min-h-[190px] w-full select-none">
@@ -279,8 +279,8 @@ export default function AccountDeck({
                   className={cn(
                     'h-full w-full rounded-2xl transition-shadow duration-300',
                     isActive
-                      ? 'shadow-xl shadow-black/20 dark:shadow-black/60'
-                      : 'shadow-md shadow-black/10 dark:shadow-black/30'
+                      ? 'shadow-[0_1px_2px_rgba(16,16,20,0.06),0_14px_30px_-10px_rgba(16,16,20,0.22)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_14px_30px_-10px_rgba(0,0,0,0.5)]'
+                      : 'shadow-[0_1px_2px_rgba(16,16,20,0.05),0_8px_18px_-8px_rgba(16,16,20,0.13)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_8px_18px_-8px_rgba(0,0,0,0.35)]'
                   )}
                 >
                   {slide.node}
