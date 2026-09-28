@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { UploadCloud, FileSpreadsheet, CheckCircle2, ChevronLeft, Plus, AlertTriangle, Undo2, Check, Search } from 'lucide-react'
+import { UploadCloud, FileSpreadsheet, FileText, Sparkles, CheckCircle2, ChevronLeft, Plus, AlertTriangle, Undo2, Check, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
 import { Sheet, Field, Segmented, Card, PrimaryButton, CategoryBadge, SectionLabel, TextInput } from './ui'
@@ -17,7 +17,7 @@ import * as SI from '@/lib/statement-import'
 const STEPS = ['upload', 'setup', 'review', 'done']
 
 export default function ImportTransactionsSheet({ open, onClose }) {
-  const { t, accounts = [], store, refresh, home, rates } = useApp()
+  const { t, accounts = [], store, refresh, home, rates, session, open: openSheet } = useApp()
   const fileRef = useRef(null)
   const [step, setStep] = useState(0)
   const [busy, setBusy] = useState(false)
@@ -26,6 +26,10 @@ export default function ImportTransactionsSheet({ open, onClose }) {
   const [aoa, setAoa] = useState([])
   const [mapping, setMapping] = useState({ date: -1, desc: -1, amount: -1, debit: -1, credit: -1, balance: -1 })
   const [dirMode, setDirMode] = useState('signed')
+  // Mode PDF+AI: file PDF dikirim ke AI, kolom sudah berlabel → mapping di-skip
+  const [aiMode, setAiMode] = useState(false)
+  const [pdfFile, setPdfFile] = useState(null)
+  const [aiRows, setAiRows] = useState(null)
   const [walletId, setWalletId] = useState(null)
   const [newWallet, setNewWallet] = useState(false)
   const [nwName, setNwName] = useState('')
@@ -55,6 +59,7 @@ export default function ImportTransactionsSheet({ open, onClose }) {
     setRows([]); setExcluded({}); setCatEdits({}); setPickCatFor(null); setCatSearch('')
     setOverlap([]); setBalanceCheck({ checked: false }); setProgress({ done: 0, total: 0 })
     setResult(null); setBatchId(null); setBatchRecId(null); setNetDelta(0); setShowDupes(false)
+    setAiMode(false); setPdfFile(null); setAiRows(null)
   }
 
   // Probe kapabilitas server sekali saat sheet dibuka
@@ -67,14 +72,30 @@ export default function ImportTransactionsSheet({ open, onClose }) {
   const close = () => { reset(); onClose?.() }
 
   // ------------------------------------------------------------ langkah 1: file
+  const isPdfFile = (file) => {
+    if (!file) return false
+    if ((file.type || '').toLowerCase().includes('pdf')) return true
+    return /\.pdf$/i.test(file.name || '')
+  }
+
   const handleFile = async (file) => {
     if (!file || busy) return
+    // PDF → jalur AI (butuh persetujuan + kuota); parsing di langkah setup
+    if (isPdfFile(file)) {
+      setFileName(file.name || 'statement.pdf')
+      setPdfFile(file)
+      setAiMode(true); setAiRows(null)
+      setWalletId((accounts || [])[0]?.id || null)
+      setStep(1)
+      return
+    }
     setBusy(true)
     try {
       const { fileName: fn, headers: h, rows: body } = await SI.parseStatementFile(file)
       const { mapping: m, dirMode: dm } = SI.detectMapping(h, body)
       setFileName(fn); setHeaders(h); setAoa(body)
       setMapping(m); setDirMode(dm)
+      setAiMode(false); setPdfFile(null); setAiRows(null)
       setWalletId((accounts || [])[0]?.id || null)
       setStep(1)
     } catch {
@@ -106,49 +127,111 @@ export default function ImportTransactionsSheet({ open, onClose }) {
     return mapping.amount >= 0
   }
 
+  // Finalisasi baris kanonis → review. Dipakai jalur CSV/XLSX (buildReview)
+  // maupun jalur PDF+AI (continueAiReview) — dedup, cek saldo, overlap sama.
+  const finalizeParsedRows = async (parsed) => {
+    parsed = parsed.map((r, i) => ({
+      ...r,
+      idx: i,
+      fingerprint: SI.rowFingerprint(r),
+      category: SI.suggestCategory(r.desc, r.type) || 'other',
+    }))
+    SI.markInFileDuplicates(parsed)
+    // Dedup terhadap data existing di rentang tanggal file
+    const range = SI.getDateRange(parsed)
+    let existingKeys = new Set()
+    if (range && store?.findTransactionsInRange) {
+      const from = new Date(range.min); from.setHours(0, 0, 0, 0)
+      const to = new Date(range.max); to.setHours(23, 59, 59, 999)
+      const existing = await store.findTransactionsInRange(walletId, from.toISOString(), to.toISOString())
+      existingKeys = new Set((existing || []).map((x) => SI.rowKey({
+        dateStr: SI.fmtDateStr(new Date(x.date || x.transaction_date)),
+        amount: Math.abs(Number(x.amount) || 0),
+        currency: x.currency,
+        desc: x.note || x.description || '',
+      })))
+    }
+    for (const r of parsed) r.dupExisting = existingKeys.has(SI.rowKey(r))
+    setBalanceCheck(SI.checkBalanceContinuity(parsed))
+    // Overlap dengan batch sebelumnya
+    if (range && store?.listImportBatches) {
+      const batches = await store.listImportBatches(walletId, 20)
+      setOverlap((batches || []).filter((b) => {
+        if (!b.date_from || !b.date_to || b.status === 'undone') return false
+        return SI.rangesOverlap(range, { min: new Date(b.date_from), max: new Date(b.date_to) })
+      }))
+    }
+    setRows(parsed)
+    setExcluded({}); setCatEdits({}); setShowDupes(false)
+    setStep(2)
+  }
+
   const buildReview = async () => {
     if (!walletId) { toast.error(t('import_no_wallet')); return }
     if (!mappingValid()) { toast.error(t('import_map_incomplete')); return }
     setBusy(true)
     try {
-      let parsed = SI.normalizeRows(aoa, mapping, dirMode, walletCur)
+      const parsed = SI.normalizeRows(aoa, mapping, dirMode, walletCur)
       if (!parsed.length) throw new Error('empty')
-      parsed = parsed.map((r, i) => ({
-        ...r,
-        idx: i,
-        fingerprint: SI.rowFingerprint(r),
-        category: SI.suggestCategory(r.desc, r.type) || 'other',
-      }))
-      SI.markInFileDuplicates(parsed)
-      // Dedup terhadap data existing di rentang tanggal file
-      const range = SI.getDateRange(parsed)
-      let existingKeys = new Set()
-      if (range && store?.findTransactionsInRange) {
-        const from = new Date(range.min); from.setHours(0, 0, 0, 0)
-        const to = new Date(range.max); to.setHours(23, 59, 59, 999)
-        const existing = await store.findTransactionsInRange(walletId, from.toISOString(), to.toISOString())
-        existingKeys = new Set((existing || []).map((x) => SI.rowKey({
-          dateStr: SI.fmtDateStr(new Date(x.date || x.transaction_date)),
-          amount: Math.abs(Number(x.amount) || 0),
-          currency: x.currency,
-          desc: x.note || x.description || '',
-        })))
-      }
-      for (const r of parsed) r.dupExisting = existingKeys.has(SI.rowKey(r))
-      setBalanceCheck(SI.checkBalanceContinuity(parsed))
-      // Overlap dengan batch sebelumnya
-      if (range && store?.listImportBatches) {
-        const batches = await store.listImportBatches(walletId, 20)
-        setOverlap((batches || []).filter((b) => {
-          if (!b.date_from || !b.date_to || b.status === 'undone') return false
-          return SI.rangesOverlap(range, { min: new Date(b.date_from), max: new Date(b.date_to) })
-        }))
-      }
-      setRows(parsed)
-      setExcluded({}); setCatEdits({}); setShowDupes(false)
-      setStep(2)
+      await finalizeParsedRows(parsed)
     } catch {
       toast.error(t('invalid_file'))
+    } finally { setBusy(false) }
+  }
+
+  // Konversi ArrayBuffer → base64 per chunk (btoa langsung bisa stack overflow)
+  const arrayBufferToBase64 = (buf) => {
+    const bytes = new Uint8Array(buf)
+    let bin = ''
+    const CHUNK = 0x8000
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK))
+    }
+    return btoa(bin)
+  }
+
+  // ------------------------------------------------------------ jalur PDF+AI
+  const processPdfWithAi = async () => {
+    if (!pdfFile || busy) return
+    if (!walletId) { toast.error(t('import_no_wallet')); return }
+    setBusy(true)
+    try {
+      const buf = await pdfFile.arrayBuffer()
+      const b64 = arrayBufferToBase64(buf)
+      const headers = { 'Content-Type': 'application/json' }
+      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+      const res = await fetch('/api/ai/parse-statement', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ pdfBase64: b64, fileName }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        if (res.status === 403 || data?.code === 'AI_PREMIUM_REQUIRED') {
+          close(); openSheet?.('aiPremium'); return
+        }
+        if (res.status === 429 || data?.code === 'AI_QUOTA_EXCEEDED') {
+          toast.error(data?.error || t('import_ai_quota')); return
+        }
+        throw new Error(data?.error || t('import_pdf_failed'))
+      }
+      const rows = SI.aiTransactionsToRows(data?.transactions, walletCur)
+      if (!rows.length) throw new Error('empty')
+      setAiRows(rows)
+      toast.success(t('import_pdf_found').replace('{n}', String(rows.length)))
+    } catch (e) {
+      toast.error(e?.message || t('import_pdf_failed'))
+    } finally { setBusy(false) }
+  }
+
+  const continueAiReview = async () => {
+    if (!walletId) { toast.error(t('import_no_wallet')); return }
+    if (!aiRows?.length) return
+    setBusy(true)
+    try {
+      await finalizeParsedRows(aiRows)
+    } catch {
+      toast.error(t('error'))
     } finally { setBusy(false) }
   }
 
@@ -314,7 +397,7 @@ export default function ImportTransactionsSheet({ open, onClose }) {
             ))}
           </div>
 
-          <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} data-testid="import-file" />
+          <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls,.pdf" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} data-testid="import-file" />
 
           {/* ============ STEP 0: upload ============ */}
           {step === 0 && (
@@ -336,10 +419,15 @@ export default function ImportTransactionsSheet({ open, onClose }) {
           {step === 1 && (
             <div className="space-y-4">
               <div className={cn(card, 'p-4 flex items-center gap-3')}>
-                <div className="h-10 w-10 rounded-xl bg-background flex items-center justify-center text-foreground shrink-0"><FileSpreadsheet size={18} strokeWidth={1.75} /></div>
+                <div className="h-10 w-10 rounded-xl bg-background flex items-center justify-center text-foreground shrink-0">
+                  {aiMode ? <FileText size={18} strokeWidth={1.75} /> : <FileSpreadsheet size={18} strokeWidth={1.75} />}
+                </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-[15px] truncate">{fileName}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{aoa.length} {t('import_rows_unit')}</p>
+                  <p className="font-semibold text-[15px] truncate flex items-center gap-2">
+                    <span className="truncate">{fileName}</span>
+                    {aiMode && <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-brand/15 text-brand">{t('import_pdf_badge')}</span>}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{aiMode ? t('import_pdf_ai_title') : `${aoa.length} ${t('import_rows_unit')}`}</p>
                 </div>
                 <button type="button" onClick={() => fileRef.current?.click()} className="text-sm font-medium text-muted-foreground shrink-0">{t('edit')}</button>
               </div>
@@ -373,37 +461,67 @@ export default function ImportTransactionsSheet({ open, onClose }) {
                 </div>
               )}
 
-              <div>
-                <SectionLabel>{t('import_map_title')}</SectionLabel>
-                <p className="text-xs text-muted-foreground px-1 -mt-1 mb-2">{t('import_map_hint')}</p>
-                <MapRow role="date" label={t('import_col_date')} required />
-                <MapRow role="desc" label={t('import_col_desc')} required />
-                <MapRow role="amount" label={t('import_col_amount')} required={dirMode === 'signed'} />
-                <MapRow role="debit" label={t('import_col_debit')} required={dirMode === 'split'} />
-                <MapRow role="credit" label={t('import_col_credit')} required={dirMode === 'split'} />
-                <MapRow role="balance" label={t('import_col_balance')} />
-              </div>
+              {aiMode ? (
+                <>
+                  <div className={cn(card, 'p-4 flex items-start gap-3')}>
+                    <div className="h-10 w-10 rounded-xl bg-brand/15 text-brand flex items-center justify-center shrink-0"><Sparkles size={18} strokeWidth={1.75} /></div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold">{t('import_pdf_ai_title')}</p>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{t('import_pdf_ai_desc')}</p>
+                      {aiRows && <p className="text-xs font-semibold text-emerald-500 mt-1.5">{t('import_pdf_found').replace('{n}', String(aiRows.length))}</p>}
+                    </div>
+                  </div>
 
-              <Field label={t('import_direction')}>
-                <Segmented
-                  value={dirMode}
-                  onChange={setDirMode}
-                  options={[
-                    { id: 'signed', label: t('import_dir_signed') },
-                    { id: 'split', label: t('import_dir_split') },
-                    { id: 'type_col', label: t('import_dir_type') },
-                  ]}
-                />
-              </Field>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setStep(0)} className="rounded-xl border border-border/60 px-4 py-3.5 text-sm font-semibold flex items-center gap-1">
+                      <ChevronLeft size={16} /> {t('import_back')}
+                    </button>
+                    {aiRows ? (
+                      <PrimaryButton onClick={continueAiReview} disabled={busy} className="flex-1">
+                        {busy ? t('processing') : t('import_continue')}
+                      </PrimaryButton>
+                    ) : (
+                      <PrimaryButton onClick={processPdfWithAi} disabled={busy} className="flex-1">
+                        {busy ? t('processing') : t('import_pdf_process')}
+                      </PrimaryButton>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <SectionLabel>{t('import_map_title')}</SectionLabel>
+                    <p className="text-xs text-muted-foreground px-1 -mt-1 mb-2">{t('import_map_hint')}</p>
+                    <MapRow role="date" label={t('import_col_date')} required />
+                    <MapRow role="desc" label={t('import_col_desc')} required />
+                    <MapRow role="amount" label={t('import_col_amount')} required={dirMode === 'signed'} />
+                    <MapRow role="debit" label={t('import_col_debit')} required={dirMode === 'split'} />
+                    <MapRow role="credit" label={t('import_col_credit')} required={dirMode === 'split'} />
+                    <MapRow role="balance" label={t('import_col_balance')} />
+                  </div>
 
-              <div className="flex gap-2">
-                <button type="button" onClick={() => setStep(0)} className="rounded-xl border border-border/60 px-4 py-3.5 text-sm font-semibold flex items-center gap-1">
-                  <ChevronLeft size={16} /> {t('import_back')}
-                </button>
-                <PrimaryButton onClick={buildReview} disabled={busy} className="flex-1">
-                  {busy ? t('processing') : t('import_continue')}
-                </PrimaryButton>
-              </div>
+                  <Field label={t('import_direction')}>
+                    <Segmented
+                      value={dirMode}
+                      onChange={setDirMode}
+                      options={[
+                        { id: 'signed', label: t('import_dir_signed') },
+                        { id: 'split', label: t('import_dir_split') },
+                        { id: 'type_col', label: t('import_dir_type') },
+                      ]}
+                    />
+                  </Field>
+
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setStep(0)} className="rounded-xl border border-border/60 px-4 py-3.5 text-sm font-semibold flex items-center gap-1">
+                      <ChevronLeft size={16} /> {t('import_back')}
+                    </button>
+                    <PrimaryButton onClick={buildReview} disabled={busy} className="flex-1">
+                      {busy ? t('processing') : t('import_continue')}
+                    </PrimaryButton>
+                  </div>
+                </>
+              )}
             </div>
           )}
 

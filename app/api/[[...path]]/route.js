@@ -742,6 +742,102 @@ CRITICAL RULES:
 1. Extract the transaction time in 24-hour format if printed on the physical receipt (e.g. "15:01" from "03:01:39 PM" or "15:01"). If no time is printed on the receipt, return null.
 2. All monetary amounts must be numbers without currency symbols or thousand separators.`
 
+const STATEMENT_PROMPT = `You are a bank statement parser. Read this bank statement PDF carefully (it may be in English, Indonesian, or Malay, and may be a scan/photo) and extract EVERY transaction row.
+
+Return ONLY a valid JSON object matching this exact schema (no markdown, no commentary):
+{
+  "bank": string or null,
+  "currency": "MYR" | "IDR" | "USD" | "TRY" | "SGD" or null,
+  "period_from": "YYYY-MM-DD" or null,
+  "period_to": "YYYY-MM-DD" or null,
+  "transactions": [
+    { "date": "YYYY-MM-DD", "description": string, "amount": number, "balance": number or null }
+  ]
+}
+
+CRITICAL RULES:
+1. "amount" must be a SIGNED number: negative = money OUT (debit, payment, purchase, withdrawal, fee), positive = money IN (credit, salary, deposit, refund). Never 0.
+2. If the statement uses separate Debit and Credit columns, merge them: a debit value becomes a negative amount, a credit value becomes a positive amount.
+3. "balance" is the running balance AFTER that transaction, only if printed; otherwise null.
+4. "date" must be YYYY-MM-DD. If the year is not printed on a row, infer it from the statement period.
+5. "description" is the raw narration/merchant text, trimmed. Keep it verbatim, do not summarize.
+6. Skip non-transaction rows: headers, subtotals, page footers, brought-forward balances, blank rows.
+7. List transactions in the order printed. Extract ALL of them, including all pages.
+8. All monetary amounts must be plain numbers without currency symbols or thousand separators.`
+
+async function handleStatementPdf(request, quota = null) {
+  try {
+    let base64 = null
+    const ct = request.headers.get('content-type') || ''
+
+    if (ct.includes('multipart/form-data')) {
+      const form = await request.formData()
+      const file = form.get('file') || form.get('pdf')
+      if (!file || typeof file.arrayBuffer !== 'function') return err('PDF file is required', 400)
+      const mt = (file.type || '').split(';')[0].trim()
+      if (mt && mt !== 'application/pdf') return err('File harus berformat PDF', 400)
+      base64 = Buffer.from(await file.arrayBuffer()).toString('base64')
+    } else {
+      const body = await request.json().catch(() => ({}))
+      const raw = (body?.pdfBase64 || body?.file || '').toString()
+      const match = raw.match(/^data:([^;]+);base64,(.+)$/)
+      if (match && !/pdf/i.test(match[1])) return err('File harus berformat PDF', 400)
+      base64 = match ? match[2] : raw
+    }
+
+    if (!base64) return err('PDF is required', 400)
+    base64 = base64.replace(/\s/g, '')
+    // Batas ~9MB biner: cegah penyalahgunaan & biaya AI membengkak
+    if (base64.length > 12 * 1024 * 1024) return err('PDF terlalu besar (maks ~9MB)', 413)
+
+    const { text: raw, model } = await callGemini(
+      [
+        {
+          role: 'user',
+          parts: [
+            { text: STATEMENT_PROMPT },
+            { inlineData: { mimeType: 'application/pdf', data: base64 } },
+          ],
+        },
+      ],
+      { responseMimeType: 'application/json' }
+    )
+
+    const parsed = extractJson(raw)
+    const list = Array.isArray(parsed?.transactions) ? parsed.transactions : []
+    if (!parsed || !list.length) return err('AI tidak menemukan transaksi di PDF ini', 502)
+
+    const clean = list.slice(0, 500).map((tx) => {
+      const date = /^\d{4}-\d{2}-\d{2}$/.test(String(tx?.date || '').trim()) ? String(tx.date).trim() : null
+      const description = String(tx?.description ?? tx?.desc ?? '').trim().slice(0, 200)
+      const amount = Number(tx?.amount)
+      if (!date || !description || !isFinite(amount) || amount === 0) return null
+      const bal = tx?.balance === null || tx?.balance === undefined || tx?.balance === '' ? null : Number(tx.balance)
+      return { date, description, amount: Math.round(amount * 100) / 100, balance: isFinite(bal) ? Math.round(bal * 100) / 100 : null }
+    }).filter(Boolean)
+    if (!clean.length) return err('AI tidak menemukan transaksi di PDF ini', 502)
+
+    const cur = String(parsed?.currency || '').trim().toUpperCase()
+    return json({
+      ok: true,
+      model,
+      transactions: clean,
+      meta: {
+        bank: parsed?.bank ? String(parsed.bank).trim().slice(0, 80) : null,
+        currency: /^[A-Z]{3}$/.test(cur) ? cur : null,
+        period_from: /^\d{4}-\d{2}-\d{2}$/.test(String(parsed?.period_from || '')) ? parsed.period_from : null,
+        period_to: /^\d{4}-\d{2}-\d{2}$/.test(String(parsed?.period_to || '')) ? parsed.period_to : null,
+      },
+      remaining: quota?.remaining,
+      total: quota?.total,
+      is_unlimited: quota?.is_unlimited,
+    })
+  } catch (e) {
+    console.error('handleStatementPdf error:', e)
+    return err(e?.message || 'Gagal membaca PDF dengan AI', 500)
+  }
+}
+
 async function handleOcr(request, quota = null) {
   try {
     let base64 = null
@@ -1152,6 +1248,7 @@ export async function POST(request, ctx) {
       if (path === 'ai/parse') return await handleParse(request, authResult.quota)
       if (path === 'ai/coach') return await handleCoach(request, authResult.quota)
       if (path === 'ai/ocr') return await handleOcr(request, authResult.quota)
+      if (path === 'ai/parse-statement') return await handleStatementPdf(request, authResult.quota)
     }
 
     return err(`Not found: /api/${path}`, 404)
