@@ -1,10 +1,10 @@
 'use client'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { UploadCloud, FileSpreadsheet, FileText, Sparkles, CheckCircle2, ChevronLeft, ChevronDown, Plus, AlertTriangle, Undo2, Check, Search } from 'lucide-react'
+import { UploadCloud, FileSpreadsheet, FileText, Sparkles, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Plus, AlertTriangle, Undo2, Check, Search, X, Lock } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
-import { Sheet, Field, Segmented, PrimaryButton, CategoryBadge, SectionLabel, TextInput } from './ui'
+import { Sheet, Field, Segmented, CategoryBadge, SectionLabel, TextInput } from './ui'
 import CurrencySheet from './CurrencySheet'
 import { CATEGORIES } from '@/lib/categories'
 import { convert, getRate } from '@/lib/rates'
@@ -12,19 +12,22 @@ import { getCurrency, roundMoney } from '@/lib/currencies'
 import { cn, triggerHaptic } from '@/lib/utils'
 import * as SI from '@/lib/statement-import'
 
-// Wizard impor rekening koran — FULL PAGE (bukan sheet): upload → setup
-// (wallet + mapping) → review → selesai. Seluruh parsing/normalisasi/dedup
-// jalan client-side (privasi); server hanya menerima baris final + catatan
-// batch (jika migrasi import_batches sudah jalan).
+// Wizard impor rekening koran — FULL PAGE mengikuti desain preview yang
+// disetujui: kicker "Langkah N dari 4" + judul editorial + bottom bar berisi
+// pil langkah 01–04 dan satu tombol aksi primer. Seluruh parsing/normalisasi/
+// dedup jalan client-side (privasi); server hanya menerima baris final +
+// catatan batch (jika migrasi import_batches sudah jalan).
 
 const STEPS = ['upload', 'setup', 'review', 'done']
 
 export default function ImportTransactionsPage({ onClose }) {
   const { t, accounts = [], store, refresh, home, rates, session, open: openSheet } = useApp()
   const fileRef = useRef(null)
+  const parsedRef = useRef(null) // baris mentah pra-finalize — untuk rebuild review saat dompet diganti
   const [step, setStep] = useState(0)
   const [busy, setBusy] = useState(false)
   const [fileName, setFileName] = useState('')
+  const [fileSize, setFileSize] = useState(0)
   const [headers, setHeaders] = useState([])
   const [aoa, setAoa] = useState([])
   const [mapping, setMapping] = useState({ date: -1, desc: -1, amount: -1, debit: -1, credit: -1, balance: -1 })
@@ -34,6 +37,7 @@ export default function ImportTransactionsPage({ onClose }) {
   const [pdfFile, setPdfFile] = useState(null)
   const [aiRows, setAiRows] = useState(null)
   const [walletId, setWalletId] = useState(null)
+  const [pickWallet, setPickWallet] = useState(false)
   const [newWallet, setNewWallet] = useState(false)
   const [nwName, setNwName] = useState('')
   const [nwCurrency, setNwCurrency] = useState(home || 'MYR')
@@ -57,13 +61,14 @@ export default function ImportTransactionsPage({ onClose }) {
   const walletCur = wallet?.currency || home || 'MYR'
 
   const reset = () => {
-    setStep(0); setBusy(false); setFileName(''); setHeaders([]); setAoa([])
+    setStep(0); setBusy(false); setFileName(''); setFileSize(0); setHeaders([]); setAoa([])
     setMapping({ date: -1, desc: -1, amount: -1, debit: -1, credit: -1, balance: -1 })
-    setDirMode('signed'); setWalletId(null); setNewWallet(false); setNwName(''); setNwCurrency(home || 'MYR')
+    setDirMode('signed'); setWalletId(null); setPickWallet(false); setNewWallet(false); setNwName(''); setNwCurrency(home || 'MYR')
     setRows([]); setExcluded({}); setCatEdits({}); setPickCatFor(null); setCatSearch('')
     setOverlap([]); setBalanceCheck({ checked: false }); setProgress({ done: 0, total: 0 })
     setResult(null); setBatchId(null); setBatchRecId(null); setNetDelta(0); setShowDupes(false)
     setAiMode(false); setPdfFile(null); setAiRows(null)
+    parsedRef.current = null
   }
 
   // Kunci scroll body selama halaman full-page terbuka; probe kapabilitas server sekali saat mount
@@ -91,6 +96,7 @@ export default function ImportTransactionsPage({ onClose }) {
     // PDF → jalur AI (butuh persetujuan + kuota); parsing di langkah setup
     if (isPdfFile(file)) {
       setFileName(file.name || 'statement.pdf')
+      setFileSize(file.size || 0)
       setPdfFile(file)
       setAiMode(true); setAiRows(null)
       setWalletId((accounts || [])[0]?.id || null)
@@ -101,7 +107,7 @@ export default function ImportTransactionsPage({ onClose }) {
     try {
       const { fileName: fn, headers: h, rows: body } = await SI.parseStatementFile(file)
       const { mapping: m, dirMode: dm } = SI.detectMapping(h, body)
-      setFileName(fn); setHeaders(h); setAoa(body)
+      setFileName(fn); setFileSize(file.size || 0); setHeaders(h); setAoa(body)
       setMapping(m); setDirMode(dm)
       setAiMode(false); setPdfFile(null); setAiRows(null)
       setWalletId((accounts || [])[0]?.id || null)
@@ -137,7 +143,8 @@ export default function ImportTransactionsPage({ onClose }) {
 
   // Finalisasi baris kanonis → review. Dipakai jalur CSV/XLSX (buildReview)
   // maupun jalur PDF+AI (continueAiReview) — dedup, cek saldo, overlap sama.
-  const finalizeParsedRows = async (parsed) => {
+  // wid eksplisit agar ganti dompet di layar review bisa rebuild.
+  const finalizeParsedRows = async (parsed, wid) => {
     parsed = parsed.map((r, i) => ({
       ...r,
       idx: i,
@@ -151,7 +158,7 @@ export default function ImportTransactionsPage({ onClose }) {
     if (range && store?.findTransactionsInRange) {
       const from = new Date(range.min); from.setHours(0, 0, 0, 0)
       const to = new Date(range.max); to.setHours(23, 59, 59, 999)
-      const existing = await store.findTransactionsInRange(walletId, from.toISOString(), to.toISOString())
+      const existing = await store.findTransactionsInRange(wid, from.toISOString(), to.toISOString())
       existingKeys = new Set((existing || []).map((x) => SI.rowKey({
         dateStr: SI.fmtDateStr(new Date(x.date || x.transaction_date)),
         amount: Math.abs(Number(x.amount) || 0),
@@ -163,7 +170,7 @@ export default function ImportTransactionsPage({ onClose }) {
     setBalanceCheck(SI.checkBalanceContinuity(parsed))
     // Overlap dengan batch sebelumnya
     if (range && store?.listImportBatches) {
-      const batches = await store.listImportBatches(walletId, 20)
+      const batches = await store.listImportBatches(wid, 20)
       setOverlap((batches || []).filter((b) => {
         if (!b.date_from || !b.date_to || b.status === 'undone') return false
         return SI.rangesOverlap(range, { min: new Date(b.date_from), max: new Date(b.date_to) })
@@ -181,10 +188,24 @@ export default function ImportTransactionsPage({ onClose }) {
     try {
       const parsed = SI.normalizeRows(aoa, mapping, dirMode, walletCur)
       if (!parsed.length) throw new Error('empty')
-      await finalizeParsedRows(parsed)
+      parsedRef.current = parsed
+      await finalizeParsedRows(parsed, walletId)
     } catch {
       toast.error(t('invalid_file'))
     } finally { setBusy(false) }
+  }
+
+  // Ganti dompet langsung dari layar review → rebuild dedup/overlap/rekonsiliasi
+  const changeWallet = async (id) => {
+    setPickWallet(false)
+    if (!id || id === walletId) return
+    setWalletId(id)
+    if (step === 2 && parsedRef.current?.length) {
+      setBusy(true)
+      try { await finalizeParsedRows(parsedRef.current, id) }
+      catch { toast.error(t('error')) }
+      finally { setBusy(false) }
+    }
   }
 
   // Konversi ArrayBuffer → base64 per chunk (btoa langsung bisa stack overflow)
@@ -237,7 +258,8 @@ export default function ImportTransactionsPage({ onClose }) {
     if (!aiRows?.length) return
     setBusy(true)
     try {
-      await finalizeParsedRows(aiRows)
+      parsedRef.current = aiRows
+      await finalizeParsedRows(aiRows, walletId)
     } catch {
       toast.error(t('error'))
     } finally { setBusy(false) }
@@ -247,6 +269,28 @@ export default function ImportTransactionsPage({ onClose }) {
   const readyRows = useMemo(() => rows.filter((r) => !r.dupInFile && !r.dupExisting && !excluded[r.idx]), [rows, excluded])
   const dupeRows = useMemo(() => rows.filter((r) => r.dupInFile || r.dupExisting), [rows])
   const range = useMemo(() => SI.getDateRange(rows), [rows])
+
+  // Total masuk/keluar di layar review (dikonversi ke mata uang dompet)
+  const statSums = useMemo(() => {
+    let inn = 0, out = 0
+    for (const r of readyRows) {
+      let v = Number(r.amount) || 0
+      try { v = convert(r.amount, r.currency, walletCur, rates) } catch {}
+      if (r.type === 'income') inn += v
+      else out += v
+    }
+    return { inn, out }
+  }, [readyRows, walletCur, rates])
+
+  const allSelected = readyRows.length > 0 && readyRows.every((r) => !excluded[r.idx])
+  const toggleAll = () => {
+    triggerHaptic('light')
+    if (allSelected) {
+      const e = {}
+      for (const r of readyRows) e[r.idx] = true
+      setExcluded(e)
+    } else setExcluded({})
+  }
 
   // Rekonsiliasi: saldo akhir statement vs saldo wallet
   const recon = useMemo(() => {
@@ -345,9 +389,48 @@ export default function ImportTransactionsPage({ onClose }) {
   }
 
   // ------------------------------------------------------------ render helpers
-  const card = 'rounded-2xl bg-zinc-100 border border-zinc-200/60 dark:bg-[#141416] dark:border-white/5'
+  const card = 'rounded-3xl bg-zinc-100 border border-zinc-200/60 dark:bg-[#121214] dark:border-white/5'
+  const tile = 'flex items-center justify-center shrink-0 bg-zinc-200/70 dark:bg-white/[0.06]'
 
-  const stepLabel = (i) => t(`import_step_${STEPS[i]}`)
+  // Nominal ala preview: "RM 8.420" / "-RM 142,80"
+  const fmtAmt = (n, cur, signed = false) => {
+    const sym = (getCurrency(cur)?.symbol || cur || '').trim()
+    const v = Number(n) || 0
+    const num = Math.abs(v).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+    const sign = signed ? (v < 0 ? '−' : v > 0 ? '+' : '') : ''
+    return `${sign}${sym} ${num}`
+  }
+  const fmtSize = (b) => {
+    if (!b) return ''
+    return b >= 1048576
+      ? `${(b / 1048576).toLocaleString('id-ID', { maximumFractionDigits: 1 })} MB`
+      : `${Math.max(1, Math.round(b / 1024))} KB`
+  }
+  const walletInitials = (name) => (name || '?').trim().slice(0, 2).toUpperCase()
+
+  const kicker = (n) => (
+    <p className="text-[13px] text-muted-foreground">{t('import_kicker_step').replace('{n}', String(n))}</p>
+  )
+  const heroTitle = (text) => (
+    <h1 className="text-[28px] leading-[1.15] font-bold tracking-tight text-foreground mt-1.5">{text}</h1>
+  )
+  const heroSub = (text) => (
+    <p className="text-[15px] text-muted-foreground leading-relaxed mt-2">{text}</p>
+  )
+
+  // Tombol primer putih ala preview — hanya di bottom bar
+  const PrimaryBarButton = ({ onClick, disabled, children, testId }) => (
+    <motion.button
+      type="button"
+      whileTap={{ scale: 0.98 }}
+      onClick={onClick}
+      disabled={disabled}
+      data-testid={testId}
+      className="w-full rounded-2xl bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold py-4 text-[15px] disabled:opacity-40 flex items-center justify-center gap-2"
+    >
+      {children}
+    </motion.button>
+  )
 
   // Navigasi header: mundur selangkah, atau tutup halaman di langkah awal/akhir
   const goBack = () => {
@@ -398,6 +481,19 @@ export default function ImportTransactionsPage({ onClose }) {
     return CATEGORIES.filter((c) => !q || (t(`cat_${c.id}`) || c.id).toLowerCase().includes(q))
   }, [catSearch, t])
 
+  // Konfigurasi bottom bar per langkah: [label, handler, disabled]
+  const barAction = (() => {
+    if (step === 0) return { label: busy ? t('processing') : t('import_choose_file'), onClick: () => fileRef.current?.click(), disabled: busy }
+    if (step === 1 && !aiMode) return { label: busy ? t('processing') : t('import_continue'), onClick: buildReview, disabled: busy || !walletId || !mappingValid() }
+    if (step === 1 && aiMode) {
+      return aiRows
+        ? { label: busy ? t('processing') : t('import_continue'), onClick: continueAiReview, disabled: busy }
+        : { label: busy ? t('processing') : t('import_pdf_process'), onClick: processPdfWithAi, disabled: busy || !pdfFile }
+    }
+    if (step === 2) return { label: busy ? t('import_importing') : t('import_import_n').replace('{n}', String(readyRows.length)), onClick: runImport, disabled: busy || !readyRows.length, testId: 'import-execute' }
+    return { label: t('import_back_start'), onClick: close, disabled: false }
+  })()
+
   return (
     <>
       <motion.div
@@ -409,7 +505,7 @@ export default function ImportTransactionsPage({ onClose }) {
       >
         <div className="h-full w-full max-w-md mx-auto flex flex-col">
           {/* header halaman */}
-          <div className="shrink-0 border-b border-border/40 bg-background safe-top">
+          <div className="shrink-0 bg-background safe-top">
             <div className="flex items-center justify-between px-4 pt-3 pb-2">
               <button
                 type="button"
@@ -419,53 +515,104 @@ export default function ImportTransactionsPage({ onClose }) {
               >
                 <ChevronLeft size={20} />
               </button>
-              <h2 className="text-base font-bold text-foreground">{t('import_data')}</h2>
-              <div className="w-10" />
+              <h2 className="text-[15px] font-bold text-foreground">{t('import_data')}</h2>
+              <button
+                type="button"
+                onClick={close}
+                aria-label={t('close')}
+                className="h-10 w-10 rounded-full bg-zinc-100 dark:bg-white/[0.06] flex items-center justify-center"
+              >
+                <X size={18} />
+              </button>
             </div>
             {/* hairline progress */}
-            <div className="flex gap-1 px-5 pb-3">
-              {STEPS.map((s, i) => (
-                <div key={s} className="flex-1">
-                  <div className={cn('h-1 rounded-full', i <= step ? 'bg-foreground' : 'bg-border/60')} />
-                  <p className={cn('text-[10px] font-semibold mt-1', i === step ? 'text-foreground' : 'text-muted-foreground')}>{stepLabel(i)}</p>
-                </div>
-              ))}
+            <div className="h-[2px] bg-zinc-200/60 dark:bg-white/5">
+              <div
+                className="h-full bg-foreground transition-all duration-300"
+                style={{ width: `${((step + 1) / 4) * 100}%` }}
+              />
             </div>
           </div>
 
           {/* konten scroll */}
-          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 pt-4 pb-10">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 pt-5 pb-8">
           <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls,.pdf" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} data-testid="import-file" />
 
-          {/* ============ STEP 0: upload ============ */}
+          {/* ============ STEP 0: pilih sumber data ============ */}
           {step === 0 && (
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={onDrop}
-              className="w-full border border-dashed border-border rounded-2xl p-6 text-center"
-              data-testid="import-dropzone"
-            >
-              <div className="h-12 w-12 rounded-2xl bg-zinc-100 dark:bg-white/[0.06] flex items-center justify-center mx-auto"><UploadCloud size={24} className="text-muted-foreground" strokeWidth={1.5} /></div>
-              <p className="font-semibold mt-3">{busy ? t('processing') : t('import_data')}</p>
-              <p className="text-sm text-muted-foreground mt-1 leading-snug">{t('upload_area_hint')}</p>
-            </button>
+            <div className="space-y-5">
+              <div>
+                {kicker(1)}
+                {heroTitle(t('import_src_title'))}
+                {heroSub(t('import_src_sub'))}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={onDrop}
+                className="w-full rounded-3xl border-[1.5px] border-dashed border-zinc-300 dark:border-zinc-700 p-8 text-center"
+                data-testid="import-dropzone"
+              >
+                <div className={cn(tile, 'h-16 w-16 rounded-3xl mx-auto')}>
+                  <UploadCloud size={26} className="text-muted-foreground" strokeWidth={1.5} />
+                </div>
+                <p className="font-bold text-[17px] mt-4">{busy ? t('processing') : t('import_drop_title')}</p>
+                <p className="text-sm text-muted-foreground mt-1">{t('import_drop_sub')}</p>
+              </button>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  className={cn(card, 'p-4 text-left')}
+                >
+                  <div className={cn(tile, 'h-11 w-11 rounded-2xl')}>
+                    <FileSpreadsheet size={20} strokeWidth={1.75} />
+                  </div>
+                  <p className="font-bold text-[15px] mt-3">{t('import_opt_csv')}</p>
+                  <p className="text-[13px] text-muted-foreground mt-1 leading-snug">{t('import_opt_csv_desc')}</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  className={cn(card, 'p-4 text-left relative')}
+                >
+                  <span className="absolute top-4 right-4 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-[#6A92FC] text-white">{t('import_pdf_badge')}</span>
+                  <div className={cn(tile, 'h-11 w-11 rounded-2xl')}>
+                    <FileText size={20} strokeWidth={1.75} />
+                  </div>
+                  <p className="font-bold text-[15px] mt-3">{t('import_opt_pdf')}</p>
+                  <p className="text-[13px] text-muted-foreground mt-1 leading-snug">{t('import_opt_pdf_desc')}</p>
+                </button>
+              </div>
+
+              <div className="rounded-2xl bg-zinc-100 dark:bg-[#1D1D20] px-4 py-3.5 flex items-start gap-2.5">
+                <Lock size={16} className="text-muted-foreground shrink-0 mt-0.5" />
+                <p className="text-[13px] text-muted-foreground leading-snug">{t('import_privacy_note')}</p>
+              </div>
+            </div>
           )}
 
           {/* ============ STEP 1: setup ============ */}
-          {step === 1 && (
-            <div className="space-y-4">
+          {step === 1 && !aiMode && (
+            <div className="space-y-5">
+              <div>
+                {kicker(2)}
+                {heroTitle(t('import_setup_title'))}
+                {heroSub(t('import_setup_sub'))}
+              </div>
+
               <div className={cn(card, 'p-4 flex items-center gap-3')}>
-                <div className="h-10 w-10 rounded-xl bg-background flex items-center justify-center text-foreground shrink-0">
-                  {aiMode ? <FileText size={18} strokeWidth={1.75} /> : <FileSpreadsheet size={18} strokeWidth={1.75} />}
+                <div className={cn(tile, 'h-12 w-12 rounded-2xl')}>
+                  <FileSpreadsheet size={20} strokeWidth={1.75} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-[15px] truncate flex items-center gap-2">
-                    <span className="truncate">{fileName}</span>
-                    {aiMode && <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-brand/15 text-brand">{t('import_pdf_badge')}</span>}
+                  <p className="font-semibold text-[15px] truncate">{fileName}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {aoa.length} {t('import_rows_unit')}{fmtSize(fileSize) ? ` · ${fmtSize(fileSize)}` : ''}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{aiMode ? t('import_pdf_ai_title') : `${aoa.length} ${t('import_rows_unit')}`}</p>
                 </div>
                 <button type="button" onClick={() => fileRef.current?.click()} className="text-sm font-medium text-muted-foreground shrink-0">{t('edit')}</button>
               </div>
@@ -506,169 +653,226 @@ export default function ImportTransactionsPage({ onClose }) {
                 </div>
               )}
 
-              {aiMode ? (
-                <>
-                  <div className={cn(card, 'p-4 flex items-start gap-3')}>
-                    <div className="h-10 w-10 rounded-xl bg-brand/15 text-brand flex items-center justify-center shrink-0"><Sparkles size={18} strokeWidth={1.75} /></div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold">{t('import_pdf_ai_title')}</p>
-                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{t('import_pdf_ai_desc')}</p>
-                      {aiRows && <p className="text-xs font-semibold text-emerald-500 mt-1.5">{t('import_pdf_found').replace('{n}', String(aiRows.length))}</p>}
+              <div>
+                <SectionLabel>{t('import_map_title')}</SectionLabel>
+                <p className="text-xs text-muted-foreground px-1 -mt-1 mb-2">{t('import_map_hint')}</p>
+                <MapRow role="date" label={t('import_col_date')} required />
+                <MapRow role="desc" label={t('import_col_desc')} required />
+                <MapRow role="amount" label={t('import_col_amount')} required={dirMode === 'signed'} />
+                <MapRow role="debit" label={t('import_col_debit')} required={dirMode === 'split'} />
+                <MapRow role="credit" label={t('import_col_credit')} required={dirMode === 'split'} />
+                <MapRow role="balance" label={t('import_col_balance')} />
+              </div>
+
+              <Field label={t('import_direction')}>
+                <Segmented
+                  value={dirMode}
+                  onChange={setDirMode}
+                  options={[
+                    { id: 'signed', label: t('import_dir_signed') },
+                    { id: 'split', label: t('import_dir_split') },
+                    { id: 'type_col', label: t('import_dir_type') },
+                  ]}
+                />
+              </Field>
+            </div>
+          )}
+
+          {/* ============ STEP 1: persetujuan PDF+AI ============ */}
+          {step === 1 && aiMode && (
+            <div className="space-y-5">
+              <div>
+                <p className="text-[13px] text-muted-foreground">{t('import_pdf_picked')}</p>
+                {heroTitle(t('import_ai_consent_title'))}
+                {heroSub(t('import_ai_consent_sub'))}
+              </div>
+
+              <div className={cn(card, 'p-4 flex items-center gap-3')}>
+                <div className={cn(tile, 'h-12 w-12 rounded-2xl text-[11px] font-bold text-muted-foreground')}>PDF</div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-[15px] truncate">{fileName}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{fmtSize(fileSize)}</p>
+                </div>
+                <div className="h-7 w-7 rounded-full bg-foreground text-background flex items-center justify-center shrink-0">
+                  <Check size={15} strokeWidth={3} />
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-[#6A92FC]/50 bg-[#6A92FC]/[0.06] p-5">
+                <div className="flex items-start gap-3.5">
+                  <div className="h-12 w-12 rounded-2xl bg-[#6A92FC] text-white flex items-center justify-center shrink-0">
+                    <Sparkles size={22} strokeWidth={1.75} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-[16px]">{t('import_ai_secure_title')}</p>
+                    <p className="text-[13.5px] text-muted-foreground mt-1 leading-relaxed">{t('import_ai_secure_desc')}</p>
+                  </div>
+                </div>
+                <div className="mt-4 space-y-2.5">
+                  {[t('import_ai_b1'), t('import_ai_b2'), t('import_ai_b3')].map((line) => (
+                    <div key={line} className="flex items-center gap-2.5">
+                      <Check size={16} strokeWidth={2.5} className="text-foreground shrink-0" />
+                      <p className="text-[14px] font-medium">{line}</p>
                     </div>
-                  </div>
+                  ))}
+                </div>
+                {aiRows && (
+                  <p className="text-[13px] font-bold text-emerald-500 mt-4">
+                    {t('import_pdf_found').replace('{n}', String(aiRows.length))}
+                  </p>
+                )}
+              </div>
 
-                  <div className="flex gap-2">
-                    <button type="button" onClick={() => setStep(0)} className="rounded-xl border border-border/60 px-4 py-3.5 text-sm font-semibold flex items-center gap-1">
-                      <ChevronLeft size={16} /> {t('import_back')}
-                    </button>
-                    {aiRows ? (
-                      <PrimaryButton onClick={continueAiReview} disabled={busy} className="flex-1">
-                        {busy ? t('processing') : t('import_continue')}
-                      </PrimaryButton>
-                    ) : (
-                      <PrimaryButton onClick={processPdfWithAi} disabled={busy} className="flex-1">
-                        {busy ? t('processing') : t('import_pdf_process')}
-                      </PrimaryButton>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div>
-                    <SectionLabel>{t('import_map_title')}</SectionLabel>
-                    <p className="text-xs text-muted-foreground px-1 -mt-1 mb-2">{t('import_map_hint')}</p>
-                    <MapRow role="date" label={t('import_col_date')} required />
-                    <MapRow role="desc" label={t('import_col_desc')} required />
-                    <MapRow role="amount" label={t('import_col_amount')} required={dirMode === 'signed'} />
-                    <MapRow role="debit" label={t('import_col_debit')} required={dirMode === 'split'} />
-                    <MapRow role="credit" label={t('import_col_credit')} required={dirMode === 'split'} />
-                    <MapRow role="balance" label={t('import_col_balance')} />
-                  </div>
-
-                  <Field label={t('import_direction')}>
-                    <Segmented
-                      value={dirMode}
-                      onChange={setDirMode}
-                      options={[
-                        { id: 'signed', label: t('import_dir_signed') },
-                        { id: 'split', label: t('import_dir_split') },
-                        { id: 'type_col', label: t('import_dir_type') },
-                      ]}
-                    />
-                  </Field>
-
-                  <div className="flex gap-2">
-                    <button type="button" onClick={() => setStep(0)} className="rounded-xl border border-border/60 px-4 py-3.5 text-sm font-semibold flex items-center gap-1">
-                      <ChevronLeft size={16} /> {t('import_back')}
-                    </button>
-                    <PrimaryButton onClick={buildReview} disabled={busy} className="flex-1">
-                      {busy ? t('processing') : t('import_continue')}
-                    </PrimaryButton>
-                  </div>
-                </>
-              )}
+              <p className="text-[12.5px] leading-relaxed text-muted-foreground px-1">
+                {t('import_ai_fineprint')}
+              </p>
             </div>
           )}
 
           {/* ============ STEP 2: review ============ */}
           {step === 2 && (
-            <div className="space-y-3">
-              {/* ringkasan validasi */}
-              <div className="space-y-2">
-                <div className={cn(card, 'p-3 flex items-center gap-2.5')}>
-                  <CheckCircle2 size={17} className="text-emerald-500 shrink-0" />
-                  <p className="text-sm font-semibold">{t('import_ready').replace('{n}', String(readyRows.length))}</p>
+            <div className="space-y-5">
+              <div>
+                {kicker(3)}
+                {heroTitle(t('import_review_title'))}
+                {heroSub(t('import_review_sub').replace('{n}', String(rows.length)))}
+              </div>
+
+              {/* dompet tujuan — bisa diganti, review di-rebuild */}
+              <button type="button" onClick={() => setPickWallet(true)} className={cn(card, 'w-full p-4 flex items-center gap-3 text-left')}>
+                <div className={cn(tile, 'h-12 w-12 rounded-2xl text-[15px] font-bold')}>
+                  {wallet ? walletInitials(wallet.name) : '?'}
                 </div>
-                {balanceCheck.checked && (
-                  <div className={cn(card, 'p-3 flex items-center gap-2.5')}>
-                    {balanceCheck.ok
-                      ? <><CheckCircle2 size={17} className="text-emerald-500 shrink-0" /><p className="text-sm font-medium">{t('import_balance_ok')}</p></>
-                      : <><AlertTriangle size={17} className="text-amber-500 shrink-0" /><p className="text-sm font-medium">{t('import_balance_warn')}</p></>}
-                  </div>
-                )}
-                {overlap.length > 0 && (
-                  <div className={cn(card, 'p-3 flex items-start gap-2.5')}>
-                    <AlertTriangle size={17} className="text-amber-500 shrink-0 mt-0.5" />
-                    <div>
-                      {overlap.map((b) => (
-                        <p key={b.id} className="text-sm font-medium">{t('import_overlap_warn').replace('{name}', b.file_name || '').replace('{range}', `${SI.fmtDateStr(new Date(b.date_from))} → ${SI.fmtDateStr(new Date(b.date_to))}`)}</p>
-                      ))}
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-[16px] truncate">{wallet?.name || '—'}</p>
+                  <p className="text-[13px] text-muted-foreground mt-0.5">{t('import_target_wallet')} · {walletCur}</p>
+                </div>
+                <ChevronRight size={18} className="text-muted-foreground shrink-0" />
+              </button>
+
+              {/* statistik */}
+              <div className={cn(card, 'py-4 px-2 grid grid-cols-3 divide-x divide-zinc-200/70 dark:divide-white/5')}>
+                <div className="text-center px-2">
+                  <p className="text-[17px] font-bold tabular-nums">{readyRows.length}</p>
+                  <p className="text-[11px] text-muted-foreground mt-1">{t('import_stat_tx')}</p>
+                </div>
+                <div className="text-center px-2">
+                  <p className="text-[17px] font-bold tabular-nums">{fmtAmt(statSums.inn, walletCur)}</p>
+                  <p className="text-[11px] text-muted-foreground mt-1">{t('import_stat_in')}</p>
+                </div>
+                <div className="text-center px-2">
+                  <p className="text-[17px] font-bold tabular-nums">{fmtAmt(statSums.out, walletCur)}</p>
+                  <p className="text-[11px] text-muted-foreground mt-1">{t('import_stat_out')}</p>
+                </div>
+              </div>
+
+              {/* peringatan validasi */}
+              {(balanceCheck.checked && !balanceCheck.ok) || overlap.length > 0 || (recon && !recon.match) ? (
+                <div className="space-y-2">
+                  {balanceCheck.checked && !balanceCheck.ok && (
+                    <div className="rounded-2xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 flex items-start gap-2.5">
+                      <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />
+                      <p className="text-[13px] font-medium leading-snug">{t('import_balance_warn')}</p>
                     </div>
-                  </div>
-                )}
-                {recon && (
-                  <div className={cn(card, 'p-3 flex items-center gap-2.5')}>
-                    {recon.match
-                      ? <><CheckCircle2 size={17} className="text-emerald-500 shrink-0" /><p className="text-sm font-medium">{t('import_recon_match')}</p></>
-                      : <><AlertTriangle size={17} className="text-amber-500 shrink-0" /><p className="text-sm font-medium">{t('import_recon_diff').replace('{a}', `${recon.stmtEnd.toLocaleString()} ${recon.cur}`).replace('{b}', `${recon.walletBal.toLocaleString()} ${recon.cur}`)}</p></>}
-                  </div>
-                )}
+                  )}
+                  {overlap.length > 0 && (
+                    <div className="rounded-2xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 flex items-start gap-2.5">
+                      <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />
+                      <div>
+                        {overlap.map((b) => (
+                          <p key={b.id} className="text-[13px] font-medium leading-snug">{t('import_overlap_warn').replace('{name}', b.file_name || '').replace('{range}', `${SI.fmtDateStr(new Date(b.date_from))} → ${SI.fmtDateStr(new Date(b.date_to))}`)}</p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {recon && !recon.match && (
+                    <div className="rounded-2xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 flex items-start gap-2.5">
+                      <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />
+                      <p className="text-[13px] font-medium leading-snug">{t('import_recon_diff').replace('{a}', `${recon.stmtEnd.toLocaleString()} ${recon.cur}`).replace('{b}', `${recon.walletBal.toLocaleString()} ${recon.cur}`)}</p>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
+              {/* daftar transaksi */}
+              <div>
+                <div className="flex items-center justify-between mb-2.5 px-1">
+                  <p className="font-bold text-[15px]">{t('import_recent')}</p>
+                  <button
+                    type="button"
+                    onClick={toggleAll}
+                    className="text-[13px] font-medium text-muted-foreground"
+                  >
+                    {allSelected ? t('import_all_selected') : t('import_none_selected')}
+                  </button>
+                </div>
+                <div className="space-y-2.5">
+                  {readyRows.map((r) => {
+                    const off = !!excluded[r.idx]
+                    return (
+                      <div key={r.idx} className={cn(card, 'p-3.5 flex items-center gap-3', off && 'opacity-40')}>
+                        <button
+                          type="button"
+                          onClick={() => setExcluded((e) => ({ ...e, [r.idx]: !e[r.idx] }))}
+                          className={cn('h-6 w-6 rounded-full border flex items-center justify-center shrink-0', off ? 'border-zinc-300 dark:border-zinc-600 text-transparent' : 'bg-foreground border-foreground text-background')}
+                          aria-label={off ? t('import_include') : t('import_exclude')}
+                        ><Check size={14} strokeWidth={3} /></button>
+                        <button
+                          type="button"
+                          onClick={() => { setPickCatFor(r.idx); setCatSearch('') }}
+                          className={cn(tile, 'h-11 w-11 rounded-2xl')}
+                          aria-label={t('select_category')}
+                        >
+                          <CategoryBadge id={catOf(r)} size="sm" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setPickCatFor(r.idx); setCatSearch('') }}
+                          className="flex-1 min-w-0 text-left"
+                        >
+                          <p className="text-[15px] font-semibold truncate">{r.desc}</p>
+                          <p className="text-[12px] text-muted-foreground mt-0.5 truncate">
+                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-current mr-1.5 align-middle" />
+                            {t(`cat_${catOf(r)}`)}
+                          </p>
+                        </button>
+                        <div className="text-right shrink-0">
+                          <p className="text-[15px] font-bold tabular-nums">
+                            {r.type === 'expense' ? '−' : '+'}{fmtAmt(r.amount, r.currency)}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground tabular-nums mt-0.5">{r.dateStr}</p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
                 {dupeRows.length > 0 && (
-                  <button type="button" onClick={() => setShowDupes((v) => !v)} className={cn(card, 'w-full p-3 flex items-center justify-between')}>
+                  <button type="button" onClick={() => setShowDupes((v) => !v)} className={cn(card, 'w-full mt-2.5 p-3.5 flex items-center justify-between')}>
                     <p className="text-sm font-semibold text-muted-foreground">{t('import_dup_title').replace('{n}', String(dupeRows.length))}</p>
                     <ChevronLeft size={16} className={cn('text-muted-foreground transition-transform', showDupes ? 'rotate-90' : '-rotate-90')} />
                   </button>
                 )}
-              </div>
-
-              {showDupes && dupeRows.length > 0 && (
-                <div className="space-y-2 opacity-60">
-                  {dupeRows.map((r) => (
-                    <div key={r.idx} className={cn(card, 'p-3 flex items-center gap-3')}>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{r.desc}</p>
-                        <p className="text-xs text-muted-foreground tabular-nums">{r.dateStr} · {r.dupInFile ? t('import_dup_infile') : t('import_dup_exists')}</p>
-                      </div>
-                      <p className={cn('text-sm font-semibold tabular-nums', r.type === 'expense' ? 'text-rose-500' : 'text-emerald-500')}>
-                        {r.type === 'expense' ? '−' : '+'}{r.amount.toLocaleString()} {r.currency}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* daftar baris (kartu, bukan tabel) */}
-              <div className="space-y-2">
-                {readyRows.map((r) => {
-                  const off = !!excluded[r.idx]
-                  return (
-                    <div key={r.idx} className={cn(card, 'p-3 flex items-center gap-3', off && 'opacity-40')}>
-                      <button
-                        type="button"
-                        onClick={() => setExcluded((e) => ({ ...e, [r.idx]: !e[r.idx] }))}
-                        className={cn('h-6 w-6 rounded-full border flex items-center justify-center shrink-0', off ? 'border-border text-transparent' : 'bg-foreground border-foreground text-background')}
-                        aria-label={off ? t('import_include') : t('import_exclude')}
-                      ><Check size={14} strokeWidth={3} /></button>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{r.desc}</p>
-                        <button type="button" onClick={() => { setPickCatFor(r.idx); setCatSearch('') }}
-                          className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-background border border-border/60 pl-1 pr-2 py-0.5">
-                          <CategoryBadge id={catOf(r)} size="sm" />
-                          <span className="text-xs font-medium">{t(`cat_${catOf(r)}`)}</span>
-                        </button>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className={cn('text-sm font-bold tabular-nums', r.type === 'expense' ? 'text-foreground' : 'text-foreground')}>
-                          {r.type === 'expense' ? '−' : '+'}{r.amount.toLocaleString()} <span className="text-[11px] font-medium text-muted-foreground">{r.currency}</span>
+                {showDupes && dupeRows.length > 0 && (
+                  <div className="space-y-2.5 mt-2.5 opacity-60">
+                    {dupeRows.map((r) => (
+                      <div key={r.idx} className={cn(card, 'p-3.5 flex items-center gap-3')}>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{r.desc}</p>
+                          <p className="text-xs text-muted-foreground tabular-nums">{r.dateStr} · {r.dupInFile ? t('import_dup_infile') : t('import_dup_exists')}</p>
+                        </div>
+                        <p className="text-sm font-bold tabular-nums">
+                          {r.type === 'expense' ? '−' : '+'}{fmtAmt(r.amount, r.currency)}
                         </p>
-                        <p className="text-[11px] text-muted-foreground tabular-nums">{r.dateStr}</p>
                       </div>
-                    </div>
-                  )
-                })}
+                    ))}
+                  </div>
+                )}
               </div>
 
-              <div className="flex gap-2 pt-1">
-                <button type="button" onClick={() => setStep(1)} className="rounded-xl border border-border/60 px-4 py-3.5 text-sm font-semibold flex items-center gap-1">
-                  <ChevronLeft size={16} /> {t('import_back')}
-                </button>
-                <PrimaryButton onClick={runImport} disabled={busy || !readyRows.length} className="flex-1" data-testid="import-execute">
-                  {busy ? t('import_importing') : t('import_btn').replace('{n}', String(readyRows.length))}
-                </PrimaryButton>
-              </div>
               {busy && (
                 <div>
-                  <div className="h-1.5 rounded-full bg-border/60 overflow-hidden">
+                  <div className="h-1.5 rounded-full bg-zinc-200/70 dark:bg-white/5 overflow-hidden">
                     <div className="h-full bg-foreground rounded-full transition-all" style={{ width: `${progress.total ? Math.round((progress.done / progress.total) * 100) : 0}%` }} />
                   </div>
                   <p className="text-xs text-muted-foreground text-center mt-1.5 tabular-nums">{progress.done}/{progress.total}</p>
@@ -679,28 +883,94 @@ export default function ImportTransactionsPage({ onClose }) {
 
           {/* ============ STEP 3: selesai ============ */}
           {step === 3 && result && (
-            <div className="space-y-4 text-center pt-4">
-              <div className="h-14 w-14 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto">
-                <CheckCircle2 size={28} className="text-emerald-500" />
+            <div className="pt-6">
+              <div className={cn(tile, 'h-20 w-20 rounded-[28px] mx-auto')}>
+                <Check size={34} strokeWidth={2.5} className="text-foreground" />
               </div>
-              <div>
-                <p className="font-bold text-lg">{t('import_done_title')}</p>
-                <p className="text-sm text-muted-foreground mt-1">{t('import_results').replace('{ok}', String(result.ok)).replace('{skip}', String(result.skipped))}</p>
+              <h1 className="text-[28px] font-bold tracking-tight text-center mt-5">{t('import_done2_title')}</h1>
+              <p className="text-[15px] text-muted-foreground text-center leading-relaxed mt-2 px-4">
+                {t('import_done_sub').replace('{n}', String(result.ok)).replace('{wallet}', wallet?.name || '')}
+              </p>
+
+              <div className={cn(card, 'mt-6 px-5 divide-y divide-zinc-200/70 dark:divide-white/5')}>
+                <div className="flex items-center justify-between py-4">
+                  <p className="text-[14px] text-muted-foreground">{t('import_sum_ok')}</p>
+                  <p className="text-[15px] font-bold">{result.ok} {t('import_tx_unit')}</p>
+                </div>
+                <div className="flex items-center justify-between py-4">
+                  <p className="text-[14px] text-muted-foreground">{t('import_sum_dup')}</p>
+                  <p className="text-[15px] font-bold">{result.skipped} {t('import_tx_unit')}</p>
+                </div>
+                <div className="flex items-center justify-between py-4">
+                  <p className="text-[14px] text-muted-foreground">{t('import_sum_balance')}</p>
+                  <p className="text-[15px] font-bold tabular-nums">{fmtAmt(Number(wallet?.balance) || 0, walletCur)}</p>
+                </div>
               </div>
+
               {caps.columns && batchId && (
-                <button type="button" onClick={undoImport} disabled={busy}
-                  className="w-full rounded-xl border border-border/60 py-3 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-40">
+                <button
+                  type="button"
+                  onClick={undoImport}
+                  disabled={busy}
+                  className="w-full mt-4 rounded-2xl border border-zinc-200/70 dark:border-white/10 py-3.5 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-40"
+                >
                   <Undo2 size={16} /> {t('import_undo')}
                 </button>
               )}
-              <PrimaryButton onClick={close} className="w-full">{t('done')}</PrimaryButton>
             </div>
           )}
 
           <div className="h-2" />
           </div>
+
+          {/* bottom bar: pil langkah + tombol aksi */}
+          <div className="shrink-0 px-5 pt-2 pb-6 bg-gradient-to-t from-background via-background/95 to-transparent">
+            <div className="flex justify-center mb-3">
+              <div className="flex items-center gap-0.5 rounded-full bg-zinc-100 dark:bg-[#1D1D20] border border-zinc-200/60 dark:border-white/5 px-1.5 py-1">
+                {[1, 2, 3, 4].map((n) => (
+                  <span
+                    key={n}
+                    className={cn(
+                      'text-[12px] font-bold tabular-nums px-3 py-1 rounded-full',
+                      step === n - 1 ? 'bg-zinc-200 dark:bg-white/10 text-foreground' : 'text-muted-foreground'
+                    )}
+                  >
+                    {String(n).padStart(2, '0')}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <PrimaryBarButton onClick={barAction.onClick} disabled={barAction.disabled} testId={barAction.testId}>
+              {barAction.label}
+              {!busy && <ChevronRight size={18} strokeWidth={2.5} />}
+            </PrimaryBarButton>
+          </div>
         </div>
       </motion.div>
+
+      {/* picker dompet (layar review) */}
+      <Sheet open={pickWallet} onClose={() => setPickWallet(false)} title={t('import_choose_wallet')} zIndex={90}>
+        <div className="px-4 pb-6 space-y-2">
+          {(accounts || []).map((a) => {
+            const active = a.id === walletId
+            return (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => changeWallet(a.id)}
+                className={cn(card, 'w-full p-4 flex items-center gap-3 text-left', active && 'border-foreground/40')}
+              >
+                <div className={cn(tile, 'h-11 w-11 rounded-2xl text-[14px] font-bold')}>{walletInitials(a.name)}</div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-[15px] truncate">{a.name}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{a.currency}</p>
+                </div>
+                {active && <Check size={18} strokeWidth={2.5} className="text-foreground shrink-0" />}
+              </button>
+            )
+          })}
+        </div>
+      </Sheet>
 
       {/* picker kategori */}
       <Sheet open={pickCatFor != null} onClose={() => { setPickCatFor(null); setCatSearch('') }} title={t('select_category')} zIndex={90} noPadding>
