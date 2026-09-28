@@ -1,39 +1,124 @@
 'use client'
 
-import React, { useRef, useState, useEffect, useCallback } from 'react'
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
 /**
- * Model interaksi disamakan dengan paralar-g (WalletCardDeck) yang terbukti
- * tidak nge-bug di HP Ahmad:
+ * AccountDeck — Carousel tumpukan kartu bank ultra-smooth (Framer Motion).
  *
- *  1. Drag = TRIGGER, bukan 1:1 tracking. Kartu "ngeganjel" elastis
- *     (dragElastic 0.35, constraints 0/0) — nurut jari tapi tidak pernah
- *     terbang jauh mengikuti jari ke seluruh layar.
- *  2. Lepas melewati threshold (40px / 200px/s) -> ganti kartu:
- *     kartu lama fade cepat di tempat (0.12s, tanpa geser — tidak ada dua
- *     kartu meluncur bersamaan yang bikin transisi terasa "muddy"),
- *     kartu baru masuk dari +/-48px + fade + scale 0.98 ke posisi diam,
- *     0.3s ease [0.16,1,0.3,1].
- *  3. TANPA rotasi, TANPA fling off-screen, TANPA motion value yang di-share
- *     antar kartu. Kartu peek di belakang STATIS (CSS transition saja).
+ * Mengapa versi sebelumnya glitch/patah di HP:
+ *  1. Kartu peek dipisah di <div> statis dengan CSS transition, sedangkan
+ *     kartu aktif di dalam AnimatePresence. Saat index berganti, kartu
+ *     di-unmount dari PeekCard dan di-mount ulang di AnimatePresence,
+ *     menyebabkan elemen berkedip/hilang sesaat dan melompat dari x=+48px.
+ *  2. mode="popLayout" pada AnimatePresence menyebabkan kalkulasi absolut
+ *     berbenturan dengan container aspect-ratio pada mobile.
  *
- * Pelajaran: tiga fix sebelumnya (clamp extrapolasi, easing commit, hapus tilt)
- * menambal gejala pada arsitektur "kartu mengikuti jari 1:1 lalu fling keluar
- * layar" — arsitektur itu sendiri yang rapuh di HP. Versi ini membuang
- * arsitektur tersebut dan memakai pola yang sudah terbukti mulus.
+ * Solusi Arsitektur (Unified Continuous Stack):
+ *  - Semua kartu di-render dalam satu layer Framer Motion persisten (key tetap).
+ *  - Posisi fisik (x, y, scale, opacity, brightness, zIndex) dihitung secara
+ *    matematis dari selisih `diff = i - activeIdx`.
+ *  - Saat berganti kartu, kartu aktif meluncur mulus ke kiri (x: -108%),
+ *    kartu di belakangnya (diff: 1) membesar dari scale 0.94 -> 1.0 dan y: -14px -> 0
+ *    tanpa ada unmount/remount sama sekali!
+ *  - Transisi spring critically damped (stiffness 300, damping 30) bebas getar,
+ *    buttery smooth, dan nyaman dilihat.
  */
 
-const SWIPE_OFFSET = 40 // px — sama seperti paralar-g
-const SWIPE_VELOCITY = 200 // px/s — sama seperti paralar-g
-const PEEK_Y = 12 // offset vertikal per kartu di belakang (px)
-const PEEK_SCALE = 0.055 // susut skala per kartu di belakang
+const SWIPE_OFFSET = 45 // px minimum drag untuk memicu ganti kartu
+const SWIPE_VELOCITY = 220 // px/s kecepatan flick untuk ganti kartu
 
-// Transisi kartu masuk — sedikit lebih panjang & jauh dari paralar-g
-// agar terasa buttery, tapi tetap tanpa exit-slide (anti "muddy")
-const CARD_TRANSITION = { duration: 0.3, ease: [0.16, 1, 0.3, 1] }
-const ENTER_X = 48
+const SPRING_TRANSITION = {
+  type: 'spring',
+  stiffness: 300,
+  damping: 30,
+  mass: 0.8,
+}
+
+function getCardConfig(diff) {
+  if (diff < 0) {
+    // Kartu yang sudah di-swipe ke kiri (history)
+    return {
+      x: diff === -1 ? '-108%' : '-120%',
+      y: 0,
+      scale: 0.96,
+      opacity: 0,
+      brightness: 1,
+      zIndex: 25, // Saat kembali dari kiri, meluncur di atas tumpukan
+      pointerEvents: 'none',
+      cursor: 'default',
+    }
+  }
+
+  if (diff === 0) {
+    // Kartu aktif di paling depan
+    return {
+      x: 0,
+      y: 0,
+      scale: 1,
+      opacity: 1,
+      brightness: 1,
+      zIndex: 20,
+      pointerEvents: 'auto',
+      cursor: 'grab',
+    }
+  }
+
+  if (diff === 1) {
+    // Kartu ke-1 di belakang tumpukan (peek 1)
+    return {
+      x: 0,
+      y: -14,
+      scale: 0.94,
+      opacity: 0.9,
+      brightness: 0.92,
+      zIndex: 15,
+      pointerEvents: 'auto', // Bisa di-tap untuk loncat ke kartu ini
+      cursor: 'pointer',
+    }
+  }
+
+  if (diff === 2) {
+    // Kartu ke-2 di belakang tumpukan (peek 2)
+    return {
+      x: 0,
+      y: -26,
+      scale: 0.88,
+      opacity: 0.65,
+      brightness: 0.85,
+      zIndex: 10,
+      pointerEvents: 'auto',
+      cursor: 'pointer',
+    }
+  }
+
+  if (diff === 3) {
+    // Kartu ke-3 di belakang tumpukan (peek 3)
+    return {
+      x: 0,
+      y: -36,
+      scale: 0.82,
+      opacity: 0.38,
+      brightness: 0.78,
+      zIndex: 5,
+      pointerEvents: 'none',
+      cursor: 'default',
+    }
+  }
+
+  // Kartu jauh di belakang
+  return {
+    x: 0,
+    y: -42,
+    scale: 0.78,
+    opacity: 0,
+    brightness: 0.7,
+    zIndex: 1,
+    pointerEvents: 'none',
+    cursor: 'default',
+  }
+}
 
 function haptic(ms = 10) {
   try {
@@ -43,39 +128,11 @@ function haptic(ms = 10) {
   } catch {}
 }
 
-/**
- * PeekCard — kartu di belakang tumpukan. STATIS: posisi & opacity murni dari
- * props + CSS transition. Tidak ada motion value, tidak ada transform yang
- * terikat gesture — nol permukaan glitch.
- */
-function PeekCard({ slide, diff }) {
-  return (
-    <div
-      key={`peek-${slide.id}`}
-      aria-hidden="true"
-      className="pointer-events-none absolute inset-0 h-full w-full select-none transition-all duration-300"
-      style={{
-        transform: `translateY(${-PEEK_Y * diff}px) scale(${1 - PEEK_SCALE * diff})`,
-        opacity: diff === 1 ? 0.9 : diff === 2 ? 0.7 : 0.45,
-        zIndex: 10 - diff,
-      }}
-    >
-      <div className="h-full w-full rounded-2xl shadow-md overflow-hidden">
-        {slide.node}
-      </div>
-    </div>
-  )
-}
-
-/**
- * AccountDeck — Carousel tumpukan kartu bank. Gesture swipe = trigger
- * (lihat catatan arsitektur di atas), bukan drag 1:1 full-travel.
- */
 export default function AccountDeck({
   slides = [],
   index = 0,
   onIndexChange,
-  regionLabel,
+  regionLabel = 'Bank Accounts',
   className,
 }) {
   const reduceMotion = useReducedMotion()
@@ -83,19 +140,17 @@ export default function AccountDeck({
   const total = slides.length
 
   const [activeIdx, setActiveIdx] = useState(() =>
-    Math.max(0, Math.min(index || 0, total - 1))
+    Math.max(0, Math.min(index || 0, Math.max(0, total - 1)))
   )
-  const [direction, setDirection] = useState(0)
   const [announcement, setAnnouncement] = useState('')
 
   const goTo = useCallback(
-    (next, dir) => {
+    (next) => {
       const clamped = Math.max(0, Math.min(next, total - 1))
       if (clamped === activeIdx) return
-      setDirection(dir)
       setActiveIdx(clamped)
       onIndexChange?.(clamped)
-      haptic()
+      haptic(10)
     },
     [activeIdx, total, onIndexChange]
   )
@@ -103,27 +158,39 @@ export default function AccountDeck({
   const handleDragEnd = useCallback(
     (_, info) => {
       const { offset, velocity } = info
+      // Swipe ke kiri -> kartu berikutnya
       if (offset.x < -SWIPE_OFFSET || velocity.x < -SWIPE_VELOCITY) {
-        goTo(activeIdx + 1, 1)
-      } else if (offset.x > SWIPE_OFFSET || velocity.x > SWIPE_VELOCITY) {
-        goTo(activeIdx - 1, -1)
+        if (activeIdx < total - 1) {
+          goTo(activeIdx + 1)
+          return
+        }
       }
-      // Di bawah threshold: framer otomatis spring-back ke 0
-      // (dragConstraints 0/0). Tidak ada kode manual — tidak ada glitch.
+      // Swipe ke kanan -> kartu sebelumnya
+      else if (offset.x > SWIPE_OFFSET || velocity.x > SWIPE_VELOCITY) {
+        if (activeIdx > 0) {
+          goTo(activeIdx - 1)
+          return
+        }
+      }
+      // Di bawah threshold: Framer Motion otomatis menganimasikan kembali ke animate={{ x: 0 }}
     },
-    [activeIdx, goTo]
+    [activeIdx, total, goTo]
   )
 
-  // Sinkronisasi index dari luar (misal: klik dot navigasi)
+  // Sinkronisasi index dari kontrol luar (seperti klik dot pagination)
   useEffect(() => {
-    const clamped = Math.max(0, Math.min(index || 0, total - 1))
+    const clamped = Math.max(0, Math.min(index ?? 0, Math.max(0, total - 1)))
     if (clamped !== activeIdx) {
-      setDirection(clamped > activeIdx ? 1 : -1)
       setActiveIdx(clamped)
     }
   }, [index, total, activeIdx])
 
-  // Pengumuman pembaca layar
+  // Cegah index overflow bila list akun berubah
+  useEffect(() => {
+    setActiveIdx((prev) => Math.max(0, Math.min(prev, Math.max(0, total - 1))))
+  }, [total])
+
+  // Screen reader announcement
   useEffect(() => {
     const s = slides[activeIdx]
     if (s) setAnnouncement(`Kartu ${activeIdx + 1} dari ${total}: ${s.label}`)
@@ -132,20 +199,23 @@ export default function AccountDeck({
   const onKeyDown = (e) => {
     if (e.key === 'ArrowRight') {
       e.preventDefault()
-      goTo(activeIdx + 1, 1)
+      goTo(activeIdx + 1)
     } else if (e.key === 'ArrowLeft') {
       e.preventDefault()
-      goTo(activeIdx - 1, -1)
+      goTo(activeIdx - 1)
     } else if (e.key === 'Home') {
       e.preventDefault()
-      goTo(0, -1)
+      goTo(0)
     } else if (e.key === 'End') {
       e.preventDefault()
-      goTo(total - 1, 1)
+      goTo(total - 1)
     }
   }
 
-  const active = slides[activeIdx]
+  const transition = useMemo(
+    () => (reduceMotion ? { duration: 0 } : SPRING_TRANSITION),
+    [reduceMotion]
+  )
 
   return (
     <div className={cn('relative', className)}>
@@ -156,57 +226,72 @@ export default function AccountDeck({
         aria-label={regionLabel}
         tabIndex={0}
         onKeyDown={onKeyDown}
-        className="relative rounded-2xl pt-7 pb-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="relative rounded-2xl pt-8 pb-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background overflow-hidden"
       >
-        {/* Frame deck dengan aspect ratio standar kartu ATM/Bank (1.58 : 1) */}
+        {/* Frame deck aspect ratio standar kartu ATM/Bank (1.58 : 1) */}
         <div className="relative aspect-[1.58/1] min-h-[190px] w-full select-none">
-          {/* Kartu di belakang tumpukan (statis, CSS transition) */}
-          {[3, 2, 1].map((k) => {
-            const slide = slides[activeIdx + k]
-            if (!slide) return null
-            return <PeekCard key={`peek-${slide.id}`} slide={slide} diff={k} />
-          })}
+          {slides.map((slide, i) => {
+            const diff = i - activeIdx
+            const isActive = diff === 0
+            const isPeek = diff === 1 || diff === 2
+            const config = getCardConfig(diff)
 
-          {/* Kartu aktif: AnimatePresence + drag sebagai trigger */}
-          <div className="absolute inset-0 z-20 touch-pan-y">
-            <AnimatePresence initial={false} mode="popLayout" custom={direction}>
-              {active && (
-                <motion.div
-                  key={`active-${active.id}`}
-                  custom={direction}
-                  variants={{
-                    enter: (d) => ({ x: d * ENTER_X, opacity: 0.85, scale: 0.98 }),
-                    center: { x: 0, opacity: 1, scale: 1 },
-                    // Fade cepat di tempat — kartu lama tidak ikut meluncur,
-                    // jadi tidak ada dua kartu bergerak bersamaan.
-                    exit: { opacity: 0, transition: { duration: 0.12 } },
-                  }}
-                  initial="enter"
-                  animate="center"
-                  exit="exit"
-                  transition={reduceMotion ? { duration: 0 } : CARD_TRANSITION}
-                  drag={reduceMotion ? false : 'x'}
-                  dragConstraints={{ left: 0, right: 0 }}
-                  dragElastic={0.35}
-                  dragMomentum={false}
-                  onDragEnd={handleDragEnd}
-                  className="h-full w-full cursor-grab active:cursor-grabbing"
-                  style={{ touchAction: 'pan-y' }}
-                  role="group"
-                  aria-roledescription="slide"
-                  aria-label={active.label}
+            // Optimasi render: kartu yang terlalu jauh di belakang/depan disembunyikan
+            if (diff < -2 || diff > 4) {
+              return null
+            }
+
+            return (
+              <motion.div
+                key={slide.id}
+                initial={false}
+                animate={{
+                  x: config.x,
+                  y: config.y,
+                  scale: config.scale,
+                  opacity: config.opacity,
+                  filter: `brightness(${config.brightness})`,
+                }}
+                transition={transition}
+                drag={isActive && !reduceMotion ? 'x' : false}
+                dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={0.4}
+                dragMomentum={false}
+                onDragEnd={isActive ? handleDragEnd : undefined}
+                style={{
+                  zIndex: config.zIndex,
+                  touchAction: 'pan-y',
+                  transformOrigin: 'bottom center',
+                  pointerEvents: config.pointerEvents,
+                }}
+                className={cn(
+                  'absolute inset-0 h-full w-full select-none transform-gpu will-change-transform',
+                  isActive && 'cursor-grab active:cursor-grabbing',
+                  isPeek && 'cursor-pointer'
+                )}
+                role="group"
+                aria-roledescription="slide"
+                aria-label={slide.label}
+                aria-hidden={!isActive}
+                onClick={isPeek ? () => goTo(i) : undefined}
+              >
+                <div
+                  className={cn(
+                    'h-full w-full rounded-2xl transition-shadow duration-300',
+                    isActive
+                      ? 'shadow-xl shadow-black/20 dark:shadow-black/60'
+                      : 'shadow-md shadow-black/10 dark:shadow-black/30'
+                  )}
                 >
-                  <div className="h-full w-full rounded-2xl shadow-lg">
-                    {active.node}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+                  {slide.node}
+                </div>
+              </motion.div>
+            )
+          })}
         </div>
       </div>
 
-      {/* Live region: umumkan kartu aktif ke screen reader */}
+      {/* Live region pengumuman screen reader */}
       <div aria-live="polite" className="sr-only">
         {announcement}
       </div>
