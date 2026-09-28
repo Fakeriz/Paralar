@@ -9,19 +9,20 @@ import CurrencySheet from './CurrencySheet'
 import { CATEGORIES } from '@/lib/categories'
 import { convert, getRate } from '@/lib/rates'
 import { getCurrency, roundMoney } from '@/lib/currencies'
+import { LOCALE_MAP } from '@/lib/i18n'
 import { cn, triggerHaptic } from '@/lib/utils'
 import * as SI from '@/lib/statement-import'
 
-// Wizard impor rekening koran — FULL PAGE mengikuti desain preview yang
-// disetujui: kicker "Langkah N dari 4" + judul editorial + bottom bar berisi
-// pil langkah 01–04 dan satu tombol aksi primer. Seluruh parsing/normalisasi/
-// dedup jalan client-side (privasi); server hanya menerima baris final +
-// catatan batch (jika migrasi import_batches sudah jalan).
+// Wizard impor rekening koran — FULL PAGE berbahasa visual Paralar: header kompak,
+// hairline progress, kartu-kartu rounded-3xl, dan satu tombol aksi primer di
+// bottom bar. Seluruh parsing/normalisasi/dedup jalan client-side (privasi);
+// server hanya menerima baris final + catatan batch (jika migrasi
+// import_batches sudah jalan).
 
 const STEPS = ['upload', 'setup', 'review', 'done']
 
 export default function ImportTransactionsPage({ onClose }) {
-  const { t, accounts = [], store, refresh, home, rates, session, open: openSheet } = useApp()
+  const { t, lang, accounts = [], store, refresh, home, rates, session, open: openSheet } = useApp()
   const fileRef = useRef(null)
   const parsedRef = useRef(null) // baris mentah pra-finalize — untuk rebuild review saat dompet diganti
   const [step, setStep] = useState(0)
@@ -244,7 +245,11 @@ export default function ImportTransactionsPage({ onClose }) {
         }
         throw new Error(data?.error || t('import_pdf_failed'))
       }
-      const rows = SI.aiTransactionsToRows(data?.transactions, walletCur)
+      const detectedCur = String(data?.meta?.currency || '').trim().toUpperCase()
+      const rows = SI.aiTransactionsToRows(
+        data?.transactions,
+        /^[A-Z]{3}$/.test(detectedCur) ? detectedCur : walletCur
+      )
       if (!rows.length) throw new Error('empty')
       setAiRows(rows)
       toast.success(t('import_pdf_found').replace('{n}', String(rows.length)))
@@ -400,6 +405,16 @@ export default function ImportTransactionsPage({ onClose }) {
     const sign = signed ? (v < 0 ? '−' : v > 0 ? '+' : '') : ''
     return `${sign}${sym} ${num}`
   }
+  // Stats values can overflow their column on large amounts — compact them (e.g. "Rp 88,3 jt")
+  const fmtStat = (n, cur) => {
+    const v = Number(n) || 0
+    if (Math.abs(v) >= 1000000) {
+      const sym = (getCurrency(cur)?.symbol || cur || '').trim()
+      const body = new Intl.NumberFormat(LOCALE_MAP[lang] || 'en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(Math.abs(v))
+      return `${sym ? sym + ' ' : ''}${body}`
+    }
+    return fmtAmt(v, cur)
+  }
   const fmtSize = (b) => {
     if (!b) return ''
     return b >= 1048576
@@ -408,14 +423,12 @@ export default function ImportTransactionsPage({ onClose }) {
   }
   const walletInitials = (name) => (name || '?').trim().slice(0, 2).toUpperCase()
 
-  const kicker = (n) => (
-    <p className="text-[13px] text-muted-foreground">{t('import_kicker_step').replace('{n}', String(n))}</p>
-  )
-  const heroTitle = (text) => (
-    <h1 className="text-[28px] leading-[1.15] font-bold tracking-tight text-foreground mt-1.5">{text}</h1>
-  )
-  const heroSub = (text) => (
-    <p className="text-[15px] text-muted-foreground leading-relaxed mt-2">{text}</p>
+  // Kepala halaman ala Paralar: judul kompak + deskripsi singkat
+  const PageHead = ({ title, desc }) => (
+    <div>
+      <h1 className="text-[20px] leading-tight font-bold tracking-tight text-foreground">{title}</h1>
+      {desc ? <p className="text-[14px] text-muted-foreground leading-relaxed mt-1">{desc}</p> : null}
+    </div>
   )
 
   // Tombol primer putih ala preview — hanya di bottom bar
@@ -494,6 +507,47 @@ export default function ImportTransactionsPage({ onClose }) {
     return { label: t('import_back_start'), onClick: close, disabled: false }
   })()
 
+  // Pilih dompet — dipakai langkah setup CSV maupun persetujuan PDF+AI
+  const WalletPicker = () => (
+    <>
+      <Field label={t('import_choose_wallet')}>
+        <div className="flex gap-2 overflow-x-auto no-scrollbar">
+          {(accounts || []).map((a) => (
+            <button key={a.id} type="button" onClick={() => { setWalletId(a.id); setNewWallet(false) }}
+              className={cn('shrink-0 rounded-xl border px-3 py-2 text-sm font-medium whitespace-nowrap', walletId === a.id && !newWallet ? 'bg-foreground text-background border-foreground' : 'bg-background border-border/60')}>
+              {a.name} <span className="opacity-60">· {a.currency}</span>
+            </button>
+          ))}
+          <button type="button" onClick={() => { setNewWallet(true); setWalletId(null) }}
+            className={cn('shrink-0 rounded-xl border px-3 py-2 text-sm font-medium flex items-center gap-1', newWallet ? 'bg-foreground text-background border-foreground' : 'bg-background border-border/60 border-dashed')}>
+            <Plus size={14} /> {t('import_new_wallet')}
+          </button>
+        </div>
+      </Field>
+
+      {newWallet && (
+        <div className={cn(card, 'p-4 space-y-3')}>
+          <Field label={t('import_wallet_name')}>
+            <TextInput value={nwName} onChange={(e) => setNwName(e.target.value)} placeholder={t('import_wallet_name_ph')} />
+          </Field>
+          <Field label={t('import_currency')}>
+            <button
+              type="button"
+              onClick={() => setPickCur(true)}
+              className="w-full rounded-xl border border-border/60 bg-background px-3 py-3 text-sm font-semibold flex items-center justify-between"
+            >
+              <span>{getCurrency(nwCurrency).symbol} {nwCurrency}</span>
+              <ChevronDown size={16} className="text-muted-foreground" />
+            </button>
+          </Field>
+          <button type="button" onClick={createWallet} disabled={busy} className="w-full rounded-xl bg-foreground text-background font-semibold py-2.5 text-sm disabled:opacity-40">
+            {t('import_create')}
+          </button>
+        </div>
+      )}
+    </>
+  )
+
   return (
     <>
       <motion.div
@@ -541,11 +595,7 @@ export default function ImportTransactionsPage({ onClose }) {
           {/* ============ STEP 0: pilih sumber data ============ */}
           {step === 0 && (
             <div className="space-y-5">
-              <div>
-                {kicker(1)}
-                {heroTitle(t('import_src_title'))}
-                {heroSub(t('import_src_sub'))}
-              </div>
+              <PageHead title={t('import_src_title')} desc={t('import_src_sub')} />
 
               <button
                 type="button"
@@ -598,11 +648,7 @@ export default function ImportTransactionsPage({ onClose }) {
           {/* ============ STEP 1: setup ============ */}
           {step === 1 && !aiMode && (
             <div className="space-y-5">
-              <div>
-                {kicker(2)}
-                {heroTitle(t('import_setup_title'))}
-                {heroSub(t('import_setup_sub'))}
-              </div>
+              <PageHead title={t('import_setup_title')} desc={t('import_setup_sub')} />
 
               <div className={cn(card, 'p-4 flex items-center gap-3')}>
                 <div className={cn(tile, 'h-12 w-12 rounded-2xl')}>
@@ -617,41 +663,7 @@ export default function ImportTransactionsPage({ onClose }) {
                 <button type="button" onClick={() => fileRef.current?.click()} className="text-sm font-medium text-muted-foreground shrink-0">{t('edit')}</button>
               </div>
 
-              <Field label={t('import_choose_wallet')}>
-                <div className="flex gap-2 overflow-x-auto no-scrollbar">
-                  {(accounts || []).map((a) => (
-                    <button key={a.id} type="button" onClick={() => { setWalletId(a.id); setNewWallet(false) }}
-                      className={cn('shrink-0 rounded-xl border px-3 py-2 text-sm font-medium whitespace-nowrap', walletId === a.id && !newWallet ? 'bg-foreground text-background border-foreground' : 'bg-background border-border/60')}>
-                      {a.name} <span className="opacity-60">· {a.currency}</span>
-                    </button>
-                  ))}
-                  <button type="button" onClick={() => { setNewWallet(true); setWalletId(null) }}
-                    className={cn('shrink-0 rounded-xl border px-3 py-2 text-sm font-medium flex items-center gap-1', newWallet ? 'bg-foreground text-background border-foreground' : 'bg-background border-border/60 border-dashed')}>
-                    <Plus size={14} /> {t('import_new_wallet')}
-                  </button>
-                </div>
-              </Field>
-
-              {newWallet && (
-                <div className={cn(card, 'p-4 space-y-3')}>
-                  <Field label={t('import_wallet_name')}>
-                    <TextInput value={nwName} onChange={(e) => setNwName(e.target.value)} placeholder={t('import_wallet_name_ph')} />
-                  </Field>
-                  <Field label={t('import_currency')}>
-                    <button
-                      type="button"
-                      onClick={() => setPickCur(true)}
-                      className="w-full rounded-xl border border-border/60 bg-background px-3 py-3 text-sm font-semibold flex items-center justify-between"
-                    >
-                      <span>{getCurrency(nwCurrency).symbol} {nwCurrency}</span>
-                      <ChevronDown size={16} className="text-muted-foreground" />
-                    </button>
-                  </Field>
-                  <button type="button" onClick={createWallet} disabled={busy} className="w-full rounded-xl bg-foreground text-background font-semibold py-2.5 text-sm disabled:opacity-40">
-                    {t('import_create')}
-                  </button>
-                </div>
-              )}
+              <WalletPicker />
 
               <div>
                 <SectionLabel>{t('import_map_title')}</SectionLabel>
@@ -681,11 +693,7 @@ export default function ImportTransactionsPage({ onClose }) {
           {/* ============ STEP 1: persetujuan PDF+AI ============ */}
           {step === 1 && aiMode && (
             <div className="space-y-5">
-              <div>
-                <p className="text-[13px] text-muted-foreground">{t('import_pdf_picked')}</p>
-                {heroTitle(t('import_ai_consent_title'))}
-                {heroSub(t('import_ai_consent_sub'))}
-              </div>
+              <PageHead title={t('import_ai_consent_title')} desc={t('import_ai_consent_sub')} />
 
               <div className={cn(card, 'p-4 flex items-center gap-3')}>
                 <div className={cn(tile, 'h-12 w-12 rounded-2xl text-[11px] font-bold text-muted-foreground')}>PDF</div>
@@ -697,6 +705,8 @@ export default function ImportTransactionsPage({ onClose }) {
                   <Check size={15} strokeWidth={3} />
                 </div>
               </div>
+
+              <WalletPicker />
 
               <div className="rounded-3xl border border-[#6A92FC]/50 bg-[#6A92FC]/[0.06] p-5">
                 <div className="flex items-start gap-3.5">
@@ -732,11 +742,7 @@ export default function ImportTransactionsPage({ onClose }) {
           {/* ============ STEP 2: review ============ */}
           {step === 2 && (
             <div className="space-y-5">
-              <div>
-                {kicker(3)}
-                {heroTitle(t('import_review_title'))}
-                {heroSub(t('import_review_sub').replace('{n}', String(rows.length)))}
-              </div>
+              <PageHead title={t('import_review_title')} desc={t('import_review_sub').replace('{n}', String(rows.length))} />
 
               {/* dompet tujuan — bisa diganti, review di-rebuild */}
               <button type="button" onClick={() => setPickWallet(true)} className={cn(card, 'w-full p-4 flex items-center gap-3 text-left')}>
@@ -752,16 +758,16 @@ export default function ImportTransactionsPage({ onClose }) {
 
               {/* statistik */}
               <div className={cn(card, 'py-4 px-2 grid grid-cols-3 divide-x divide-zinc-200/70 dark:divide-white/5')}>
-                <div className="text-center px-2">
-                  <p className="text-[17px] font-bold tabular-nums">{readyRows.length}</p>
+                <div className="text-center px-2 min-w-0">
+                  <p className="text-[17px] font-bold tabular-nums truncate">{readyRows.length}</p>
                   <p className="text-[11px] text-muted-foreground mt-1">{t('import_stat_tx')}</p>
                 </div>
-                <div className="text-center px-2">
-                  <p className="text-[17px] font-bold tabular-nums">{fmtAmt(statSums.inn, walletCur)}</p>
+                <div className="text-center px-2 min-w-0">
+                  <p className="text-[17px] font-bold tabular-nums truncate">{fmtStat(statSums.inn, walletCur)}</p>
                   <p className="text-[11px] text-muted-foreground mt-1">{t('import_stat_in')}</p>
                 </div>
-                <div className="text-center px-2">
-                  <p className="text-[17px] font-bold tabular-nums">{fmtAmt(statSums.out, walletCur)}</p>
+                <div className="text-center px-2 min-w-0">
+                  <p className="text-[17px] font-bold tabular-nums truncate">{fmtStat(statSums.out, walletCur)}</p>
                   <p className="text-[11px] text-muted-foreground mt-1">{t('import_stat_out')}</p>
                 </div>
               </div>
@@ -820,10 +826,10 @@ export default function ImportTransactionsPage({ onClose }) {
                         <button
                           type="button"
                           onClick={() => { setPickCatFor(r.idx); setCatSearch('') }}
-                          className={cn(tile, 'h-11 w-11 rounded-2xl')}
+                          className="shrink-0"
                           aria-label={t('select_category')}
                         >
-                          <CategoryBadge id={catOf(r)} size="sm" />
+                          <CategoryBadge id={catOf(r)} size="md" />
                         </button>
                         <button
                           type="button"
@@ -850,7 +856,7 @@ export default function ImportTransactionsPage({ onClose }) {
                 {dupeRows.length > 0 && (
                   <button type="button" onClick={() => setShowDupes((v) => !v)} className={cn(card, 'w-full mt-2.5 p-3.5 flex items-center justify-between')}>
                     <p className="text-sm font-semibold text-muted-foreground">{t('import_dup_title').replace('{n}', String(dupeRows.length))}</p>
-                    <ChevronLeft size={16} className={cn('text-muted-foreground transition-transform', showDupes ? 'rotate-90' : '-rotate-90')} />
+                    <ChevronDown size={16} className={cn('text-muted-foreground transition-transform', showDupes && 'rotate-180')} />
                   </button>
                 )}
                 {showDupes && dupeRows.length > 0 && (
@@ -887,7 +893,7 @@ export default function ImportTransactionsPage({ onClose }) {
               <div className={cn(tile, 'h-20 w-20 rounded-[28px] mx-auto')}>
                 <Check size={34} strokeWidth={2.5} className="text-foreground" />
               </div>
-              <h1 className="text-[28px] font-bold tracking-tight text-center mt-5">{t('import_done2_title')}</h1>
+              <h1 className="text-[24px] font-bold tracking-tight text-center mt-5">{t('import_done2_title')}</h1>
               <p className="text-[15px] text-muted-foreground text-center leading-relaxed mt-2 px-4">
                 {t('import_done_sub').replace('{n}', String(result.ok)).replace('{wallet}', wallet?.name || '')}
               </p>
@@ -903,7 +909,7 @@ export default function ImportTransactionsPage({ onClose }) {
                 </div>
                 <div className="flex items-center justify-between py-4">
                   <p className="text-[14px] text-muted-foreground">{t('import_sum_balance')}</p>
-                  <p className="text-[15px] font-bold tabular-nums">{fmtAmt(Number(wallet?.balance) || 0, walletCur)}</p>
+                  <p className="text-[15px] font-bold tabular-nums text-right break-words">{fmtStat(Number(wallet?.balance) || 0, walletCur)}</p>
                 </div>
               </div>
 
@@ -923,23 +929,8 @@ export default function ImportTransactionsPage({ onClose }) {
           <div className="h-2" />
           </div>
 
-          {/* bottom bar: pil langkah + tombol aksi */}
-          <div className="shrink-0 px-5 pt-2 pb-6 bg-gradient-to-t from-background via-background/95 to-transparent">
-            <div className="flex justify-center mb-3">
-              <div className="flex items-center gap-0.5 rounded-full bg-zinc-100 dark:bg-[#1D1D20] border border-zinc-200/60 dark:border-white/5 px-1.5 py-1">
-                {[1, 2, 3, 4].map((n) => (
-                  <span
-                    key={n}
-                    className={cn(
-                      'text-[12px] font-bold tabular-nums px-3 py-1 rounded-full',
-                      step === n - 1 ? 'bg-zinc-200 dark:bg-white/10 text-foreground' : 'text-muted-foreground'
-                    )}
-                  >
-                    {String(n).padStart(2, '0')}
-                  </span>
-                ))}
-              </div>
-            </div>
+          {/* bottom bar: satu tombol aksi primer */}
+          <div className="shrink-0 px-5 pt-3 pb-6 bg-gradient-to-t from-background via-background/95 to-transparent">
             <PrimaryBarButton onClick={barAction.onClick} disabled={barAction.disabled} testId={barAction.testId}>
               {barAction.label}
               {!busy && <ChevronRight size={18} strokeWidth={2.5} />}

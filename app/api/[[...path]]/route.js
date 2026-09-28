@@ -728,7 +728,7 @@ Return ONLY a valid JSON object matching this exact schema:
   "receipt_number": string or null,
   "date": "YYYY-MM-DD" or null,
   "time": "HH:mm" or null,
-  "currency": "IDR" | "MYR" | "USD" | "TRY" | "SGD" or null,
+  "currency": "ISO 4217 code (e.g. IDR, MYR, USD, EUR, GBP, SGD, THB, PHP, TRY, JPY, AUD) or null",
   "subtotal": number or null,
   "tax": number or null,
   "total": number,
@@ -747,7 +747,7 @@ const STATEMENT_PROMPT = `You are a bank statement parser. Read this bank statem
 Return ONLY a valid JSON object matching this exact schema (no markdown, no commentary):
 {
   "bank": string or null,
-  "currency": "MYR" | "IDR" | "USD" | "TRY" | "SGD" or null,
+  "currency": "ISO 4217 code (e.g. IDR, MYR, USD, EUR, GBP, SGD, THB, PHP, TRY, JPY, AUD) or null",
   "period_from": "YYYY-MM-DD" or null,
   "period_to": "YYYY-MM-DD" or null,
   "transactions": [
@@ -763,7 +763,8 @@ CRITICAL RULES:
 5. "description" is the raw narration/merchant text, trimmed. Keep it verbatim, do not summarize.
 6. Skip non-transaction rows: headers, subtotals, page footers, brought-forward balances, blank rows.
 7. List transactions in the order printed. Extract ALL of them, including all pages.
-8. All monetary amounts must be plain numbers without currency symbols or thousand separators.`
+8. All monetary amounts must be plain numbers without currency symbols or thousand separators.
+9. "currency": detect it from the statement itself — bank name, currency symbols, and amount scale. "Rp" means IDR, "RM" means MYR, "€" means EUR, "£" means GBP. Indonesian banks (BCA, Mandiri, BRI, BNI, Jago, SeaBank, CIMB Niaga, Danamon, etc.) use IDR — never return MYR for an Indonesian statement. If genuinely unclear, return null.`
 
 async function handleStatementPdf(request, quota = null) {
   try {
