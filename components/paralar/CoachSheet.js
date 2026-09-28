@@ -1,40 +1,18 @@
 'use client'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Send, Loader2, Bot, Sparkles } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Send, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp } from './context'
-import { Sheet } from './ui'
-import { QuotaBadge } from './QuotaBadge'
+import { Sheet, DotsLoader } from './ui'
 import CoachMarkdown from './CoachMarkdown'
 import { convert } from '@/lib/rates'
-import { cn } from '@/lib/utils'
 
 export default function CoachSheet({ open, onClose }) {
   const { t, home, lang, transactions = [], accounts = [], goals = [], rates, fmt, session, isAiAllowed, open: openSheet } = useApp()
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
-  const [quota, setQuota] = useState(null)
-  const [quotaLoading, setQuotaLoading] = useState(false)
   const scrollRef = useRef(null)
-
-  const fetchQuota = useCallback(async () => {
-    if (!session?.access_token) return
-    setQuotaLoading(true)
-    try {
-      const res = await fetch('/api/ai/usage', {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setQuota(data)
-      }
-    } catch (e) {
-      console.warn('Failed to fetch AI quota:', e)
-    } finally {
-      setQuotaLoading(false)
-    }
-  }, [session?.access_token])
 
   const context = useMemo(() => {
     const now = new Date()
@@ -67,9 +45,8 @@ export default function CoachSheet({ open, onClose }) {
         return
       }
       setMessages([{ role: 'assistant', content: lang === 'id' ? 'Halo! Saya AI Financial Coach kamu. Tanya apa saja soal keuanganmu. 💰' : lang === 'ms' ? 'Hai! Saya AI Financial Coach anda. Tanya apa sahaja tentang kewangan anda. 💰' : lang === 'tr' ? 'Merhaba! Ben AI Finans Koçunuzum. Finanslarınız hakkında her şeyi sorun. 💰' : "Hi! I'm your AI Financial Coach. Ask me anything about your money. 💰" }])
-      fetchQuota()
     }
-  }, [open, lang, isAiAllowed, onClose, openSheet, fetchQuota])
+  }, [open, lang, isAiAllowed, onClose, openSheet])
 
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }) }, [messages, busy])
 
@@ -110,14 +87,6 @@ export default function CoachSheet({ open, onClose }) {
         throw new Error(data?.error || t('error'))
       }
 
-      if (data?.remaining !== undefined) {
-        setQuota({
-          remaining: data.remaining,
-          total: data.total,
-          is_unlimited: data.is_unlimited,
-        })
-      }
-
       setMessages((m) => [...m, { role: 'assistant', content: data.reply }])
     } catch (e) {
       setMessages((m) => [...m, { role: 'assistant', content: `⚠️ ${e?.message || t('error')}` }])
@@ -130,20 +99,29 @@ export default function CoachSheet({ open, onClose }) {
       onClose={onClose}
       full
       noPadding
-      title={<span className="flex items-center gap-2"><Bot size={18} /> {t('ai_coach')}</span>}
-      right={<QuotaBadge quota={quota} loading={quotaLoading} />}
+      title={<span className="flex items-center justify-center gap-2"><video src="/coach-avatar-anim.mp4" autoPlay muted loop playsInline className="h-7 w-7 rounded-full object-cover" /> {t('ai_coach')}</span>}
     >
       <div className="flex flex-col h-full">
         <div className="px-3 py-2 bg-muted/50 text-[11px] text-muted-foreground text-center">
-          {fmt(context.totalBalance, home)} · {t('spending')}: {fmt(context.monthSpending, home)} · Gemini 2.0 Flash
+          {fmt(context.totalBalance, home)} · {t('spending')}: {fmt(context.monthSpending, home)}
         </div>
         <div ref={scrollRef} className="flex-1 overflow-y-auto no-scrollbar px-4 py-4 space-y-3">
-          {messages.map((m, i) => (
-            <div key={i} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
-              <div className={cn('rounded-2xl px-4 py-2.5 text-sm leading-relaxed', m.role === 'user' ? 'max-w-[82%] bg-foreground text-background rounded-br-md whitespace-pre-wrap' : 'max-w-[92%] bg-card border border-border/50 rounded-bl-md')}>{m.role === 'user' ? m.content : <CoachMarkdown text={m.content} />}</div>
+          {messages.map((m, i) => m.role === 'user' ? (
+            <div key={i} className="flex justify-end">
+              <div className="max-w-[82%] rounded-2xl rounded-br-md bg-foreground text-background px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap">{m.content}</div>
+            </div>
+          ) : (
+            <div key={i} className="flex items-start gap-2.5">
+              <img src="/coach-avatar.webp" alt="" className="mt-0.5 h-[34px] w-[34px] flex-none rounded-full object-cover ring-1 ring-foreground/10" />
+              <div className="max-w-[80%] rounded-2xl rounded-bl-md border border-border/50 bg-card px-4 py-2.5 text-sm leading-relaxed"><CoachMarkdown text={m.content} /></div>
             </div>
           ))}
-          {busy ? <div className="flex justify-start"><div className="bg-card border border-border/50 rounded-2xl rounded-bl-md px-4 py-3"><Loader2 size={16} className="animate-spin" /></div></div> : null}
+          {busy ? (
+            <div className="flex items-start gap-2.5">
+              <img src="/coach-avatar.webp" alt="" className="mt-0.5 h-[34px] w-[34px] flex-none rounded-full object-cover ring-1 ring-foreground/10" />
+              <div className="rounded-2xl rounded-bl-md border border-border/50 bg-card px-4 py-3.5"><DotsLoader size="sm" /></div>
+            </div>
+          ) : null}
           {messages.length <= 1 ? (
             <div className="flex flex-wrap gap-2 pt-2">
               {starters.map((s) => <button key={s} type="button" onClick={() => send(s)} className="rounded-xl border border-border/60 bg-card px-3 py-2 text-xs font-medium flex items-center gap-1.5"><Sparkles size={12} /> {s}</button>)}
