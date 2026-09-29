@@ -1,4 +1,5 @@
 'use client'
+
 import { useMemo } from 'react'
 import { getTheme, ACCOUNT_TYPES } from '@/lib/categories'
 import { getCurrency } from '@/lib/currencies'
@@ -13,24 +14,21 @@ export function digits4(s) {
   return String(h % 10000).padStart(4, '0')
 }
 
-// Gold EMV Chip standar kartu fisik (Kotak proporsional, tidak melengkung, tidak gepeng)
+// Gold EMV Chip standar kartu fisik (Single component, proporsional)
 export function EmvChip({ className = '', isLight = false }) {
   return (
     <div
       className={cn(
-        "w-[32px] h-[24px] rounded-[3px] relative overflow-hidden shrink-0 select-none shadow-xs border border-amber-600/60 bg-gradient-to-br from-amber-300 via-amber-400 to-amber-600",
+        'w-8 h-6 rounded-md relative overflow-hidden shrink-0 select-none shadow-xs',
+        'bg-gradient-to-br from-amber-300 via-amber-400 to-amber-600 border border-amber-500/80',
         className
       )}
     >
-      {/* Garis-garis sirkit microchip EMV */}
-      <div className="absolute inset-[1.5px] border border-amber-800/40 rounded-[2px]">
-        {/* Kotak kontak inti di tengah */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-2 border border-amber-800/40 rounded-[1px] bg-amber-400/30" />
-        {/* Garis horizontal tengah */}
-        <div className="absolute top-1/2 inset-x-0 h-px bg-amber-800/35 -translate-y-1/2" />
-        {/* Garis vertikal pembagi kiri dan kanan */}
-        <div className="absolute inset-y-0 left-[30%] w-px bg-amber-800/35" />
-        <div className="absolute inset-y-0 right-[30%] w-px bg-amber-800/35" />
+      <div className="absolute inset-0 border border-amber-700/40 rounded-[3px] m-[2px]">
+        <div className="absolute inset-x-2 inset-y-1.5 border border-amber-800/40 rounded-[2px] bg-amber-400/30" />
+        <div className="absolute top-1/2 inset-x-0 h-px bg-amber-800/30 -translate-y-1/2" />
+        <div className="absolute inset-y-0 left-2 w-px bg-amber-800/30" />
+        <div className="absolute inset-y-0 right-2 w-px bg-amber-800/30" />
       </div>
     </div>
   )
@@ -39,7 +37,14 @@ export function EmvChip({ className = '', isLight = false }) {
 // Contactless / NFC Wave Icon
 export function ContactlessWave({ className = '' }) {
   return (
-    <svg className={cn('w-4 h-4 shrink-0', className)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+    <svg
+      className={cn('w-4 h-4 shrink-0', className)}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+    >
       <path d="M6.5 9a6 6 0 0 1 0 6" opacity="0.65" />
       <path d="M10.5 6a10 10 0 0 1 0 12" opacity="0.85" />
       <path d="M14.5 3a14 14 0 0 1 0 18" />
@@ -57,11 +62,12 @@ export function NetworkBadge({ network = 'visa', isLight = false, className = ''
       </div>
     )
   }
+
   return (
     <span
       className={cn(
         'font-black italic tracking-tighter text-sm shrink-0 font-sans select-none',
-        isLight ? 'text-[#09090B] font-black' : 'text-white/95 drop-shadow-sm',
+        isLight ? 'text-[#09090B]' : 'text-white/95 drop-shadow-sm',
         className
       )}
     >
@@ -70,10 +76,9 @@ export function NetworkBadge({ network = 'visa', isLight = false, className = ''
   )
 }
 
-// SVG Backgrounds for the 6 Physical Motifs (100% Solid background, SVG pattern 10%-25% opacity)
+// SVG Backgrounds for the 6 Physical Motifs
 export function CardMotifTexture({ motif = 'parang', isLight = false }) {
   if (motif === 'obsidian') {
-    // 1) Obsidian: Solid #0C0C0E with soft top-left surface reflection
     return (
       <div className="absolute inset-0 pointer-events-none overflow-hidden bg-[#0C0C0E]">
         <div className="absolute -top-12 -left-12 w-48 h-48 rounded-full bg-white/[0.04] blur-2xl pointer-events-none" />
@@ -83,8 +88,6 @@ export function CardMotifTexture({ motif = 'parang', isLight = false }) {
   }
 
   if (motif === 'glacier') {
-    // 2) Glacier Frost: Solid #FFFFFF marble texture with 15% opacity veins, text #09090B
-    // (soft glow di kanan bawah dihapus 2026-09-28 — terbaca sebagai noda putih)
     return (
       <div className="absolute inset-0 pointer-events-none overflow-hidden bg-[#FFFFFF]">
         <svg className="absolute inset-0 w-full h-full opacity-15" viewBox="0 0 320 200" fill="none" preserveAspectRatio="none">
@@ -98,7 +101,6 @@ export function CardMotifTexture({ motif = 'parang', isLight = false }) {
   }
 
   if (motif === 'spider') {
-    // 3) Web Hero (Spider): Solid gradient #7F1D1D to #09090B with 15% opacity spiderweb
     return (
       <div className="absolute inset-0 pointer-events-none overflow-hidden bg-gradient-to-br from-[#7F1D1D] to-[#09090B]">
         <svg className="absolute -top-12 -right-12 w-64 h-64 opacity-15" viewBox="0 0 200 200" fill="none">
@@ -119,7 +121,6 @@ export function CardMotifTexture({ motif = 'parang', isLight = false }) {
   }
 
   if (motif === 'kawung') {
-    // 4) Batik Kawung: Solid #0C0C0E with 10% opacity 4-petaled symmetric circles
     return (
       <div className="absolute inset-0 pointer-events-none overflow-hidden bg-[#0C0C0E]">
         <svg className="absolute inset-0 w-full h-full opacity-10" xmlns="http://www.w3.org/2000/svg">
@@ -143,7 +144,6 @@ export function CardMotifTexture({ motif = 'parang', isLight = false }) {
   }
 
   if (motif === 'matrix') {
-    // 5) Cyber Matrix: Solid #0A0F1D with 20% opacity teal hex grid
     return (
       <div className="absolute inset-0 pointer-events-none overflow-hidden bg-[#0A0F1D]">
         <svg className="absolute inset-0 w-full h-full opacity-20" xmlns="http://www.w3.org/2000/svg">
@@ -161,7 +161,7 @@ export function CardMotifTexture({ motif = 'parang', isLight = false }) {
     )
   }
 
-  // 6) Batik Parang (Default): Solid #121216 with 20% opacity subtle gold diagonal blades
+  // Batik Parang (Default)
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden bg-[#121216]">
       <svg className="absolute -inset-4 w-[120%] h-[120%] opacity-20" xmlns="http://www.w3.org/2000/svg">
@@ -184,11 +184,6 @@ export function CardMotifTexture({ motif = 'parang', isLight = false }) {
 
 /**
  * Standard Bank Physical Card Component
- * Conforms to:
- * - Aspect ratio: w-full aspect-[1.58/1] min-h-[185px] rounded-2xl relative overflow-hidden flex flex-col justify-between
- * - Elevation: soft two-layer cool-black drop shadow (downward only, never clipped)
- * - Border top: border-t border-white/20 (or border-zinc-300 for Glacier)
- * - Collapsed mode (isCollapsed = true): Only Account Name (top-left) & Bank Logo (top-right) in ~55px header strip.
  */
 export function BankCard({
   name,
@@ -217,7 +212,6 @@ export function BankCard({
   const isCardLight = Boolean(th.isLight || th.id === 'glacier' || theme === 'glacier' || theme === 'white')
   const motif = th.motif || theme || 'parang'
 
-  // Text color palette (Glacier Frost is 100% black #09090B, others crisp white)
   const titleCls = isCardLight ? 'text-[#09090B]' : 'text-white'
   const subCls = isCardLight ? 'text-zinc-600' : 'text-zinc-300'
 
@@ -227,14 +221,10 @@ export function BankCard({
     return `${cur.symbol} ${Number(balance || 0).toLocaleString()}`
   }, [balance, currency, fmt, hideBalance, cur.symbol])
 
-  // Pisahkan simbol dan nominal agar simbol bisa dikecilkan secara independen
   const balanceParts = useMemo(() => {
     if (hideBalance) return null
-    
-    // Ambil string format bawaan atau gunakan toLocaleString
+
     const raw = fmt ? String(fmt(balance ?? 0, currency)) : `${cur.symbol} ${Number(balance || 0).toLocaleString()}`
-    
-    // Regex mendeteksi simbol/kode mata uang di depan (termasuk tanda minus jika ada)
     const match = raw.match(/^(-?)([^\d\s]+)\s*(.+)$/)
     if (match) {
       return {
@@ -243,7 +233,7 @@ export function BankCard({
         digits: match[3] || '',
       }
     }
-    
+
     return {
       prefixSign: Number(balance || 0) < 0 ? '-' : '',
       symbol: cur.symbol || currency,
@@ -251,22 +241,16 @@ export function BankCard({
     }
   }, [balance, currency, fmt, hideBalance, cur.symbol])
 
-  // Monogram fallback: same tile language as LogoBadge (tile + letters),
-  // so cards without a bank logo read as branded instead of placeholder.
   const monogram = useMemo(() => {
     const words = String(name || '').trim().split(/\s+/).filter(Boolean)
     if (words.length > 1) return `${words[0][0]}${words[1][0]}`.toUpperCase()
     return (words[0] || '\u2022\u2022').slice(0, 2).toUpperCase()
   }, [name])
 
-  // Elevation: soft two-layer drop shadow in cool-black (16,16,20) so it never
-  // reads as a dirty grey bar on light surfaces. Purely downward — the old
-  // upward -8px occlusion bled a harsh 50%-black smear under the card.
-  const occlusionShadowCls = (!flat && showOcclusionShadow)
+  const occlusionShadowCls = !flat && showOcclusionShadow
     ? 'shadow-[0_1px_2px_rgba(16,16,20,0.06),0_14px_30px_-10px_rgba(16,16,20,0.22)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_14px_30px_-10px_rgba(0,0,0,0.5)]'
     : 'shadow-none'
 
-  // Top gloss border
   const topBorderCls = isCardLight
     ? 'border-t border-t-zinc-300 border-zinc-200'
     : 'border-t border-t-white/20 border-white/10'
@@ -276,35 +260,26 @@ export function BankCard({
       onClick={onClick}
       style={style}
       className={cn(
-        // Kunci aspek rasio murni, hapus max-h-[220px] agar kartu tidak gepeng/melar di tablet
-        'w-full aspect-[1.58/1] min-h-[185px] rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between shrink-0 select-none bg-[#0c0c0e]',
+        'w-full aspect-[1.58/1] min-h-[185px] rounded-2xl p-5 relative overflow-hidden flex flex-col justify-between shrink-0 select-none bg-[#0c0c0e]',
         th.className,
         topBorderCls,
         occlusionShadowCls,
         className
       )}
     >
-      {/* 1) Motif Background Texture (100% Solid background + low opacity SVG pattern) */}
+      {/* 1) Motif Background Texture */}
       <CardMotifTexture motif={motif} isLight={isCardLight} />
 
-      {/* 
-        2) Collapsed Visibility (Header ~55px):
-        Jika isCollapsed === true, HANYA tampilkan Nama Akun (kiri atas) dan Logo/Badge Bank (kanan atas).
-        SEMBUNYIKAN nominal saldo, chip EMV, ikon contactless, dan 4 digit nomor kartu.
-      */}
+      {/* 2) Mode Tampilan: Collapsed vs Expanded */}
       {isCollapsed ? (
-        <div className="flex items-center justify-between gap-3 relative z-10 w-full pt-0.5">
-          <div className="flex items-center gap-2 min-w-0">
-            <p className={cn('font-bold text-base truncate tracking-tight', titleCls)}>
+        /* Collapsed Mode (~55px header strip) */
+        <div className="flex items-start justify-between gap-3 relative z-10 w-full">
+          <div className="flex flex-col items-start min-w-0">
+            <p className={cn('text-xs sm:text-sm font-bold uppercase tracking-[0.2em] truncate leading-tight', titleCls)}>
               {name || '—'}
             </p>
-            <span
-              className={cn(
-                'text-[10px] font-semibold uppercase tracking-[0.14em] px-2 py-0.5 rounded-md shrink-0',
-                isCardLight ? 'bg-black/5 text-zinc-700' : 'bg-white/10 text-zinc-300'
-              )}
-            >
-              {typeLabel}
+            <span className={cn('text-[9px] font-bold uppercase tracking-[0.26em] mt-0 opacity-80', subCls)}>
+              {typeLabel || 'BANK'}
             </span>
           </div>
 
@@ -314,7 +289,7 @@ export function BankCard({
             ) : (
               <div
                 className={cn(
-                  'h-9 w-9 rounded-xl flex items-center justify-center border shrink-0 font-extrabold text-[13px] tracking-tight',
+                  'h-9 w-9 rounded-2xl flex items-center justify-center border shrink-0 font-extrabold text-[12px] tracking-tight shadow-sm',
                   isCardLight
                     ? 'bg-zinc-950/5 border-zinc-300 text-zinc-900'
                     : 'bg-white/10 border-white/20 text-white'
@@ -327,38 +302,27 @@ export function BankCard({
           </div>
         </div>
       ) : (
-        /* Full card view — adapted from the 3D swipe reference:
-           small-caps name top-left, hero balance bottom-left, network mark
-           bottom-right, generous negative space. No chip, no card number. */
+        /* Full Expanded Mode */
         <>
-          {/* Subtle top-light sheen over the motif (motifs incl. glacier untouched) */}
-          <div
-            className={cn(
-              'absolute inset-0 pointer-events-none',
-              isCardLight
-                ? 'bg-gradient-to-b from-black/[0.04] via-transparent to-transparent'
-                : 'bg-gradient-to-b from-white/[0.06] via-transparent to-transparent'
-            )}
-          />
-
-          {/* Top: small-caps account name + BANK category hook | bank badge */}
-          <div className="flex items-start justify-between gap-3 relative z-10">
-            <div className="min-w-0">
-              <p className={cn('text-[11px] font-semibold uppercase tracking-[0.2em] truncate', titleCls)}>
+          {/* Header Row */}
+          <div className="flex items-start justify-between gap-3 relative z-10 w-full">
+            <div className="flex flex-col items-start min-w-0">
+              <p className={cn('text-xs sm:text-sm font-bold uppercase tracking-[0.2em] truncate leading-tight', titleCls)}>
                 {name || '—'}
               </p>
-              <p className={cn('text-[9px] font-semibold uppercase tracking-[0.24em] mt-1', subCls)}>
-                {typeLabel}
-              </p>
+              <span className={cn('text-[9px] font-bold uppercase tracking-[0.26em] mt-0 opacity-80', subCls)}>
+                {typeLabel || 'BANK'}
+              </span>
             </div>
 
-            <div className="shrink-0">
+            <div className="flex items-center gap-2 shrink-0">
+              {rightHeader}
               {logo ? (
                 <LogoBadge logoId={logo} />
               ) : (
                 <div
                   className={cn(
-                    'h-9 w-9 rounded-xl flex items-center justify-center border shrink-0 font-extrabold text-[13px] tracking-tight',
+                    'h-9 w-9 rounded-2xl flex items-center justify-center border shrink-0 font-extrabold text-[12px] tracking-tight shadow-sm',
                     isCardLight
                       ? 'bg-zinc-950/5 border-zinc-300 text-zinc-900'
                       : 'bg-white/10 border-white/20 text-white'
@@ -371,28 +335,28 @@ export function BankCard({
             </div>
           </div>
 
-          {/* Breathing room for the motif */}
-          <div className="flex-1" />
+          {/* Chip & Contactless Icons */}
+          <div className="flex items-center gap-3 relative z-10 my-auto">
+            <EmvChip isLight={isCardLight} />
+            <ContactlessWave className={isCardLight ? 'text-zinc-600' : 'text-white/70'} />
+          </div>
 
-          {/* Bottom: hero balance + approx-home | network mark */}
-          {/* Bottom: hero balance + approx-home | network mark */}
-          <div className="flex items-end justify-between gap-3 relative z-10">
+          {/* Balance & Network Row */}
+          <div className="flex items-end justify-between gap-3 relative z-10 mt-auto">
             <div className="min-w-0">
               <p
                 className={cn(
-                  'text-2xl sm:text-[28px] leading-none font-semibold tabular-nums tracking-tight truncate opacity-95 flex items-baseline gap-1',
+                  'text-2xl sm:text-[30px] leading-none font-bold tabular-nums tracking-tight truncate opacity-95 flex items-baseline gap-1.5',
                   titleCls
                 )}
                 title={typeof balance === 'number' ? String(balance) : ''}
               >
-                {hideBalance ? (
-                  '••••••'
-                ) : balanceParts ? (
+                {balanceParts ? (
                   <>
                     {balanceParts.prefixSign && (
-                      <span className="text-lg font-bold opacity-80">{balanceParts.prefixSign}</span>
+                      <span className="text-xl font-bold opacity-80">{balanceParts.prefixSign}</span>
                     )}
-                    <span className="text-sm sm:text-base font-bold tracking-normal opacity-70 select-none">
+                    <span className="text-base sm:text-lg font-bold tracking-tight opacity-75 select-none">
                       {balanceParts.symbol}
                     </span>
                     <span className="font-extrabold tracking-tight">
@@ -405,8 +369,8 @@ export function BankCard({
               </p>
 
               {approxHome ? (
-                <p className={cn('text-[10px] font-normal mt-0.5 truncate opacity-75', subCls)}>
-                  {hideBalance ? '••••••' : (String(approxHome).startsWith('≈') ? approxHome : `≈ ${approxHome}`)}
+                <p className={cn('text-[11px] font-normal mt-1 truncate opacity-70', subCls)}>
+                  {hideBalance ? '••••••' : String(approxHome).startsWith('≈') ? approxHome : `≈ ${approxHome}`}
                 </p>
               ) : null}
             </div>
