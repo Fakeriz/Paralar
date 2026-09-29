@@ -1,5 +1,5 @@
 'use client'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useRef, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Search, Receipt, MoreVertical, Download, Upload, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -117,6 +117,56 @@ function TransactionsContent() {
     }
   }
 
+  // ---- Render bertahap: cuma render jendela awal, tambah otomatis saat scroll ----
+  // Ratusan baris sekaligus = ratusan GPU layer + swipe listener = scroll jank di HP.
+  const PAGE = 60
+  const [visibleCount, setVisibleCount] = useState(PAGE)
+  const sentinelRef = useRef(null)
+
+  const groupMeta = useMemo(() => {
+    const m = new Map()
+    for (const [k, dayList] of groups) {
+      const net = (dayList || []).reduce((s, tx) => {
+        const v = safeToHome(tx?.amount, tx?.currency)
+        return tx?.type === 'expense' ? s - v : tx?.type === 'income' ? s + v : s
+      }, 0)
+      m.set(k, { dayList: dayList || [], net })
+    }
+    return m
+  }, [groups])
+
+  const flat = useMemo(() => {
+    const out = []
+    for (const [k] of groups) {
+      out.push({ t: 'h', k })
+      for (const tx of groupMeta.get(k).dayList) out.push({ t: 'r', k, tx })
+    }
+    return out
+  }, [groups, groupMeta])
+
+  useEffect(() => { setVisibleCount(PAGE) }, [groups])
+
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el || visibleCount >= flat.length) return
+    const io = new IntersectionObserver(
+      (es) => { if (es[0]?.isIntersecting) setVisibleCount((c) => Math.min(c + PAGE, flat.length)) },
+      { rootMargin: '800px' }
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [flat.length, visibleCount])
+
+  // Bangun kembali struktur grup dari irisan yang dirender
+  const rendered = []
+  {
+    let cur = null
+    for (const it of flat.slice(0, visibleCount)) {
+      if (it.t === 'h') { cur = { k: it.k, rows: [] }; rendered.push(cur) }
+      else if (cur) cur.rows.push(it.tx)
+    }
+  }
+
   return (
     <div className="px-5 pb-28">
       <div className="flex items-center justify-between pt-6">
@@ -158,47 +208,44 @@ function TransactionsContent() {
       {groups.length === 0 ? (
         <Card className="mt-4"><EmptyState icon={Receipt} title={t('no_transactions')} subtitle={t('no_transactions_sub')} /></Card>
       ) : (
-        (groups || []).map(([k, dayList]) => {
-          const net = (dayList || []).reduce((s, tx) => {
-            const v = safeToHome(tx?.amount, tx?.currency)
-            return tx?.type === 'expense' ? s - v : tx?.type === 'income' ? s + v : s
-          }, 0)
-          return (
-            <div key={k} className="mt-5">
-              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex justify-between items-center mb-2 px-1">
-                <span>{labelFor(k)}</span>
-                <span className="tabular-nums">
-                  {hideBalance ? '••••••' : `${net < 0 ? '-' : '+'}${safeFmt(Math.abs(net), home)}`}
-                </span>
+        <>
+          {rendered.map(({ k, rows }) => {
+            const net = groupMeta.get(k)?.net || 0
+            return (
+              <div key={k} className="mt-5">
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex justify-between items-center mb-2 px-1">
+                  <span>{labelFor(k)}</span>
+                  <span className="tabular-nums">
+                    {hideBalance ? '••••••' : `${net < 0 ? '-' : '+'}${safeFmt(Math.abs(net), home)}`}
+                  </span>
+                </div>
+                <div className="rounded-2xl border border-border/40 bg-card overflow-hidden divide-y divide-border/30 mb-4 touch-pan-y shadow-xs">
+                  <AnimatePresence>
+                    {rows.map((tx, i) => (
+                      <motion.div
+                        key={tx?.id ?? `${k}-${i}`}
+                        initial={false}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.18 }}
+                      >
+                        <SwipeTransactionRow
+                          transaction={tx}
+                          isGrouped
+                          isOpen={openRowId === tx?.id}
+                          onOpenChange={(v) => setOpenRowId(v ? tx?.id : null)}
+                          onOpenDetail={() => open?.('txDetail', tx)}
+                          onEdit={handleEdit}
+                          onDelete={handleDelete}
+                        />
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
               </div>
-              <div className="rounded-2xl border border-border/40 bg-card overflow-hidden divide-y divide-border/30 mb-4 touch-pan-y shadow-xs">
-                <AnimatePresence mode="popLayout">
-                  {(dayList || []).map((tx) => (
-                    <motion.div
-                      key={tx?.id || Math.random()}
-                      layout
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ type: 'spring', stiffness: 350, damping: 30, mass: 0.8 }}
-                      className="transform-gpu will-change-transform"
-                    >
-                      <SwipeTransactionRow
-                        transaction={tx}
-                        isGrouped
-                        isOpen={openRowId === tx?.id}
-                        onOpenChange={(v) => setOpenRowId(v ? tx?.id : null)}
-                        onOpenDetail={() => open?.('txDetail', tx)}
-                        onEdit={handleEdit}
-                        onDelete={handleDelete}
-                      />
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
-            </div>
-          )
-        })
+            )
+          })}
+          <div ref={sentinelRef} className="h-2" aria-hidden="true" />
+        </>
       )}
 
       {/* Delete Confirmation Dialog */}
